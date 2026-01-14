@@ -933,11 +933,18 @@ async def generate_carousel(request: GenerateRequest):
 
     # Берём базовые шаблоны
     intro_template = intro_slides[0] if intro_slides else (content_slides[0] if content_slides else slides[0])
-    content_template = content_slides[0] if content_slides else slides[0]  # Fallback template
+
+    # FIX: Smart fallback - если нет "content", используем "content1", потом любой слайд
+    if content_slides:
+        content_template = content_slides[0]
+    elif 'content1' in content_specific:
+        content_template = content_specific['content1']
+    else:
+        content_template = slides[0]  # Last resort fallback
 
     # NEW: Функция для выбора content template с fallback
     def get_content_template(index: int):
-        """Выбрать content{index} template или fallback на content"""
+        """Выбрать content{index} template или fallback на content/content1"""
         content_type = f'content{index}'
         if content_type in content_specific:
             return content_specific[content_type]
