@@ -2399,9 +2399,10 @@
             }
         }
 
-        async function loadTemplate(name) {
+        async function loadTemplate(identifier) {
+            // NEW v7.0: identifier can be template_id or name
             try {
-                const r = await fetch(`${API_URL}/templates/${encodeURIComponent(name)}`);
+                const r = await fetch(`${API_URL}/templates/${encodeURIComponent(identifier)}`);
                 if (r.ok) {
                     applyTemplate(await r.json());
                     hideTemplatesModal();
@@ -2409,11 +2410,25 @@
                 }
             } catch (e) { }
 
+            // Fallback: search in localStorage by name OR template_id
             const local = JSON.parse(localStorage.getItem('carousel_templates') || '{}');
-            if (local[name]) {
-                applyTemplate(local[name]);
+
+            // First try direct match by name
+            if (local[identifier]) {
+                applyTemplate(local[identifier]);
                 hideTemplatesModal();
+                return;
             }
+
+            // Then search by template_id
+            const foundByTemplateId = Object.values(local).find(t => t.template_id === identifier);
+            if (foundByTemplateId) {
+                applyTemplate(foundByTemplateId);
+                hideTemplatesModal();
+                return;
+            }
+
+            showToast('Шаблон не найден', 'error');
         }
 
         function applyTemplate(t) {
@@ -2432,22 +2447,39 @@
             showToast('Загружено', 'success');
         }
 
-        async function exportTemplate(name, event) {
+        async function exportTemplate(identifier, event) {
             event.stopPropagation();
             let t;
+
+            // NEW v7.0: Try to fetch from server first
             try {
-                const r = await fetch(`${API_URL}/templates/${encodeURIComponent(name)}`);
+                const r = await fetch(`${API_URL}/templates/${encodeURIComponent(identifier)}`);
                 if (r.ok) t = await r.json();
             } catch (e) { }
 
-            if (!t) t = JSON.parse(localStorage.getItem('carousel_templates') || '{}')[name];
+            // Fallback: search in localStorage by name OR template_id
+            if (!t) {
+                const local = JSON.parse(localStorage.getItem('carousel_templates') || '{}');
+
+                // Try direct match by name
+                if (local[identifier]) {
+                    t = local[identifier];
+                } else {
+                    // Search by template_id
+                    t = Object.values(local).find(template => template.template_id === identifier);
+                }
+            }
+
             if (t) {
+                const filename = t.template_id || t.name || 'template';
                 const blob = new Blob([JSON.stringify(t, null, 2)], { type: 'application/json' });
                 const a = document.createElement('a');
                 a.href = URL.createObjectURL(blob);
-                a.download = `${name}.json`;
+                a.download = `${filename}.json`;
                 a.click();
                 showToast('Скачано', 'success');
+            } else {
+                showToast('Шаблон не найден', 'error');
             }
         }
 
@@ -2458,6 +2490,13 @@
             reader.onload = async e => {
                 try {
                     const t = JSON.parse(e.target.result);
+
+                    // NEW v7.0: Auto-generate template_id if missing
+                    if (!t.template_id) {
+                        t.template_id = generateTemplateId(t.name);
+                        console.log(`Generated template_id: ${t.template_id} for template: ${t.name}`);
+                    }
+
                     try {
                         await fetch(`${API_URL}/templates`, {
                             method: 'POST',
@@ -2473,21 +2512,43 @@
                     showToast('Импортировано', 'success');
                 } catch (err) {
                     showToast('Ошибка', 'error');
+                    console.error('Import error:', err);
                 }
             };
             reader.readAsText(file);
             event.target.value = '';
         }
 
-        async function deleteTemplate(name, event) {
+        async function deleteTemplate(identifier, event) {
             event.stopPropagation();
-            if (!confirm(`Удалить "${name}"?`)) return;
+
+            // NEW v7.0: Find template name for confirmation
+            let templateName = identifier;
+            const local = JSON.parse(localStorage.getItem('carousel_templates') || '{}');
+            const foundTemplate = Object.entries(local).find(([key, t]) =>
+                t.template_id === identifier || key === identifier
+            );
+            if (foundTemplate) {
+                templateName = foundTemplate[1].name || identifier;
+            }
+
+            if (!confirm(`Удалить "${templateName}"?`)) return;
+
             try {
-                await fetch(`${API_URL}/templates/${encodeURIComponent(name)}`, { method: 'DELETE' });
+                await fetch(`${API_URL}/templates/${encodeURIComponent(identifier)}`, { method: 'DELETE' });
             } catch (e) { }
 
-            const local = JSON.parse(localStorage.getItem('carousel_templates') || '{}');
-            delete local[name];
+            // Delete from localStorage (search by name AND template_id)
+            if (local[identifier]) {
+                delete local[identifier];
+            } else {
+                // Find by template_id and delete by name
+                const entry = Object.entries(local).find(([key, t]) => t.template_id === identifier);
+                if (entry) {
+                    delete local[entry[0]];
+                }
+            }
+
             localStorage.setItem('carousel_templates', JSON.stringify(local));
             loadTemplatesList();
             showToast('Удалено', 'success');
