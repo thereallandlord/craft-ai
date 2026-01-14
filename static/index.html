@@ -1908,9 +1908,12 @@
                     const maxW = el.maxWidth || (CANVAS_W - EDGE_PADDING * 2);
                     let widthStyle, frameStyle = '';
                     if (isSelected && el.type !== 'username' && el.type !== 'slidenum') {
-                        // When selected: show fixed width frame with visual border
+                        // FIX: Use outline instead of border+padding to prevent text shifting
+                        // outline doesn't affect layout - drawn on top without moving content
                         widthStyle = `width:${maxW * SCALE}px;`;
-                        frameStyle = `min-height:${el.fontSize * SCALE * 1.5}px;border:1px solid rgba(99,102,241,0.3);background:rgba(99,102,241,0.05);padding:4px;box-sizing:border-box;`;
+                        // FIX: ONLY outline, NO padding, NO background - text stays in place
+                        // Use line-height for min-height to avoid extra space below
+                        frameStyle = `min-height:${el.fontSize * SCALE * (el.lineHeight || 1.2)}px;outline:2px solid rgba(99,102,241,0.6);outline-offset:2px;`;
                     } else {
                         // When not selected: just max-width
                         widthStyle = el.maxWidth ? `max-width:${el.maxWidth * SCALE}px;` : '';
