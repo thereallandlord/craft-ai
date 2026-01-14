@@ -766,14 +766,35 @@ async def list_templates():
     return {"templates": templates}
 
 
-@app.get("/templates/{name}")
-async def get_template(name: str):
-    safe = re.sub(r'[^a-zA-Z0-9_\-а-яА-ЯёЁ]', '_', name)
-    path = os.path.join(TEMPLATES_DIR, f"{safe}.json")
-    if not os.path.exists(path):
-        raise HTTPException(status_code=404, detail="Not found")
-    with open(path, 'r', encoding='utf-8') as f:
-        return json.load(f)
+@app.get("/templates/{identifier}")
+async def get_template(identifier: str):
+    # NEW v7.0: Find template by template_id OR name
+    template_path = None
+
+    # Search through all templates
+    if os.path.exists(TEMPLATES_DIR):
+        for filename in os.listdir(TEMPLATES_DIR):
+            if not filename.endswith('.json'):
+                continue
+
+            path = os.path.join(TEMPLATES_DIR, filename)
+            try:
+                with open(path, 'r', encoding='utf-8') as f:
+                    t = json.load(f)
+                    # Match by template_id or name
+                    if t.get('template_id') == identifier or t.get('name') == identifier:
+                        return t
+            except:
+                continue
+
+    # Fallback: try direct filename match
+    safe = re.sub(r'[^a-zA-Z0-9_\-а-яА-ЯёЁ]', '_', identifier)
+    fallback_path = os.path.join(TEMPLATES_DIR, f"{safe}.json")
+    if os.path.exists(fallback_path):
+        with open(fallback_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+
+    raise HTTPException(status_code=404, detail="Not found")
 
 
 @app.post("/templates")
