@@ -538,6 +538,7 @@ class SlideRenderer:
         font_size = int(el.get('fontSize', 48))
         font_weight = str(el.get('fontWeight', '400'))
         max_width = int(el.get('maxWidth')) if el.get('maxWidth') else None
+        letter_spacing = float(el.get('letterSpacing', 0))  # FIX: Add missing variable
 
         font = self.get_font(font_family, font_size, font_weight)
 
