@@ -1136,9 +1136,20 @@
 
         // Initialize
         async function init() {
-            state.slides.push(createSlide('intro'));
-            state.slides.push(createSlide('content'));
-            state.slides.push(createSlide('ending'));
+            // NEW: Load MargulanGames template by default instead of empty template
+            try {
+                const r = await fetch(`${API_URL}/templates/margulangames`);
+                if (r.ok) {
+                    const template = await r.json();
+                    applyTemplate(template);
+                } else {
+                    throw new Error('Template not found');
+                }
+            } catch (e) {
+                // Fallback: Create minimal default template (1 white slide with title and description)
+                console.log('Could not load MargulanGames, using default template');
+                state.slides.push(createSlide('intro'));
+            }
             await loadFonts();
             render();
             loadTemplatesList();
@@ -2383,10 +2394,20 @@
                 templates = Object.values(JSON.parse(localStorage.getItem('carousel_templates') || '{}'));
             }
 
+            // NEW: Always show "Create New Template" button at the top
+            let html = `
+                <div class="template-item new-template-btn" onclick="createNewTemplate()" style="border:2px dashed rgba(99,102,241,0.4);background:rgba(99,102,241,0.05);cursor:pointer;justify-content:center;align-items:center;padding:20px;margin-bottom:12px;">
+                    <div style="text-align:center;color:#64748b;font-size:14px;">
+                        <div style="font-size:24px;margin-bottom:8px;">+</div>
+                        <div>Создать новый шаблон</div>
+                    </div>
+                </div>
+            `;
+
             if (templates.length === 0) {
-                c.innerHTML = '<div class="props-hint">Нет шаблонов</div>';
+                html += '<div class="props-hint">Нет сохраненных шаблонов</div>';
             } else {
-                c.innerHTML = templates.map(t => `
+                html += templates.map(t => `
                     <div class="template-item" onclick="loadTemplate('${t.template_id || t.name}')">
                         <div class="template-item-info">
                             <span class="template-item-name">${t.name}</span>
@@ -2400,6 +2421,60 @@
                     </div>
                 `).join('');
             }
+
+            c.innerHTML = html;
+        }
+
+        function createNewTemplate() {
+            // NEW v7.0: Create minimal template with 1 white slide
+            state.templateName = 'Новый шаблон';
+            state.templateId = 'novyy_shablon';
+            state.settings = { username: '@username', endingCount: 1 };
+            state.slides = [{
+                id: 'slide_' + Date.now(),
+                type: 'intro',
+                background: { type: 'color', color: '#ffffff' },
+                elements: [
+                    {
+                        id: 'title_' + Date.now(),
+                        type: 'title',
+                        varName: 'TITLE',
+                        content: 'Заголовок',
+                        x: EDGE_PADDING,
+                        y: 200,
+                        fontFamily: 'Inter',
+                        fontSize: 64,
+                        fontWeight: '700',
+                        color: '#000000',
+                        maxWidth: CANVAS_W - EDGE_PADDING * 2,
+                        lineHeight: 1.1
+                    },
+                    {
+                        id: 'desc_' + Date.now(),
+                        type: 'description',
+                        varName: 'DESCRIPTION',
+                        content: 'Описание',
+                        x: EDGE_PADDING,
+                        y: 350,
+                        fontFamily: 'Inter',
+                        fontSize: 36,
+                        fontWeight: '400',
+                        color: '#000000',
+                        maxWidth: CANVAS_W - EDGE_PADDING * 2,
+                        lineHeight: 1.3
+                    }
+                ]
+            }];
+            state.currentSlideIndex = 0;
+            state.selectedElementId = null;
+
+            // Update form fields
+            document.getElementById('templateName').value = state.templateName;
+            document.getElementById('templateId').value = state.templateId;
+
+            hideTemplatesModal();
+            render();
+            showToast('Новый шаблон создан', 'success');
         }
 
         async function loadTemplate(identifier) {
