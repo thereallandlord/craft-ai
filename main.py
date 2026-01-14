@@ -942,14 +942,34 @@ async def generate_carousel(request: GenerateRequest):
     else:
         content_template = slides[0]  # Last resort fallback
 
-    # NEW: Функция для выбора content template с fallback
+    # NEW: Функция для выбора content template с "последний доступный" fallback
     def get_content_template(index: int):
-        """Выбрать content{index} template или fallback на content/content1"""
+        """
+        Выбрать content{index} template или ближайший меньший.
+
+        Логика: Если content{index} не существует, использовать максимальный
+        доступный content{N} где N <= index.
+
+        Пример: есть content1, content2, content3
+        - index=2 → content2 (точное совпадение)
+        - index=4 → content3 (ближайший: max([1,2,3]) = 3)
+        - index=10 → content3 (ближайший: max([1,2,3]) = 3)
+        """
         content_type = f'content{index}'
         if content_type in content_specific:
             return content_specific[content_type]
+
+        # Найти максимальный доступный content{N} где N <= index
+        available = []
+        for i in range(1, index + 1):
+            if f'content{i}' in content_specific:
+                available.append(i)
+
+        if available:
+            max_num = max(available)
+            return content_specific[f'content{max_num}']
         else:
-            return content_template  # Fallback
+            return content_template  # Fallback на content/content1
 
     result_slides = []
 
