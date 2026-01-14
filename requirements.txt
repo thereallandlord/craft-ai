@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+pillow
+requests
+python-multipart
+pydantic
+numpy

@@ -1,0 +1,2495 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRAFT v7.0 - Carousel Studio</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Montserrat:wght@300;400;500;600;700;800;900&family=Roboto:wght@300;400;500;700;900&family=Open+Sans:wght@300;400;500;600;700;800&family=Oswald:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f9fafb;
+            --bg-tertiary: #f3f4f6;
+            --bg-hover: #e5e7eb;
+            --border: #e5e7eb;
+            --border-light: #f3f4f6;
+            --text-primary: #111827;
+            --text-secondary: #6b7280;
+            --text-muted: #9ca3af;
+            --accent: #3b82f6;
+            --accent-light: #dbeafe;
+            --shadow: rgba(0, 0, 0, 0.05);
+            --shadow-md: rgba(0, 0, 0, 0.1);
+        }
+
+        body.dark-theme {
+            --bg-primary: #0f0f0f;
+            --bg-secondary: #1a1a1a;
+            --bg-tertiary: #262626;
+            --bg-hover: #333333;
+            --border: #333333;
+            --border-light: #262626;
+            --text-primary: #ffffff;
+            --text-secondary: #a3a3a3;
+            --text-muted: #737373;
+            --accent: #3b82f6;
+            --accent-light: #1e3a8a;
+            --shadow: rgba(0, 0, 0, 0.2);
+            --shadow-md: rgba(0, 0, 0, 0.3);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'SF Pro Display', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            height: 100vh;
+            overflow: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .app {
+            display: flex;
+            height: 100vh;
+        }
+
+        .controls {
+            position: fixed;
+            top: 16px;
+            right: 16px;
+            display: flex;
+            gap: 8px;
+            z-index: 9999;
+        }
+
+        .control-btn {
+            width: 40px;
+            height: 40px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 18px;
+        }
+
+        .control-btn:hover {
+            background: var(--bg-hover);
+        }
+
+        /* Left Sidebar */
+        .sidebar-left {
+            width: 180px;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-header {
+            padding: 20px 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .brand-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .brand {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .brand-name {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-primary);
+            letter-spacing: 0.5px;
+        }
+
+        .brand-author {
+            font-size: 10px;
+            color: var(--text-muted);
+            font-weight: 400;
+        }
+
+        .add-slide-btn {
+            width: 32px;
+            height: 32px;
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            transition: all 0.2s;
+        }
+
+        .add-slide-btn:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .slides-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+        }
+
+        .slide-item {
+            position: relative;
+            aspect-ratio: 4/5;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            overflow: hidden;
+        }
+
+        .slide-item:hover {
+            border-color: var(--text-muted);
+        }
+
+        .slide-item.active {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 1px var(--accent);
+        }
+
+        .slide-item.dragging {
+            opacity: 0.5;
+        }
+
+        .slide-item.drag-over {
+            border-style: dashed;
+            border-color: var(--accent);
+        }
+
+        .slide-number {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            width: 24px;
+            height: 24px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .slide-type {
+            position: absolute;
+            bottom: 8px;
+            right: 8px;
+            padding: 3px 8px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-size: 9px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+        }
+
+        .slide-item-preview {
+            position: absolute;
+            inset: 2px;
+            pointer-events: none;
+            overflow: hidden;
+            border-radius: 7px;
+        }
+
+        .slide-item-actions {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            display: flex;
+            gap: 3px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .slide-item:hover .slide-item-actions {
+            opacity: 1;
+        }
+
+        .slide-item-btn {
+            width: 22px;
+            height: 22px;
+            background: rgba(0, 0, 0, 0.8);
+            border: none;
+            border-radius: 4px;
+            color: #fff;
+            cursor: pointer;
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .slide-item-btn.delete:hover {
+            background: #ff4444;
+        }
+
+        .slide-item-btn.download:hover {
+            background: var(--accent);
+            color: #000;
+        }
+
+        /* Main Area */
+        .main-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .top-bar {
+            padding: 16px 24px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .template-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .template-name {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-primary);
+            padding: 6px 12px;
+            background: transparent;
+            border: 1px solid transparent;
+            border-radius: 6px;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .template-name:hover {
+            background: var(--bg-hover);
+        }
+
+        .template-name:focus {
+            background: var(--bg-primary);
+            border-color: var(--border);
+        }
+
+        .top-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+        }
+
+        .btn:hover {
+            background: var(--bg-hover);
+        }
+
+        .btn-primary {
+            background: var(--text-primary);
+            color: var(--bg-primary);
+            border-color: var(--text-primary);
+        }
+
+        .btn-primary:hover {
+            opacity: 0.9;
+        }
+
+        /* Toolbar */
+        .toolbar {
+            padding: 12px 24px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .tool-btn {
+            height: 36px;
+            padding: 0 12px;
+            background: transparent;
+            border: none;
+            border-radius: 6px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .tool-btn-icon {
+            width: 32px;
+            height: 32px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .tool-btn .icon {
+            font-size: 18px;
+        }
+
+        .tool-btn:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .tool-btn.active {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .toolbar-separator {
+            width: 1px;
+            height: 20px;
+            background: var(--border);
+            margin: 0 8px;
+        }
+
+        /* Canvas Area */
+        .canvas-area {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-primary);
+            padding: 40px;
+        }
+
+        .canvas {
+            width: 405px;
+            height: 506px;
+            background: #fff !important; /* CRITICAL: Always white, even in dark theme */
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            position: relative;
+            box-shadow: 0 4px 12px var(--shadow-md);
+            overflow: hidden;
+        }
+
+        .canvas-bg {
+            position: absolute;
+            inset: 0;
+            background-size: cover;
+            background-position: center;
+        }
+
+        .canvas-overlay {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+        }
+
+        .canvas-element {
+            position: absolute;
+            cursor: move;
+            user-select: none;
+        }
+
+        .canvas-element:hover {
+            outline: 2px solid rgba(59, 130, 246, 0.5);
+            outline-offset: 2px;
+        }
+
+        .canvas-element.selected {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }
+
+        .canvas-photo-element {
+            position: absolute;
+            cursor: move;
+            overflow: hidden;
+            background-size: cover;
+            background-position: center;
+            background-color: var(--bg-tertiary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            font-size: 10px;
+        }
+
+        .canvas-photo-element:hover {
+            outline: 2px solid rgba(59, 130, 246, 0.5);
+            outline-offset: 2px;
+        }
+
+        .canvas-photo-element.selected {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }
+
+        .resize-handle {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: var(--accent);
+            border-radius: 2px;
+        }
+
+        .resize-handle.se {
+            bottom: -5px;
+            right: -5px;
+            cursor: se-resize;
+        }
+
+        .resize-handle.sw {
+            bottom: -5px;
+            left: -5px;
+            cursor: sw-resize;
+        }
+
+        .resize-handle.ne {
+            top: -5px;
+            right: -5px;
+            cursor: ne-resize;
+        }
+
+        .resize-handle.nw {
+            top: -5px;
+            left: -5px;
+            cursor: nw-resize;
+        }
+
+        /* NEW v7.0: Text width resize handles */
+        .resize-handle.e {
+            top: 50%;
+            right: -5px;
+            transform: translateY(-50%);
+            cursor: ew-resize;
+        }
+
+        .resize-handle.w {
+            top: 50%;
+            left: -5px;
+            transform: translateY(-50%);
+            cursor: ew-resize;
+        }
+
+        /* Right Sidebar */
+        .sidebar-right {
+            width: 280px;
+            background: var(--bg-secondary);
+            border-left: 1px solid var(--border);
+            overflow-y: auto;
+        }
+
+        .props-section {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .props-section-title {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+        }
+
+        .props-group {
+            margin-bottom: 16px;
+        }
+
+        .props-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .props-label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+
+        .tooltip-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 14px;
+            height: 14px;
+            background: var(--bg-tertiary);
+            border-radius: 50%;
+            font-size: 10px;
+            color: var(--text-secondary);
+            cursor: help;
+            position: relative;
+        }
+
+        .tooltip-icon:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            left: 20px;
+            top: -8px;
+            padding: 8px 12px;
+            background: var(--text-primary);
+            color: var(--bg-primary);
+            font-size: 11px;
+            border-radius: 6px;
+            white-space: nowrap;
+            z-index: 1000;
+            max-width: 220px;
+            white-space: normal;
+            width: max-content;
+            box-shadow: 0 4px 12px var(--shadow-md);
+        }
+
+        .props-input,
+        .props-select {
+            width: 100%;
+            padding: 7px 10px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-size: 13px;
+            outline: none;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+
+        .props-input:hover,
+        .props-select:hover {
+            border-color: var(--text-muted);
+        }
+
+        .props-input:focus,
+        .props-select:focus {
+            border-color: var(--accent);
+        }
+
+        .props-textarea {
+            min-height: 80px;
+            resize: vertical;
+            line-height: 1.4;
+        }
+
+        .props-row {
+            display: flex;
+            gap: 8px;
+        }
+
+        .props-field {
+            flex: 1;
+        }
+
+        .props-color-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .props-color {
+            width: 44px;
+            height: 44px;
+            padding: 3px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .props-color-value {
+            flex: 1;
+            padding: 10px 12px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 13px;
+            font-family: monospace;
+        }
+
+        /* Figma-style Alignment */
+        .figma-align {
+            display: flex;
+            gap: 4px;
+        }
+
+        .figma-align-group {
+            display: flex;
+            gap: 0;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .figma-align-btn {
+            width: 32px;
+            height: 32px;
+            background: transparent;
+            border: none;
+            border-right: 1px solid var(--border);
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .figma-align-btn:last-child {
+            border-right: none;
+        }
+
+        .figma-align-btn:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .figma-align-btn.active {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        /* Toggle Group */
+        .toggle-group {
+            display: flex;
+            gap: 4px;
+        }
+
+        .toggle-btn {
+            flex: 1;
+            padding: 7px 10px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+
+        .toggle-btn:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .toggle-btn.active {
+            background: var(--text-primary);
+            color: var(--bg-primary);
+            border-color: var(--text-primary);
+        }
+
+        /* Range Slider */
+        .range-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .props-range {
+            flex: 1;
+            height: 4px;
+            -webkit-appearance: none;
+            background: var(--border);
+            border-radius: 2px;
+            outline: none;
+        }
+
+        .props-range::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            background: var(--text-primary);
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .props-range::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+        }
+
+        .range-value {
+            min-width: 50px;
+            padding: 4px 8px;
+            text-align: center;
+            font-size: 11px;
+            color: var(--text-primary);
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-weight: 500;
+        }
+
+        /* NEW v7.0: Editable number input next to slider */
+        .range-value:focus {
+            outline: 2px solid var(--accent);
+            outline-offset: -1px;
+        }
+
+        .range-value[contenteditable="true"] {
+            cursor: text;
+        }
+
+        .btn-danger {
+            width: 100%;
+            padding: 10px;
+            background: transparent;
+            border: 1px solid #ff4444;
+            border-radius: 8px;
+            color: #ff4444;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            margin-top: 8px;
+            font-family: inherit;
+        }
+
+        .btn-danger:hover {
+            background: #ff4444;
+            color: #fff;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        }
+
+        .modal-overlay.show {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            max-width: 700px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px var(--shadow-md);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .modal-close {
+            width: 32px;
+            height: 32px;
+            background: var(--bg-tertiary);
+            border: none;
+            border-radius: 6px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 18px;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .template-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .template-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 14px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            cursor: pointer;
+        }
+
+        .template-item:hover {
+            background: var(--bg-hover);
+            border-color: var(--accent);
+        }
+
+        .template-item-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .template-item-name {
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .template-item-meta {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .template-item-actions {
+            display: flex;
+            gap: 6px;
+        }
+
+        .template-item-btn {
+            width: 28px;
+            height: 28px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .template-item-btn:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .template-item-btn.delete:hover {
+            background: #ff4444;
+            color: #fff;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 14px 20px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            font-size: 13px;
+            display: none;
+            z-index: 1001;
+        }
+
+        .toast.show {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .toast.success {
+            border-color: #44ff88;
+        }
+
+        .toast.error {
+            border-color: #ff4444;
+        }
+
+        .hidden-input {
+            display: none;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+
+        .props-hint {
+            padding: 20px;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <div class="control-btn" onclick="toggleTheme()" title="Theme">
+            <span id="themeIcon">☀️</span>
+        </div>
+    </div>
+
+    <div class="app">
+        <!-- Left Sidebar -->
+        <div class="sidebar-left">
+            <div class="sidebar-header">
+                <div class="brand-container">
+                    <div class="brand">
+                        <div class="brand-name">CRAFT</div>
+                        <div class="brand-author">by Kamil Gazizov</div>
+                    </div>
+                    <button class="add-slide-btn" onclick="addSlide()">+</button>
+                </div>
+            </div>
+            <div class="slides-list" id="slidesList"></div>
+        </div>
+
+        <!-- Main Area -->
+        <div class="main-area">
+            <!-- Top Bar -->
+            <div class="top-bar">
+                <div class="template-info">
+                    <input type="text" class="template-name" id="templateName" value="Новый шаблон" placeholder="Template name">
+                </div>
+                <div class="top-actions">
+                    <button class="btn" onclick="showTemplatesModal()">📁 Шаблоны</button>
+                    <button class="btn" onclick="showInstructions()">📖 Инструкция</button>
+                    <button class="btn" onclick="exportAllSlides()">📥 Скачать слайды</button>
+                    <button class="btn btn-primary" onclick="saveTemplate()">💾 Сохранить шаблон</button>
+                </div>
+            </div>
+
+            <!-- Toolbar -->
+            <div class="toolbar">
+                <button class="tool-btn" onclick="addElement('title')"><span class="icon">T</span> Заголовок</button>
+                <button class="tool-btn" onclick="addElement('description')"><span class="icon">T</span> Описание</button>
+                <button class="tool-btn" onclick="addElement('photo')"><span class="icon">🖼</span> Фото</button>
+                <div class="toolbar-separator"></div>
+                <button class="tool-btn" onclick="duplicateSlide()">⧉ Копировать</button>
+                <div class="toolbar-separator"></div>
+                <button class="tool-btn" onclick="undo()" title="Undo (Ctrl+Z)">↶ Отменить</button>
+                <button class="tool-btn" onclick="redo()" title="Redo (Ctrl+Y)">↷ Вернуть</button>
+            </div>
+
+            <!-- Canvas -->
+            <div class="canvas-area">
+                <div class="canvas" id="canvas" onclick="deselectElement(event)"></div>
+            </div>
+        </div>
+
+        <!-- Right Sidebar -->
+        <div class="sidebar-right" id="propsPanel"></div>
+    </div>
+
+    <!-- Templates Modal -->
+    <div class="modal-overlay" id="templatesModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title">Шаблоны</h2>
+                <button class="modal-close" onclick="hideTemplatesModal()">×</button>
+            </div>
+            <div class="modal-actions">
+                <label class="btn" style="cursor:pointer">📤 Импорт<input type="file" accept=".json" onchange="importTemplate(event)" class="hidden-input"></label>
+            </div>
+            <div class="template-list" id="templateList"></div>
+        </div>
+    </div>
+
+    <!-- Hidden inputs -->
+    <input type="file" id="photoUpload" accept="image/*" onchange="handlePhotoUpload(event)" class="hidden-input">
+    <input type="file" id="elementPhotoUpload" accept="image/*" onchange="handleElementPhotoUpload(event)" class="hidden-input">
+    <input type="file" id="fontUpload" accept=".ttf,.otf" onchange="handleFontUpload(event)" class="hidden-input">
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // Constants
+        const CANVAS_W = 1080, CANVAS_H = 1350, SCALE = 405 / 1080, EDGE_PADDING = 48;
+        const FONT_WEIGHTS = [
+            { value: '300', label: 'Light' },
+            { value: '400', label: 'Regular' },
+            { value: '500', label: 'Medium' },
+            { value: '600', label: 'SemiBold' },
+            { value: '700', label: 'Bold' },
+            { value: '800', label: 'ExtraBold' },
+            { value: '900', label: 'Black' }
+        ];
+        const API_URL = window.location.origin;
+
+        // State
+        let state = {
+            templateName: 'Новый шаблон',
+            settings: { username: '@username', endingCount: 1 },
+            slides: [],
+            currentSlideIndex: 0,
+            selectedElementId: null,
+            availableFonts: {
+                system: ['Inter', 'Montserrat', 'Roboto', 'Open Sans', 'Oswald', 'Playfair Display'],
+                google: [],
+                custom: []
+            }
+        };
+
+        // NEW v7.0: Undo/Redo history (1 step only)
+        let undoState = null;
+        let redoState = null;
+
+        let isDragging = false, dragOffset = { x: 0, y: 0 };
+        let isResizing = false, resizeHandle = null, resizeStart = {};
+        let draggedSlideIndex = null;
+
+        // Initialize
+        async function init() {
+            state.slides.push(createSlide('intro'));
+            state.slides.push(createSlide('content'));
+            state.slides.push(createSlide('ending'));
+            await loadFonts();
+            render();
+            loadTemplatesList();
+
+            // NEW v7.0: Keyboard shortcuts for Undo/Redo
+            document.addEventListener('keydown', (e) => {
+                // Ctrl+Z or Cmd+Z for Undo
+                if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+                    e.preventDefault();
+                    undo();
+                }
+                // Ctrl+Y or Cmd+Shift+Z for Redo
+                else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.shiftKey && e.key === 'z'))) {
+                    e.preventDefault();
+                    redo();
+                }
+            });
+        }
+
+        // Load available fonts from API
+        async function loadFonts() {
+            try {
+                const response = await fetch(`${API_URL}/fonts`);
+                if (response.ok) {
+                    const data = await response.json();
+                    state.availableFonts = data;
+                }
+            } catch (e) {
+                console.error('Failed to load fonts:', e);
+            }
+        }
+
+        // Font upload handler
+        function triggerFontUpload() {
+            document.getElementById('fontUpload').click();
+        }
+
+        async function handleFontUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch(`${API_URL}/upload-font`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    showToast(`Font "${data.fontName}" uploaded!`, 'success');
+                    await loadFonts();
+                    render();
+                } else {
+                    showToast('Font upload failed', 'error');
+                }
+            } catch (e) {
+                showToast('Font upload error', 'error');
+            }
+
+            event.target.value = '';
+        }
+
+        // Create slide
+        function createSlide(type = 'content') {
+            const isIntro = type === 'intro', isEnding = type === 'ending';
+            return {
+                id: 'slide_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+                type: type,
+                background: {
+                    type: 'color',
+                    color: '#f5f5f5',
+                    photo: '',
+                    photoPosition: { x: 50, y: 50 },
+                    photoZoom: 1,
+                    overlay: 0,  // По умолчанию выключен
+                    overlayMode: 'darken',  // NEW v7.0
+                    overlayGradient: 'solid'  // NEW v7.0
+                },
+                elements: [
+                    {
+                        id: 'username_' + Date.now(),
+                        type: 'username',
+                        varName: 'USERNAME',
+                        content: '@username',
+                        x: EDGE_PADDING,
+                        y: EDGE_PADDING,
+                        fontFamily: 'Inter',
+                        fontSize: 28,
+                        fontWeight: '400',
+                        color: isIntro ? '#ffffff' : '#333333',
+                        opacity: 80,
+                        letterSpacing: 0  // NEW v7.0
+                    },
+                    {
+                        id: 'slidenum_' + Date.now(),
+                        type: 'slidenum',
+                        content: '1/10',
+                        x: CANVAS_W - EDGE_PADDING,
+                        y: EDGE_PADDING,
+                        fontFamily: 'Inter',
+                        fontSize: 28,
+                        fontWeight: '400',
+                        color: isIntro ? '#ffffff' : '#333333',
+                        opacity: 80,
+                        align: 'right',
+                        letterSpacing: 0  // NEW v7.0
+                    },
+                    {
+                        id: 'title_' + Date.now(),
+                        type: 'title',
+                        varName: 'TITLE',
+                        content: isIntro ? 'Заголовок карусели' : isEnding ? 'Призыв к действию' : 'Заголовок слайда',
+                        x: EDGE_PADDING,
+                        y: isIntro ? 800 : 200,
+                        fontFamily: 'Inter',
+                        fontSize: 64,
+                        fontWeight: '700',
+                        color: isIntro ? '#ffffff' : '#000000',
+                        highlightColor: '#c8ff00',
+                        opacity: 100,
+                        maxWidth: CANVAS_W - EDGE_PADDING * 2,
+                        lineHeight: 1.1,
+                        letterSpacing: 0,  // NEW v7.0
+                        autoHeight: 'none'  // NEW v7.0: auto-height adaptation
+                    },
+                    {
+                        id: 'desc_' + Date.now(),
+                        type: 'description',
+                        varName: 'DESCRIPTION',
+                        content: isEnding ? 'Напиши в комментарии!' : 'Описание',
+                        x: EDGE_PADDING,
+                        y: isIntro ? 950 : 400,
+                        fontFamily: 'Inter',
+                        fontSize: 36,
+                        fontWeight: '400',
+                        color: isIntro ? '#ffffff' : '#444444',
+                        highlightColor: '#c8ff00',
+                        opacity: 100,
+                        maxWidth: CANVAS_W - EDGE_PADDING * 2,
+                        lineHeight: 1.3,
+                        letterSpacing: 0,  // NEW v7.0
+                        autoHeight: 'none'  // NEW v7.0: auto-height adaptation
+                    }
+                ]
+            };
+        }
+
+        // Slide management
+        function addSlide() {
+            saveStateSnapshot();  // NEW v7.0: Save state before adding slide
+            let insertIndex = state.slides.length;
+            for (let i = state.slides.length - 1; i >= 0; i--) {
+                if (state.slides[i].type === 'ending') insertIndex = i;
+                else break;
+            }
+            state.slides.splice(insertIndex, 0, createSlide('content'));
+            state.currentSlideIndex = insertIndex;
+            state.selectedElementId = null;
+            updateSlideNumbers();
+            render();
+        }
+
+        function deleteSlide(index, event) {
+            if (event) event.stopPropagation();
+            if (state.slides.length <= 1) {
+                showToast('Нельзя удалить', 'error');
+                return;
+            }
+            saveStateSnapshot();  // NEW v7.0: Save state before deleting slide
+            state.slides.splice(index, 1);
+            if (state.currentSlideIndex >= state.slides.length) {
+                state.currentSlideIndex = state.slides.length - 1;
+            }
+            state.selectedElementId = null;
+            updateSlideNumbers();
+            render();
+        }
+
+        function duplicateSlide() {
+            saveStateSnapshot();  // NEW v7.0: Save state before duplicating slide
+            const copy = JSON.parse(JSON.stringify(state.slides[state.currentSlideIndex]));
+            copy.id = 'slide_' + Date.now();
+            copy.elements.forEach(el => el.id = el.type + '_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5));
+            state.slides.splice(state.currentSlideIndex + 1, 0, copy);
+            state.currentSlideIndex++;
+            updateSlideNumbers();
+            render();
+            showToast('Скопировано', 'success');
+        }
+
+        function selectSlide(index) {
+            state.currentSlideIndex = index;
+            state.selectedElementId = null;
+            render();
+        }
+
+        function updateSlideNumbers() {
+            const total = state.slides.length;
+            state.slides.forEach((s, i) => {
+                const n = s.elements.find(e => e.type === 'slidenum');
+                if (n) n.content = `${i + 1}/${total}`;
+            });
+        }
+
+        function updateSlideType(type) {
+            state.slides[state.currentSlideIndex].type = type;
+            render();
+        }
+
+        // Slide drag & drop
+        function handleSlideDragStart(index, event) {
+            draggedSlideIndex = index;
+            event.target.closest('.slide-item').classList.add('dragging');
+        }
+
+        function handleSlideDragOver(index, event) {
+            event.preventDefault();
+            if (draggedSlideIndex === null || draggedSlideIndex === index) return;
+            document.querySelectorAll('.slide-item').forEach(el => el.classList.remove('drag-over'));
+            event.target.closest('.slide-item').classList.add('drag-over');
+        }
+
+        function handleSlideDrop(index, event) {
+            event.preventDefault();
+            if (draggedSlideIndex === null || draggedSlideIndex === index) return;
+            saveStateSnapshot();  // NEW v7.0: Save state before reordering slides
+            const slide = state.slides.splice(draggedSlideIndex, 1)[0];
+            state.slides.splice(index, 0, slide);
+            if (state.currentSlideIndex === draggedSlideIndex) state.currentSlideIndex = index;
+            draggedSlideIndex = null;
+            updateSlideNumbers();
+            render();
+        }
+
+        function handleSlideDragEnd() {
+            draggedSlideIndex = null;
+            document.querySelectorAll('.slide-item').forEach(el => el.classList.remove('dragging', 'drag-over'));
+        }
+
+        // Element management
+        function addElement(type) {
+            saveStateSnapshot();  // NEW v7.0: Save state before adding element
+            const slide = state.slides[state.currentSlideIndex];
+            const id = type + '_' + Date.now();
+            if (type === 'photo') {
+                slide.elements.push({
+                    id,
+                    type: 'photo',
+                    varName: 'PHOTO_' + (slide.elements.filter(e => e.type === 'photo').length + 1),
+                    photo: '',
+                    x: CANVAS_W / 2 - 150,
+                    y: CANVAS_H / 2 - 150,
+                    width: 300,
+                    height: 300,
+                    borderRadius: 0,
+                    shape: 'rectangle'  // NEW v7.0
+                });
+            } else {
+                slide.elements.push({
+                    id,
+                    type,
+                    varName: type.toUpperCase() + '_' + (slide.elements.filter(e => e.type === type).length + 1),
+                    content: type === 'title' ? 'Новый заголовок' : 'Описание',
+                    x: EDGE_PADDING,
+                    y: type === 'title' ? 600 : 750,
+                    fontFamily: 'Inter',
+                    fontSize: type === 'title' ? 64 : 36,
+                    fontWeight: type === 'title' ? '700' : '400',
+                    color: '#000000',
+                    highlightColor: '#c8ff00',
+                    opacity: 100,
+                    maxWidth: CANVAS_W - EDGE_PADDING * 2,
+                    lineHeight: type === 'title' ? 1.1 : 1.3,
+                    letterSpacing: 0,  // NEW v7.0
+                    autoHeight: 'none'  // NEW v7.0: auto-height adaptation
+                });
+            }
+            state.selectedElementId = id;
+            render();
+        }
+
+        function selectElement(id, event) {
+            if (event) event.stopPropagation();
+            state.selectedElementId = id;
+            render();
+        }
+
+        function deselectElement(event) {
+            if (event.target.id === 'canvas' || event.target.classList.contains('canvas-bg') || event.target.classList.contains('canvas-overlay')) {
+                state.selectedElementId = null;
+                render();
+            }
+        }
+
+        function deleteElement() {
+            if (!state.selectedElementId) return;
+            const slide = state.slides[state.currentSlideIndex];
+            const el = slide.elements.find(e => e.id === state.selectedElementId);
+            if (el && (el.type === 'username' || el.type === 'slidenum')) {
+                showToast('Нельзя удалить', 'error');
+                return;
+            }
+            saveStateSnapshot();  // NEW v7.0: Save state before deleting element
+            slide.elements = slide.elements.filter(e => e.id !== state.selectedElementId);
+            state.selectedElementId = null;
+            render();
+        }
+
+        function updateElement(field, value) {
+            if (!state.selectedElementId) return;
+            const el = state.slides[state.currentSlideIndex].elements.find(e => e.id === state.selectedElementId);
+            if (el) {
+                saveStateSnapshot();  // NEW v7.0: Save state before updating element
+                el[field] = value;
+                render();
+            }
+        }
+
+        // NEW v7.0: Handle editable range value inputs
+        function handleRangeValueEdit(event, rangeInput, min, max, unit, parseType = 'int') {
+            if (event.type === 'keydown') {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    event.target.blur();
+                    return;
+                } else if (event.key === 'Escape') {
+                    event.preventDefault();
+                    event.target.textContent = rangeInput.value + unit;
+                    event.target.blur();
+                    return;
+                }
+            }
+
+            if (event.type === 'blur' || event.key === 'Enter') {
+                // Parse input
+                let text = event.target.textContent.trim().replace(unit, '').trim();
+                let value = parseType === 'float' ? parseFloat(text) : parseInt(text);
+
+                // Validate
+                if (isNaN(value)) {
+                    event.target.textContent = rangeInput.value + unit;
+                    return;
+                }
+
+                // Clamp to min/max
+                value = Math.max(min, Math.min(max, value));
+
+                // Update slider
+                rangeInput.value = value;
+
+                // Update display
+                event.target.textContent = value + unit;
+
+                // Trigger change event on slider
+                rangeInput.dispatchEvent(new Event('change'));
+            }
+        }
+
+        // NEW v7.0: Undo/Redo functions (1 step only)
+        function saveStateSnapshot() {
+            // Save current state to undo buffer
+            undoState = JSON.parse(JSON.stringify({
+                slides: state.slides,
+                currentSlideIndex: state.currentSlideIndex,
+                settings: state.settings
+            }));
+            // Clear redo when new action happens
+            redoState = null;
+        }
+
+        function undo() {
+            if (!undoState) {
+                showToast('Нечего отменить', 'info');
+                return;
+            }
+
+            // Save current state to redo buffer
+            redoState = JSON.parse(JSON.stringify({
+                slides: state.slides,
+                currentSlideIndex: state.currentSlideIndex,
+                settings: state.settings
+            }));
+
+            // Restore undo state
+            state.slides = undoState.slides;
+            state.currentSlideIndex = undoState.currentSlideIndex;
+            state.settings = undoState.settings;
+            state.selectedElementId = null;
+
+            // Clear undo buffer (only 1 step)
+            undoState = null;
+
+            render();
+            showToast('Отменено', 'success');
+        }
+
+        function redo() {
+            if (!redoState) {
+                showToast('Нечего повторить', 'info');
+                return;
+            }
+
+            // Save current state to undo buffer
+            undoState = JSON.parse(JSON.stringify({
+                slides: state.slides,
+                currentSlideIndex: state.currentSlideIndex,
+                settings: state.settings
+            }));
+
+            // Restore redo state
+            state.slides = redoState.slides;
+            state.currentSlideIndex = redoState.currentSlideIndex;
+            state.settings = redoState.settings;
+            state.selectedElementId = null;
+
+            // Clear redo buffer (only 1 step)
+            redoState = null;
+
+            render();
+            showToast('Повторено', 'success');
+        }
+
+        function alignElement(h, v) {
+            if (!state.selectedElementId) return;
+            const el = state.slides[state.currentSlideIndex].elements.find(e => e.id === state.selectedElementId);
+            if (!el) return;
+
+            saveStateSnapshot();  // NEW v7.0: Save before alignment change
+
+            // Calculate element dimensions
+            const elW = el.width || el.maxWidth || 200;
+            let elH = el.height || (el.fontSize * (el.lineHeight || 1.2));
+
+            // Better height estimation for multi-line text
+            if (el.type !== 'photo' && el.maxWidth && el.content) {
+                const avgCharsPerLine = Math.floor(el.maxWidth / (el.fontSize * 0.6)); // Rough estimate
+                const estimatedLines = Math.max(1, Math.ceil(el.content.length / avgCharsPerLine));
+                elH = estimatedLines * el.fontSize * (el.lineHeight || 1.2);
+            }
+
+            // Horizontal alignment
+            if (h === 'left') {
+                el.x = EDGE_PADDING;
+                if (el.type !== 'photo') el.align = 'left';
+            } else if (h === 'center') {
+                if (el.type !== 'photo') {
+                    el.x = CANVAS_W / 2;
+                    el.align = 'center';
+                } else {
+                    el.x = (CANVAS_W - elW) / 2;
+                }
+            } else if (h === 'right') {
+                if (el.type !== 'photo') {
+                    el.x = CANVAS_W - EDGE_PADDING;
+                    el.align = 'right';
+                } else {
+                    el.x = CANVAS_W - EDGE_PADDING - elW;
+                }
+            }
+
+            // Vertical alignment
+            if (v === 'top') {
+                el.y = EDGE_PADDING;
+            } else if (v === 'middle') {
+                el.y = (CANVAS_H - elH) / 2;
+            } else if (v === 'bottom') {
+                el.y = CANVAS_H - EDGE_PADDING - elH;
+            }
+
+            render();
+        }
+
+        // Background
+        function updateBackground(field, value) {
+            saveStateSnapshot();  // NEW v7.0: Save state before updating background
+            state.slides[state.currentSlideIndex].background[field] = value;
+            render();
+        }
+
+        function triggerPhotoUpload() {
+            document.getElementById('photoUpload').click();
+        }
+
+        function handlePhotoUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = e => {
+                updateBackground('photo', e.target.result);
+                updateBackground('type', 'photo');
+            };
+            reader.readAsDataURL(file);
+            event.target.value = '';
+        }
+
+        function triggerElementPhotoUpload() {
+            document.getElementById('elementPhotoUpload').click();
+        }
+
+        function handleElementPhotoUpload(event) {
+            const file = event.target.files[0];
+            if (!file || !state.selectedElementId) return;
+            const reader = new FileReader();
+            reader.onload = e => updateElement('photo', e.target.result);
+            reader.readAsDataURL(file);
+            event.target.value = '';
+        }
+
+        // Drag & resize
+        function startDrag(elementId, event) {
+            event.stopPropagation();
+            if (event.target.classList.contains('resize-handle')) return;
+            saveStateSnapshot();  // NEW v7.0: Save BEFORE drag starts
+            isDragging = true;
+            state.selectedElementId = elementId;
+            const el = state.slides[state.currentSlideIndex].elements.find(e => e.id === elementId);
+            const canvas = document.getElementById('canvas');
+            const rect = canvas.getBoundingClientRect();
+            dragOffset = { x: event.clientX - rect.left - el.x * SCALE, y: event.clientY - rect.top - el.y * SCALE };
+            render();
+        }
+
+        function startResize(elementId, handle, event) {
+            event.stopPropagation();
+            saveStateSnapshot();  // NEW v7.0: Save BEFORE resize starts
+            isResizing = true;
+            resizeHandle = handle;
+            state.selectedElementId = elementId;
+            const el = state.slides[state.currentSlideIndex].elements.find(e => e.id === elementId);
+            resizeStart = { x: event.clientX, y: event.clientY, width: el.width, height: el.height, elX: el.x, elY: el.y };
+            render();
+        }
+
+        // NEW v7.0: Resize text element maxWidth
+        function startResizeText(elementId, handle, event) {
+            event.stopPropagation();
+            saveStateSnapshot();  // NEW v7.0: Save BEFORE resize starts
+            isResizing = true;
+            resizeHandle = handle;
+            state.selectedElementId = elementId;
+            const el = state.slides[state.currentSlideIndex].elements.find(e => e.id === elementId);
+            resizeStart = {
+                x: event.clientX,
+                y: event.clientY,
+                maxWidth: el.maxWidth || (CANVAS_W - EDGE_PADDING * 2),
+                elX: el.x,
+                align: el.align || 'left'
+            };
+            render();
+        }
+
+        document.addEventListener('mousemove', e => {
+            if (isDragging && state.selectedElementId) {
+                const canvas = document.getElementById('canvas');
+                const rect = canvas.getBoundingClientRect();
+                const el = state.slides[state.currentSlideIndex].elements.find(x => x.id === state.selectedElementId);
+                if (el) {
+                    el.x = Math.round((e.clientX - rect.left - dragOffset.x) / SCALE);
+                    el.y = Math.round((e.clientY - rect.top - dragOffset.y) / SCALE);
+                    el.x = Math.max(0, Math.min(el.x, CANVAS_W - 50));
+                    el.y = Math.max(0, Math.min(el.y, CANVAS_H - 50));
+                    render();
+                }
+            }
+            if (isResizing && state.selectedElementId) {
+                const el = state.slides[state.currentSlideIndex].elements.find(x => x.id === state.selectedElementId);
+                if (el) {
+                    const dx = (e.clientX - resizeStart.x) / SCALE, dy = (e.clientY - resizeStart.y) / SCALE;
+
+                    // NEW v7.0: Text element maxWidth resize
+                    if (resizeHandle === 'e') {
+                        // East handle - resize right
+                        const align = el.align || 'left';
+                        if (align === 'left') {
+                            el.maxWidth = Math.max(100, Math.min(CANVAS_W, resizeStart.maxWidth + dx));
+                        } else if (align === 'center') {
+                            el.maxWidth = Math.max(100, Math.min(CANVAS_W, resizeStart.maxWidth + dx * 2));
+                        } else if (align === 'right') {
+                            el.maxWidth = Math.max(100, Math.min(CANVAS_W, resizeStart.maxWidth - dx));
+                            el.x = resizeStart.elX + dx;
+                        }
+                    } else if (resizeHandle === 'w') {
+                        // West handle - resize left
+                        const align = el.align || 'left';
+                        if (align === 'left') {
+                            el.maxWidth = Math.max(100, Math.min(CANVAS_W, resizeStart.maxWidth - dx));
+                            el.x = resizeStart.elX + dx;
+                        } else if (align === 'center') {
+                            el.maxWidth = Math.max(100, Math.min(CANVAS_W, resizeStart.maxWidth - dx * 2));
+                        } else if (align === 'right') {
+                            el.maxWidth = Math.max(100, Math.min(CANVAS_W, resizeStart.maxWidth + dx));
+                        }
+                    }
+                    // Photo element width/height resize
+                    else if (resizeHandle === 'se') {
+                        el.width = Math.max(50, resizeStart.width + dx);
+                        el.height = Math.max(50, resizeStart.height + dy);
+                    } else if (resizeHandle === 'sw') {
+                        el.width = Math.max(50, resizeStart.width - dx);
+                        el.height = Math.max(50, resizeStart.height + dy);
+                        el.x = resizeStart.elX + dx;
+                    } else if (resizeHandle === 'ne') {
+                        el.width = Math.max(50, resizeStart.width + dx);
+                        el.height = Math.max(50, resizeStart.height - dy);
+                        el.y = resizeStart.elY + dy;
+                    } else if (resizeHandle === 'nw') {
+                        el.width = Math.max(50, resizeStart.width - dx);
+                        el.height = Math.max(50, resizeStart.height - dy);
+                        el.x = resizeStart.elX + dx;
+                        el.y = resizeStart.elY + dy;
+                    }
+                    render();
+                }
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            isDragging = false;
+            isResizing = false;
+            resizeHandle = null;
+        });
+
+        // Render
+        function render() {
+            renderSlidesList();
+            renderCanvas();
+            renderPropsPanel();
+        }
+
+        function renderSlidesList() {
+            const container = document.getElementById('slidesList');
+            container.innerHTML = state.slides.map((s, i) => {
+                const label = s.type === 'intro' ? 'intro' : s.type === 'ending' ? 'ending' : s.type.startsWith('content') ? s.type : 'content';
+                return `<div class="slide-item ${i === state.currentSlideIndex ? 'active' : ''}"
+                            onclick="selectSlide(${i})"
+                            draggable="true"
+                            ondragstart="handleSlideDragStart(${i},event)"
+                            ondragover="handleSlideDragOver(${i},event)"
+                            ondrop="handleSlideDrop(${i},event)"
+                            ondragend="handleSlideDragEnd()">
+                    <div class="slide-item-preview">${renderSlidePreview(s, i)}</div>
+                    <span class="slide-number">${i + 1}</span>
+                    <span class="slide-type">${label}</span>
+                    <div class="slide-item-actions">
+                        <button class="slide-item-btn download" onclick="downloadSlide(${i},event)">↓</button>
+                        <button class="slide-item-btn delete" onclick="deleteSlide(${i},event)">×</button>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function renderSlidePreview(slide, index) {
+            // NEW v7.0: EXACT copy of renderCanvas() with correct mini scale
+            // Sidebar 180px - padding 24px - border 2px - inset 4px = 150px available
+            // Use 0.135 to show more content (1080 * 0.135 = 145.8px)
+            const ms = 0.135;
+            const bg = slide.background;
+            let html = '';
+
+            // Background (EXACT copy from renderCanvas)
+            if (bg.type === 'photo' && bg.photo) {
+                const pos = bg.photoPosition || { x: 50, y: 50 };
+                const zoom = bg.photoZoom || 1;
+                html += `<div style="position:absolute;inset:0;background-image:url(${bg.photo});background-position:${pos.x}% ${pos.y}%;background-size:cover;transform:scale(${zoom});transform-origin:${pos.x}% ${pos.y}%"></div>`;
+                if (bg.overlay > 0) {
+                    const mode = bg.overlayMode || 'darken';
+                    const gradient = bg.overlayGradient || 'solid';
+                    const color = mode === 'lighten' ? '255,255,255' : '0,0,0';
+
+                    let overlayStyle = '';
+                    if (gradient === 'solid') {
+                        overlayStyle = `background:rgba(${color},${bg.overlay / 100})`;
+                    } else if (gradient === 'bottom') {
+                        overlayStyle = `background:linear-gradient(to top,rgba(${color},${bg.overlay / 100}) 0%,transparent 60%)`;
+                    } else if (gradient === 'top') {
+                        overlayStyle = `background:linear-gradient(to bottom,rgba(${color},${bg.overlay / 100}) 0%,transparent 60%)`;
+                    } else if (gradient === 'both') {
+                        overlayStyle = `background:linear-gradient(to bottom,rgba(${color},${bg.overlay / 100}) 0%,transparent 50%,rgba(${color},${bg.overlay / 100}) 100%)`;
+                    }
+                    html += `<div style="position:absolute;inset:0;${overlayStyle}"></div>`;
+                }
+            } else {
+                html += `<div style="position:absolute;inset:0;background:${bg.color}"></div>`;
+            }
+
+            // Elements (EXACT copy from renderCanvas, no selection state)
+            slide.elements.forEach(el => {
+                if (el.type === 'photo') {
+                    const shape = el.shape === 'circle' ? '50%' : `${(el.borderRadius || 0) * ms}px`;
+                    html += `<div style="position:absolute;left:${el.x * ms}px;top:${el.y * ms}px;width:${el.width * ms}px;height:${el.height * ms}px;border-radius:${shape};${el.photo ? `background-image:url(${el.photo});background-size:cover;background-position:center;` : 'background:#333;'}"></div>`;
+                } else {
+                    let content = el.content || '';
+                    if (el.type === 'username') content = state.settings.username;
+                    if (el.type === 'slidenum') content = `${index + 1}/${state.slides.length}`;
+                    const hc = el.highlightColor || '#c8ff00';
+                    content = content.replace(/\*([^*]+)\*/g, `<span style="color:${hc}">$1</span>`).replace(/\n/g, '<br>');
+
+                    // EXACT same style as renderCanvas (non-selected state)
+                    const widthStyle = el.maxWidth ? `max-width:${el.maxWidth * ms}px;` : '';
+                    const transformStyle = el.align === 'right' ? 'transform:translateX(-100%);' : (el.align === 'center' ? 'transform:translateX(-50%);' : '');
+
+                    html += `<div style="position:absolute;left:${el.x * ms}px;top:${el.y * ms}px;font-family:'${el.fontFamily}',sans-serif;font-size:${el.fontSize * ms}px;font-weight:${el.fontWeight};color:${el.color};opacity:${(el.opacity || 100) / 100};line-height:${el.lineHeight || 1.2};${widthStyle}${transformStyle}word-wrap:break-word;overflow-wrap:break-word;">${content}</div>`;
+                }
+            });
+
+            return html;
+        }
+
+        function renderCanvas() {
+            const canvas = document.getElementById('canvas');
+            const slide = state.slides[state.currentSlideIndex];
+            const bg = slide.background;
+            let html = '';
+
+            if (bg.type === 'photo' && bg.photo) {
+                const pos = bg.photoPosition || { x: 50, y: 50 };
+                const zoom = bg.photoZoom || 1;
+                html += `<div class="canvas-bg" style="background-image:url(${bg.photo});background-position:${pos.x}% ${pos.y}%;background-size:cover;transform:scale(${zoom});transform-origin:${pos.x}% ${pos.y}%"></div>`;
+                if (bg.overlay > 0) {
+                    const mode = bg.overlayMode || 'darken';
+                    const gradient = bg.overlayGradient || 'solid';
+                    const color = mode === 'lighten' ? '255,255,255' : '0,0,0';
+
+                    let overlayStyle = '';
+                    if (gradient === 'solid') {
+                        overlayStyle = `background:rgba(${color},${bg.overlay / 100})`;
+                    } else if (gradient === 'bottom') {
+                        overlayStyle = `background:linear-gradient(to top,rgba(${color},${bg.overlay / 100}) 0%,transparent 60%)`;
+                    } else if (gradient === 'top') {
+                        overlayStyle = `background:linear-gradient(to bottom,rgba(${color},${bg.overlay / 100}) 0%,transparent 60%)`;
+                    } else if (gradient === 'both') {
+                        overlayStyle = `background:linear-gradient(to bottom,rgba(${color},${bg.overlay / 100}) 0%,transparent 50%,rgba(${color},${bg.overlay / 100}) 100%)`;
+                    }
+                    html += `<div class="canvas-overlay" style="${overlayStyle}"></div>`;
+                }
+            } else {
+                html += `<div class="canvas-bg" style="background:${bg.color}"></div>`;
+            }
+
+            slide.elements.forEach(el => {
+                const isSelected = el.id === state.selectedElementId;
+                if (el.type === 'photo') {
+                    // NEW v7.0: Use pixel-based radius for rectangle, 50% for circle
+                    const shape = el.shape === 'circle' ? '50%' : `${(el.borderRadius || 0) * SCALE}px`;
+                    html += `<div class="canvas-photo-element ${isSelected ? 'selected' : ''}"
+                                style="left:${el.x * SCALE}px;top:${el.y * SCALE}px;width:${el.width * SCALE}px;height:${el.height * SCALE}px;border-radius:${shape};${el.photo ? `background-image:url(${el.photo});` : ''}"
+                                onclick="selectElement('${el.id}',event)"
+                                onmousedown="startDrag('${el.id}',event)">
+                            ${!el.photo ? '🖼' : ''}
+                            ${isSelected ? `
+                                <div class="resize-handle se" onmousedown="startResize('${el.id}','se',event)"></div>
+                                <div class="resize-handle sw" onmousedown="startResize('${el.id}','sw',event)"></div>
+                                <div class="resize-handle ne" onmousedown="startResize('${el.id}','ne',event)"></div>
+                                <div class="resize-handle nw" onmousedown="startResize('${el.id}','nw',event)"></div>
+                            ` : ''}
+                        </div>`;
+                } else {
+                    let content = el.content || '';
+                    if (el.type === 'username') content = state.settings.username;
+                    const hc = el.highlightColor || '#c8ff00';
+                    content = content.replace(/\*([^*]+)\*/g, `<span style="color:${hc}">$1</span>`).replace(/\n/g, '<br>');
+
+                    // NEW v7.0: Show visual frame like Figma when selected
+                    const maxW = el.maxWidth || (CANVAS_W - EDGE_PADDING * 2);
+                    let widthStyle, frameStyle = '';
+                    if (isSelected && el.type !== 'username' && el.type !== 'slidenum') {
+                        // When selected: show fixed width frame with visual border
+                        widthStyle = `width:${maxW * SCALE}px;`;
+                        frameStyle = `min-height:${el.fontSize * SCALE * 1.5}px;border:1px solid rgba(99,102,241,0.3);background:rgba(99,102,241,0.05);padding:4px;box-sizing:border-box;`;
+                    } else {
+                        // When not selected: just max-width
+                        widthStyle = el.maxWidth ? `max-width:${el.maxWidth * SCALE}px;` : '';
+                    }
+
+                    html += `<div class="canvas-element ${isSelected ? 'selected' : ''}"
+                                style="left:${el.x * SCALE}px;top:${el.y * SCALE}px;font-family:'${el.fontFamily}',sans-serif;font-size:${el.fontSize * SCALE}px;font-weight:${el.fontWeight};color:${el.color};opacity:${(el.opacity || 100) / 100};line-height:${el.lineHeight || 1.2};${widthStyle}${el.align === 'right' ? 'transform:translateX(-100%);' : ''}${el.align === 'center' ? 'transform:translateX(-50%);' : ''}${frameStyle}"
+                                onclick="selectElement('${el.id}',event)"
+                                onmousedown="startDrag('${el.id}',event)">
+                            ${content || (isSelected ? '<span style="opacity:0.3">Текст</span>' : '')}
+                            ${isSelected && el.type !== 'username' && el.type !== 'slidenum' ? `
+                                <div class="resize-handle e" onmousedown="startResizeText('${el.id}','e',event)"></div>
+                                <div class="resize-handle w" onmousedown="startResizeText('${el.id}','w',event)"></div>
+                            ` : ''}
+                        </div>`;
+                }
+            });
+
+            canvas.innerHTML = html;
+        }
+
+        function renderPropsPanel() {
+            const panel = document.getElementById('propsPanel');
+            const slide = state.slides[state.currentSlideIndex];
+            const bg = slide.background;
+            const sel = slide.elements.find(e => e.id === state.selectedElementId);
+
+            let html = '';
+
+            // Slide Type Section
+            html += `<div class="props-section">
+                <div class="props-section-title">ТИП СЛАЙДА</div>
+                <div class="props-group">
+                    <label class="props-label">
+                        Тип слайда
+                        <span class="tooltip-icon" data-tooltip="content (fallback) используется для слайдов после content1-10">?</span>
+                    </label>
+                    <select class="props-select" onchange="updateSlideType(this.value)">
+                        <option value="intro" ${slide.type === 'intro' ? 'selected' : ''}>intro</option>
+                        <option value="content1" ${slide.type === 'content1' ? 'selected' : ''}>content1</option>
+                        <option value="content2" ${slide.type === 'content2' ? 'selected' : ''}>content2</option>
+                        <option value="content3" ${slide.type === 'content3' ? 'selected' : ''}>content3</option>
+                        <option value="content4" ${slide.type === 'content4' ? 'selected' : ''}>content4</option>
+                        <option value="content5" ${slide.type === 'content5' ? 'selected' : ''}>content5</option>
+                        <option value="content6" ${slide.type === 'content6' ? 'selected' : ''}>content6</option>
+                        <option value="content7" ${slide.type === 'content7' ? 'selected' : ''}>content7</option>
+                        <option value="content8" ${slide.type === 'content8' ? 'selected' : ''}>content8</option>
+                        <option value="content9" ${slide.type === 'content9' ? 'selected' : ''}>content9</option>
+                        <option value="content10" ${slide.type === 'content10' ? 'selected' : ''}>content10</option>
+                        <option value="content" ${slide.type === 'content' ? 'selected' : ''}>content (fallback)</option>
+                        <option value="ending" ${slide.type === 'ending' ? 'selected' : ''}>ending</option>
+                    </select>
+                </div>
+            </div>`;
+
+            // Background Section
+            html += `<div class="props-section">
+                <div class="props-section-title">ФОН</div>
+                <div class="props-group">
+                    <label class="props-label">Тип фона</label>
+                    <div class="toggle-group">
+                        <div class="toggle-btn ${bg.type === 'color' ? 'active' : ''}" onclick="updateBackground('type','color')">Цвет</div>
+                        <div class="toggle-btn ${bg.type === 'photo' ? 'active' : ''}" onclick="updateBackground('type','photo')">Фото</div>
+                    </div>
+                </div>`;
+
+            // If photo type, show upload button
+            if (bg.type === 'photo') {
+                html += `<div class="props-group">
+                    <button class="btn" style="width: 100%;" onclick="triggerPhotoUpload()">
+                        ${bg.photo ? '🖼 Изменить фото' : '📁 Загрузить фото'}
+                    </button>
+                </div>`;
+            }
+
+            if (bg.type === 'color') {
+                html += `<div class="props-group">
+                    <label class="props-label">Цвет</label>
+                    <div class="props-color-row">
+                        <input type="color" class="props-color" value="${bg.color}" onchange="updateBackground('color',this.value)">
+                        <input type="text" class="props-color-value" value="${bg.color}" onchange="updateBackground('color',this.value)">
+                    </div>
+                </div>`;
+            } else {
+                // NEW v7.0: Overlay Enable/Disable Toggle
+                const overlayEnabled = (bg.overlay || 0) > 0;
+                html += `<div class="props-group">
+                    <label class="props-label">Overlay</label>
+                    <div class="toggle-group">
+                        <div class="toggle-btn ${!overlayEnabled ? 'active' : ''}" onclick="updateBackground('overlay', 0)">Выкл</div>
+                        <div class="toggle-btn ${overlayEnabled ? 'active' : ''}" onclick="updateBackground('overlay', ${bg.overlay || 40})">Вкл</div>
+                    </div>
+                </div>`;
+
+                // Show overlay controls only if enabled
+                if (overlayEnabled) {
+                    // NEW v7.0: Overlay Mode (darken/lighten)
+                    const overlayMode = bg.overlayMode || 'darken';
+                    html += `<div class="props-group">
+                        <label class="props-label">Режим</label>
+                        <div class="toggle-group">
+                            <div class="toggle-btn ${overlayMode === 'darken' ? 'active' : ''}" onclick="updateBackground('overlayMode','darken')">Darken</div>
+                            <div class="toggle-btn ${overlayMode === 'lighten' ? 'active' : ''}" onclick="updateBackground('overlayMode','lighten')">Lighten</div>
+                        </div>
+                    </div>`;
+
+                    // NEW v7.0: Overlay Gradient Type
+                    const overlayGradient = bg.overlayGradient || 'solid';
+                    html += `<div class="props-group">
+                        <label class="props-label">Gradient</label>
+                        <select class="props-select" onchange="updateBackground('overlayGradient',this.value)">
+                            <option value="solid" ${overlayGradient === 'solid' ? 'selected' : ''}>Solid</option>
+                            <option value="bottom" ${overlayGradient === 'bottom' ? 'selected' : ''}>Gradient Bottom</option>
+                            <option value="top" ${overlayGradient === 'top' ? 'selected' : ''}>Gradient Top</option>
+                            <option value="both" ${overlayGradient === 'both' ? 'selected' : ''}>Gradient Both</option>
+                        </select>
+                    </div>`;
+
+                    // Overlay intensity slider
+                    html += `<div class="props-group">
+                        <label class="props-label">Интенсивность</label>
+                        <div class="range-group">
+                            <input type="range" class="props-range" id="overlay-range" min="0" max="100" value="${bg.overlay || 0}"
+                                oninput="this.nextElementSibling.textContent=this.value+'%'"
+                                onchange="updateBackground('overlay',parseInt(this.value))">
+                            <span class="range-value" contenteditable="true"
+                                onkeydown="handleRangeValueEdit(event,document.getElementById('overlay-range'),0,100,'%','int')"
+                                onblur="handleRangeValueEdit(event,document.getElementById('overlay-range'),0,100,'%','int')">${bg.overlay || 0}%</span>
+                        </div>
+                    </div>`;
+                }
+            }
+
+            html += `</div>`;
+
+            // Settings Section
+            html += `<div class="props-section">
+                <div class="props-section-title">НАСТРОЙКИ</div>
+                <div class="props-group">
+                    <label class="props-label">Никнейм</label>
+                    <input type="text" class="props-input" value="${state.settings.username}" onchange="state.settings.username=this.value;render()">
+                </div>
+            </div>`;
+
+            // Element Properties
+            if (sel) {
+                const isSys = sel.type === 'username' || sel.type === 'slidenum';
+                const isPhoto = sel.type === 'photo';
+                const labels = { username: 'Никнейм', slidenum: 'Нумерация', title: 'Заголовок', description: 'Описание', photo: 'Фото' };
+
+                html += `<div class="props-section">
+                    <div class="props-section-title">${labels[sel.type] || 'ЭЛЕМЕНТ'}</div>`;
+
+                // Figma-style alignment
+                html += `<div class="props-group">
+                    <label class="props-label">Выравнивание</label>
+                    <div class="figma-align">
+                        <div class="figma-align-group">
+                            <button class="figma-align-btn" onclick="alignElement('left',null)" title="Align left">⫴</button>
+                            <button class="figma-align-btn" onclick="alignElement('center',null)" title="Align center horizontal">⫶</button>
+                            <button class="figma-align-btn" onclick="alignElement('right',null)" title="Align right">⫵</button>
+                        </div>
+                        <div class="figma-align-group">
+                            <button class="figma-align-btn" onclick="alignElement(null,'top')" title="Align top">⬍</button>
+                            <button class="figma-align-btn" onclick="alignElement(null,'middle')" title="Align center vertical">⬌</button>
+                            <button class="figma-align-btn" onclick="alignElement(null,'bottom')" title="Align bottom">⬎</button>
+                        </div>
+                    </div>
+                </div>`;
+
+                if (!isSys) {
+                    html += `<div class="props-group">
+                        <label class="props-label">Переменная N8N</label>
+                        <input type="text" class="props-input" value="${sel.varName || ''}" onchange="updateElement('varName',this.value)">
+                    </div>`;
+                }
+
+                if (isPhoto) {
+                    html += `<div class="props-group">
+                        <button class="btn" style="width:100%" onclick="triggerElementPhotoUpload()">📷 Загрузить</button>
+                    </div>`;
+
+                    // NEW v7.0: Shape toggle (Rectangle/Circle)
+                    const shape = sel.shape || 'rectangle';
+                    html += `<div class="props-group">
+                        <label class="props-label">Форма</label>
+                        <div class="toggle-group">
+                            <div class="toggle-btn ${shape === 'rectangle' ? 'active' : ''}" onclick="updateElement('shape','rectangle')">□</div>
+                            <div class="toggle-btn ${shape === 'circle' ? 'active' : ''}" onclick="updateElement('shape','circle')">●</div>
+                        </div>
+                    </div>`;
+
+                    // Width/Height sliders
+                    html += `<div class="props-group">
+                        <label class="props-label">Ширина</label>
+                        <div class="range-group">
+                            <input type="range" class="props-range" id="width-range" min="50" max="1000" value="${sel.width}"
+                                oninput="this.nextElementSibling.textContent=this.value+'px'"
+                                onchange="updateElement('width',parseInt(this.value))">
+                            <span class="range-value" contenteditable="true"
+                                onkeydown="handleRangeValueEdit(event,document.getElementById('width-range'),50,1000,'px','int')"
+                                onblur="handleRangeValueEdit(event,document.getElementById('width-range'),50,1000,'px','int')">${sel.width}px</span>
+                        </div>
+                    </div>`;
+
+                    html += `<div class="props-group">
+                        <label class="props-label">Высота</label>
+                        <div class="range-group">
+                            <input type="range" class="props-range" id="height-range" min="50" max="1350" value="${sel.height}"
+                                oninput="this.nextElementSibling.textContent=this.value+'px'"
+                                onchange="updateElement('height',parseInt(this.value))">
+                            <span class="range-value" contenteditable="true"
+                                onkeydown="handleRangeValueEdit(event,document.getElementById('height-range'),50,1350,'px','int')"
+                                onblur="handleRangeValueEdit(event,document.getElementById('height-range'),50,1350,'px','int')">${sel.height}px</span>
+                        </div>
+                    </div>`;
+
+                    // Border radius (only if not circle)
+                    if (shape === 'rectangle') {
+                        html += `<div class="props-group">
+                            <label class="props-label">Скругление углов</label>
+                            <div class="range-group">
+                                <input type="range" class="props-range" id="borderRadius-range" min="0" max="50" value="${sel.borderRadius || 0}"
+                                    oninput="this.nextElementSibling.textContent=this.value+'px'"
+                                    onchange="updateElement('borderRadius',parseInt(this.value))">
+                                <span class="range-value" contenteditable="true"
+                                    onkeydown="handleRangeValueEdit(event,document.getElementById('borderRadius-range'),0,50,'px','int')"
+                                    onblur="handleRangeValueEdit(event,document.getElementById('borderRadius-range'),0,50,'px','int')">${sel.borderRadius || 0}px</span>
+                            </div>
+                        </div>`;
+                    }
+                } else {
+                    // Text element properties
+                    if (!isSys) {
+                        html += `<div class="props-group">
+                            <label class="props-label">Текст (*bold* _highlight_)</label>
+                            <textarea class="props-input props-textarea" onchange="updateElement('content',this.value)">${sel.content}</textarea>
+                        </div>`;
+                    }
+
+                    // Font selector with Google Fonts + Custom Fonts
+                    const allFonts = [...state.availableFonts.system, ...state.availableFonts.google, ...state.availableFonts.custom];
+                    html += `<div class="props-group">
+                        <label class="props-label">Шрифт</label>
+                        <select class="props-select" onchange="updateElement('fontFamily',this.value)">
+                            <optgroup label="System Fonts">
+                                ${state.availableFonts.system.map(f => `<option value="${f}" ${sel.fontFamily === f ? 'selected' : ''}>${f}</option>`).join('')}
+                            </optgroup>
+                            ${state.availableFonts.google.length > 0 ? `<optgroup label="Google Fonts">
+                                ${state.availableFonts.google.map(f => `<option value="${f}" ${sel.fontFamily === f ? 'selected' : ''}>${f}</option>`).join('')}
+                            </optgroup>` : ''}
+                            ${state.availableFonts.custom.length > 0 ? `<optgroup label="Custom Fonts">
+                                ${state.availableFonts.custom.map(f => `<option value="${f}" ${sel.fontFamily === f ? 'selected' : ''}>${f}</option>`).join('')}
+                            </optgroup>` : ''}
+                        </select>
+                        <button class="btn" style="margin-top: 8px; width: 100%;" onclick="triggerFontUpload()">📁 Upload Font</button>
+                    </div>`;
+
+                    // Font size slider
+                    html += `<div class="props-group">
+                        <label class="props-label">Размер</label>
+                        <div class="range-group">
+                            <input type="range" class="props-range" id="fontSize-range" min="12" max="120" value="${sel.fontSize}"
+                                oninput="this.nextElementSibling.textContent=this.value+'px'"
+                                onchange="updateElement('fontSize',parseInt(this.value))">
+                            <span class="range-value" contenteditable="true"
+                                onkeydown="handleRangeValueEdit(event,document.getElementById('fontSize-range'),12,120,'px','int')"
+                                onblur="handleRangeValueEdit(event,document.getElementById('fontSize-range'),12,120,'px','int')">${sel.fontSize}px</span>
+                        </div>
+                    </div>`;
+
+                    // Font weight
+                    html += `<div class="props-group">
+                        <label class="props-label">Жирность</label>
+                        <select class="props-select" onchange="updateElement('fontWeight',this.value)">
+                            ${FONT_WEIGHTS.map(w => `<option value="${w.value}" ${sel.fontWeight === w.value ? 'selected' : ''}>${w.label}</option>`).join('')}
+                        </select>
+                    </div>`;
+
+                    // NEW v7.0: Letter spacing slider
+                    html += `<div class="props-group">
+                        <label class="props-label">Межбуквенный</label>
+                        <div class="range-group">
+                            <input type="range" class="props-range" id="letterSpacing-range" min="-5" max="20" step="0.5" value="${sel.letterSpacing || 0}"
+                                oninput="this.nextElementSibling.textContent=this.value+'px'"
+                                onchange="updateElement('letterSpacing',parseFloat(this.value))">
+                            <span class="range-value" contenteditable="true"
+                                onkeydown="handleRangeValueEdit(event,document.getElementById('letterSpacing-range'),-5,20,'px','float')"
+                                onblur="handleRangeValueEdit(event,document.getElementById('letterSpacing-range'),-5,20,'px','float')">${sel.letterSpacing || 0}px</span>
+                        </div>
+                    </div>`;
+
+                    // Line height slider
+                    if (!isSys) {
+                        html += `<div class="props-group">
+                            <label class="props-label">Межстрочный</label>
+                            <div class="range-group">
+                                <input type="range" class="props-range" id="lineHeight-range" min="0.8" max="3" step="0.1" value="${sel.lineHeight || 1.2}"
+                                    oninput="this.nextElementSibling.textContent=this.value"
+                                    onchange="updateElement('lineHeight',parseFloat(this.value))">
+                                <span class="range-value" contenteditable="true"
+                                    onkeydown="handleRangeValueEdit(event,document.getElementById('lineHeight-range'),0.8,3,'','float')"
+                                    onblur="handleRangeValueEdit(event,document.getElementById('lineHeight-range'),0.8,3,'','float')">${sel.lineHeight || 1.2}</span>
+                            </div>
+                        </div>`;
+
+                        // NEW v7.0: Auto-height adaptation
+                        const autoHeight = sel.autoHeight || 'none';
+                        html += `<div class="props-group">
+                            <label class="props-label">
+                                Автовысота
+                                <span class="tooltip-icon" data-tooltip="Как текст растёт при увеличении: вверх, вниз или по центру">?</span>
+                            </label>
+                            <select class="props-select" onchange="updateElement('autoHeight',this.value)">
+                                <option value="none" ${autoHeight === 'none' ? 'selected' : ''}>Выкл</option>
+                                <option value="up" ${autoHeight === 'up' ? 'selected' : ''}>↑ Вверх</option>
+                                <option value="down" ${autoHeight === 'down' ? 'selected' : ''}>↓ Вниз</option>
+                                <option value="center" ${autoHeight === 'center' ? 'selected' : ''}>↕ По центру</option>
+                            </select>
+                        </div>`;
+
+                        // NEW: Max width slider for text wrapping control
+                        html += `<div class="props-group">
+                            <label class="props-label">Ширина текста</label>
+                            <div class="range-group">
+                                <input type="range" class="props-range" id="maxWidth-range" min="100" max="${CANVAS_W}" step="10" value="${sel.maxWidth || CANVAS_W - EDGE_PADDING * 2}"
+                                    oninput="this.nextElementSibling.textContent=this.value+'px'"
+                                    onchange="updateElement('maxWidth',parseInt(this.value))">
+                                <span class="range-value" contenteditable="true"
+                                    onkeydown="handleRangeValueEdit(event,document.getElementById('maxWidth-range'),100,${CANVAS_W},'px','int')"
+                                    onblur="handleRangeValueEdit(event,document.getElementById('maxWidth-range'),100,${CANVAS_W},'px','int')">${sel.maxWidth || CANVAS_W - EDGE_PADDING * 2}px</span>
+                            </div>
+                        </div>`;
+                    }
+
+                    // Opacity slider
+                    html += `<div class="props-group">
+                        <label class="props-label">Прозрачность</label>
+                        <div class="range-group">
+                            <input type="range" class="props-range" id="opacity-range" min="0" max="100" value="${sel.opacity}"
+                                oninput="this.nextElementSibling.textContent=this.value+'%'"
+                                onchange="updateElement('opacity',parseInt(this.value))">
+                            <span class="range-value" contenteditable="true"
+                                onkeydown="handleRangeValueEdit(event,document.getElementById('opacity-range'),0,100,'%','int')"
+                                onblur="handleRangeValueEdit(event,document.getElementById('opacity-range'),0,100,'%','int')">${sel.opacity}%</span>
+                        </div>
+                    </div>`;
+
+                    // Color
+                    html += `<div class="props-group">
+                        <label class="props-label">Цвет</label>
+                        <div class="props-color-row">
+                            <input type="color" class="props-color" value="${sel.color}" onchange="updateElement('color',this.value)">
+                            <input type="text" class="props-color-value" value="${sel.color}" onchange="updateElement('color',this.value)">
+                        </div>
+                    </div>`;
+
+                    // Highlight color
+                    if (!isSys) {
+                        html += `<div class="props-group">
+                            <label class="props-label">Цвет выделения</label>
+                            <div class="props-color-row">
+                                <input type="color" class="props-color" value="${sel.highlightColor || '#c8ff00'}" onchange="updateElement('highlightColor',this.value)">
+                                <input type="text" class="props-color-value" value="${sel.highlightColor || '#c8ff00'}" onchange="updateElement('highlightColor',this.value)">
+                            </div>
+                        </div>`;
+                    }
+                }
+
+                // X/Y position
+                html += `<div class="props-group">
+                    <div class="props-row">
+                        <div class="props-field">
+                            <label class="props-label">X</label>
+                            <input type="number" class="props-input" value="${Math.round(sel.x)}" onchange="updateElement('x',parseInt(this.value))">
+                        </div>
+                        <div class="props-field">
+                            <label class="props-label">Y</label>
+                            <input type="number" class="props-input" value="${Math.round(sel.y)}" onchange="updateElement('y',parseInt(this.value))">
+                        </div>
+                    </div>
+                </div>`;
+
+                // Delete button
+                if (!isSys) {
+                    html += `<button class="btn-danger" onclick="deleteElement()">Удалить</button>`;
+                }
+
+                html += `</div>`;
+            } else {
+                html += `<div class="props-hint">👆 Выберите элемент</div>`;
+            }
+
+            panel.innerHTML = html;
+        }
+
+        // Templates
+        async function saveTemplate() {
+            state.templateName = document.getElementById('templateName').value || 'Новый шаблон';
+            const template = {
+                name: state.templateName,
+                settings: state.settings,
+                slides: state.slides,
+                createdAt: new Date().toISOString()
+            };
+
+            try {
+                const r = await fetch(`${API_URL}/templates`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(template)
+                });
+                if (r.ok) {
+                    showToast('Сохранено', 'success');
+                    loadTemplatesList();
+                } else throw new Error();
+            } catch (e) {
+                const t = JSON.parse(localStorage.getItem('carousel_templates') || '{}');
+                t[state.templateName] = template;
+                localStorage.setItem('carousel_templates', JSON.stringify(t));
+                showToast('Сохранено локально', 'success');
+            }
+        }
+
+        async function loadTemplatesList() {
+            const c = document.getElementById('templateList');
+            let templates = [];
+            try {
+                const r = await fetch(`${API_URL}/templates`);
+                if (r.ok) {
+                    const d = await r.json();
+                    templates = d.templates || [];
+                }
+            } catch (e) {
+                templates = Object.values(JSON.parse(localStorage.getItem('carousel_templates') || '{}'));
+            }
+
+            if (templates.length === 0) {
+                c.innerHTML = '<div class="props-hint">Нет шаблонов</div>';
+            } else {
+                c.innerHTML = templates.map(t => `
+                    <div class="template-item" onclick="loadTemplate('${t.name}')">
+                        <div class="template-item-info">
+                            <span class="template-item-name">${t.name}</span>
+                            <span class="template-item-meta">${t.slides ? t.slides.length : '?'} слайдов</span>
+                        </div>
+                        <div class="template-item-actions">
+                            <button class="template-item-btn" onclick="exportTemplate('${t.name}',event)">↓</button>
+                            <button class="template-item-btn delete" onclick="deleteTemplate('${t.name}',event)">×</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        async function loadTemplate(name) {
+            try {
+                const r = await fetch(`${API_URL}/templates/${encodeURIComponent(name)}`);
+                if (r.ok) {
+                    applyTemplate(await r.json());
+                    hideTemplatesModal();
+                    return;
+                }
+            } catch (e) { }
+
+            const local = JSON.parse(localStorage.getItem('carousel_templates') || '{}');
+            if (local[name]) {
+                applyTemplate(local[name]);
+                hideTemplatesModal();
+            }
+        }
+
+        function applyTemplate(t) {
+            state.templateName = t.name;
+            state.settings = t.settings || { username: '@username', endingCount: 1 };
+            state.slides = t.slides || [];
+            state.currentSlideIndex = 0;
+            state.selectedElementId = null;
+            document.getElementById('templateName').value = state.templateName;
+            render();
+            showToast('Загружено', 'success');
+        }
+
+        async function exportTemplate(name, event) {
+            event.stopPropagation();
+            let t;
+            try {
+                const r = await fetch(`${API_URL}/templates/${encodeURIComponent(name)}`);
+                if (r.ok) t = await r.json();
+            } catch (e) { }
+
+            if (!t) t = JSON.parse(localStorage.getItem('carousel_templates') || '{}')[name];
+            if (t) {
+                const blob = new Blob([JSON.stringify(t, null, 2)], { type: 'application/json' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = `${name}.json`;
+                a.click();
+                showToast('Скачано', 'success');
+            }
+        }
+
+        function importTemplate(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async e => {
+                try {
+                    const t = JSON.parse(e.target.result);
+                    try {
+                        await fetch(`${API_URL}/templates`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(t)
+                        });
+                    } catch (err) {
+                        const ts = JSON.parse(localStorage.getItem('carousel_templates') || '{}');
+                        ts[t.name] = t;
+                        localStorage.setItem('carousel_templates', JSON.stringify(ts));
+                    }
+                    loadTemplatesList();
+                    showToast('Импортировано', 'success');
+                } catch (err) {
+                    showToast('Ошибка', 'error');
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        }
+
+        async function deleteTemplate(name, event) {
+            event.stopPropagation();
+            if (!confirm(`Удалить "${name}"?`)) return;
+            try {
+                await fetch(`${API_URL}/templates/${encodeURIComponent(name)}`, { method: 'DELETE' });
+            } catch (e) { }
+
+            const local = JSON.parse(localStorage.getItem('carousel_templates') || '{}');
+            delete local[name];
+            localStorage.setItem('carousel_templates', JSON.stringify(local));
+            loadTemplatesList();
+            showToast('Удалено', 'success');
+        }
+
+        function showTemplatesModal() {
+            loadTemplatesList();
+            document.getElementById('templatesModal').classList.add('show');
+        }
+
+        function showInstructions() {
+            // Placeholder for future video/instructions
+            showToast('Инструкция будет добавлена позже', 'info');
+            // TODO: Add link to video tutorial or instructions page
+        }
+
+        function hideTemplatesModal() {
+            document.getElementById('templatesModal').classList.remove('show');
+        }
+
+        // Download
+        async function downloadSlide(index, event) {
+            if (event) event.stopPropagation();
+            try {
+                const r = await fetch(`${API_URL}/render-slide`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        slide: state.slides[index],
+                        settings: state.settings,
+                        slideNumber: index + 1
+                    })
+                });
+                if (r.ok) {
+                    const d = await r.json();
+                    const a = document.createElement('a');
+                    a.href = d.base64;
+                    a.download = `slide_${index + 1}.png`;
+                    a.click();
+                }
+            } catch (e) {
+                showToast('Ошибка', 'error');
+            }
+        }
+
+        async function exportAllSlides() {
+            showToast('Экспорт...', 'success');
+            for (let i = 0; i < state.slides.length; i++) {
+                await downloadSlide(i);
+                await new Promise(r => setTimeout(r, 300));
+            }
+        }
+
+        // Theme toggle
+        function toggleTheme() {
+            const body = document.body;
+            const icon = document.getElementById('themeIcon');
+
+            if (body.classList.contains('dark-theme')) {
+                body.classList.remove('dark-theme');
+                icon.textContent = '☀️';
+            } else {
+                body.classList.add('dark-theme');
+                icon.textContent = '🌙';
+            }
+        }
+
+        // Toast
+        function showToast(msg, type = '') {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.className = 'toast show ' + type;
+            setTimeout(() => t.classList.remove('show'), 3000);
+        }
+
+        // Initialize on load
+        init();
+    </script>
+</body>
+</html>
