@@ -1,5 +1,6 @@
 {
   "name": "kamalov",
+  "template_id": "kamalov",
   "settings": {
     "username": "@just.kamalov",
     "totalSlides": 10,

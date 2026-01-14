@@ -277,8 +277,9 @@
 
         .template-info {
             display: flex;
+            flex-direction: row;
             align-items: center;
-            gap: 12px;
+            gap: 8px;
         }
 
         .template-name {
@@ -291,6 +292,7 @@
             border-radius: 6px;
             outline: none;
             transition: all 0.2s;
+            width: 140px;
         }
 
         .template-name:hover {
@@ -300,6 +302,31 @@
         .template-name:focus {
             background: var(--bg-primary);
             border-color: var(--border);
+        }
+
+        .template-id {
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            color: var(--text-muted);
+            padding: 4px 12px;
+            background: transparent;
+            border: 1px solid transparent;
+            border-radius: 4px;
+            outline: none;
+            transition: all 0.2s;
+            width: 130px;
+            opacity: 0.7;
+        }
+
+        .template-id:hover {
+            background: var(--bg-hover);
+            opacity: 1;
+        }
+
+        .template-id:focus {
+            background: var(--bg-primary);
+            border-color: var(--border);
+            opacity: 1;
         }
 
         .top-actions {
@@ -891,6 +918,15 @@
             font-size: 14px;
         }
 
+        .template-item-id {
+            display: block;
+            font-size: 11px;
+            color: #888;
+            font-family: 'Courier New', monospace;
+            margin-top: 2px;
+            opacity: 0.7;
+        }
+
         .template-item-meta {
             font-size: 11px;
             color: var(--text-muted);
@@ -1008,7 +1044,8 @@
             <!-- Top Bar -->
             <div class="top-bar">
                 <div class="template-info">
-                    <input type="text" class="template-name" id="templateName" value="Новый шаблон" placeholder="Template name">
+                    <input type="text" class="template-name" id="templateName" value="Новый шаблон" placeholder="Название шаблона">
+                    <input type="text" class="template-id" id="templateId" value="" placeholder="template_id (для API)">
                 </div>
                 <div class="top-actions">
                     <button class="btn" onclick="showTemplatesModal()">📁 Шаблоны</button>
@@ -2271,10 +2308,42 @@
         }
 
         // Templates
+        function generateTemplateId(name) {
+            // Транслитерация
+            const translit = {
+                'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'yo',
+                'ж': 'zh', 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm',
+                'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u',
+                'ф': 'f', 'х': 'h', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'sch',
+                'ы': 'y', 'э': 'e', 'ю': 'yu', 'я': 'ya'
+            };
+
+            let result = name.toLowerCase();
+            for (const [ru, en] of Object.entries(translit)) {
+                result = result.replace(new RegExp(ru, 'g'), en);
+            }
+
+            // Убираем спецсимволы
+            result = result.replace(/[^a-z0-9\s\-]/g, '');
+            result = result.replace(/\s+/g, '_').trim();
+            result = result.replace(/_+/g, '_');
+
+            return result || 'template';
+        }
+
         async function saveTemplate() {
             state.templateName = document.getElementById('templateName').value || 'Новый шаблон';
+            let templateId = document.getElementById('templateId').value.trim();
+
+            // NEW v7.0: Генерируем template_id если не заполнен
+            if (!templateId) {
+                templateId = generateTemplateId(state.templateName);
+                document.getElementById('templateId').value = templateId;
+            }
+
             const template = {
                 name: state.templateName,
+                template_id: templateId,  // NEW
                 settings: state.settings,
                 slides: state.slides,
                 createdAt: new Date().toISOString()
@@ -2315,14 +2384,15 @@
                 c.innerHTML = '<div class="props-hint">Нет шаблонов</div>';
             } else {
                 c.innerHTML = templates.map(t => `
-                    <div class="template-item" onclick="loadTemplate('${t.name}')">
+                    <div class="template-item" onclick="loadTemplate('${t.template_id || t.name}')">
                         <div class="template-item-info">
                             <span class="template-item-name">${t.name}</span>
-                            <span class="template-item-meta">${t.slides ? t.slides.length : '?'} слайдов</span>
+                            ${t.template_id ? `<span class="template-item-id">${t.template_id}</span>` : ''}
+                            <span class="template-item-meta">${t.slides ? t.slides.length : t.slidesCount || '?'} слайдов</span>
                         </div>
                         <div class="template-item-actions">
-                            <button class="template-item-btn" onclick="exportTemplate('${t.name}',event)">↓</button>
-                            <button class="template-item-btn delete" onclick="deleteTemplate('${t.name}',event)">×</button>
+                            <button class="template-item-btn" onclick="exportTemplate('${t.template_id || t.name}',event)">↓</button>
+                            <button class="template-item-btn delete" onclick="deleteTemplate('${t.template_id || t.name}',event)">×</button>
                         </div>
                     </div>
                 `).join('');
@@ -2348,11 +2418,16 @@
 
         function applyTemplate(t) {
             state.templateName = t.name;
+            state.templateId = t.template_id || generateTemplateId(t.name);  // NEW v7.0: fallback
             state.settings = t.settings || { username: '@username', endingCount: 1 };
             state.slides = t.slides || [];
             state.currentSlideIndex = 0;
             state.selectedElementId = null;
+
+            // Заполняем поля формы
             document.getElementById('templateName').value = state.templateName;
+            document.getElementById('templateId').value = state.templateId;  // NEW
+
             render();
             showToast('Загружено', 'success');
         }

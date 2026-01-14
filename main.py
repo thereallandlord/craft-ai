@@ -36,10 +36,25 @@ app.add_middleware(
     allow_headers=["*"]
 )
 
+# NEW v7.0: Configurable paths for Railway Volume support
+# Railway Volume монтируется в /app/data (настраивается через Railway Dashboard)
+# Локально используются обычные папки в текущей директории
+DATA_DIR = os.getenv("DATA_PATH", ".")  # Railway: /app/data, локально: текущая директория
+TEMPLATES_DIR = os.path.join(DATA_DIR, "templates")
+UPLOADS_DIR = os.path.join(DATA_DIR, "uploads")
+OUTPUT_DIR = os.path.join(DATA_DIR, "output")
+FONTS_DIR = "fonts"  # fonts всегда локальные (часть кодовой базы)
+
+# Создаём необходимые директории
 os.makedirs("static", exist_ok=True)
-os.makedirs("templates", exist_ok=True)
-os.makedirs("fonts", exist_ok=True)
-os.makedirs("output", exist_ok=True)
+os.makedirs(TEMPLATES_DIR, exist_ok=True)
+os.makedirs(FONTS_DIR, exist_ok=True)
+os.makedirs(UPLOADS_DIR, exist_ok=True)
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+print(f"📁 Templates directory: {TEMPLATES_DIR}")
+print(f"📁 Uploads directory: {UPLOADS_DIR}")
+print(f"📁 Output directory: {OUTPUT_DIR}")
 
 CANVAS_W, CANVAS_H = 1080, 1350
 
@@ -60,9 +75,38 @@ class SlideData(BaseModel):
 
 class TemplateData(BaseModel):
     name: str
+    template_id: Optional[str] = None  # NEW v7.0: уникальный идентификатор для API
     settings: Dict[str, Any] = {}
     slides: List[Dict[str, Any]]
     createdAt: Optional[str] = None
+
+
+def generate_template_id(name: str) -> str:
+    """
+    Генерирует template_id из названия шаблона с транслитерацией
+    Пример: "Мой Шаблон!" → "moy_shablon"
+    """
+    # Транслитерация русских букв
+    translit = {
+        'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'yo',
+        'ж': 'zh', 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm',
+        'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u',
+        'ф': 'f', 'х': 'h', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'sch',
+        'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya'
+    }
+
+    result = name.lower()
+    for ru, en in translit.items():
+        result = result.replace(ru, en)
+
+    # Убираем все кроме букв, цифр, пробелов и дефисов
+    result = re.sub(r'[^a-z0-9\s\-]', '', result)
+    # Пробелы в подчеркивания
+    result = re.sub(r'\s+', '_', result.strip())
+    # Множественные подчеркивания в одно
+    result = re.sub(r'_+', '_', result)
+
+    return result or 'template'
 
 
 class SlideRenderer:
@@ -114,8 +158,8 @@ class SlideRenderer:
             paths = [
                 f"fonts/{font_name}.otf",
                 f"fonts/{font_name}.ttf",
-                f"uploads/{family}.ttf",  # NEW: Custom fonts
-                f"uploads/{family}.otf",  # NEW: Custom fonts
+                os.path.join(UPLOADS_DIR, f"{family}.ttf"),  # NEW: Custom fonts
+                os.path.join(UPLOADS_DIR, f"{family}.otf"),  # NEW: Custom fonts
                 f"fonts/google/{family.replace(' ', '_')}-{weight}.ttf",  # NEW: Google Fonts cache
                 "fonts/Inter.otf",
                 "fonts/Inter-Regular.otf",
@@ -672,7 +716,7 @@ async def upload_font(file: UploadFile):
 
     # Безопасное имя файла
     safe_filename = re.sub(r'[^a-zA-Z0-9_\-.]', '_', file.filename)
-    file_path = f"uploads/{safe_filename}"
+    file_path = os.path.join(UPLOADS_DIR, safe_filename)
 
     # Сохранить файл
     with open(file_path, 'wb') as f:
@@ -691,15 +735,31 @@ async def upload_font(file: UploadFile):
 @app.get("/templates")
 async def list_templates():
     templates = []
-    for f in os.listdir("templates"):
+    for f in os.listdir(TEMPLATES_DIR):
         if f.endswith('.json'):
             try:
-                with open(f"templates/{f}", 'r', encoding='utf-8') as file:
+                path = os.path.join(TEMPLATES_DIR, f)
+                with open(path, 'r', encoding='utf-8') as file:
                     d = json.load(file)
+
+                    # NEW v7.0: Генерируем template_id на лету если его нет
+                    template_id = d.get('template_id')
+                    if not template_id:
+                        template_id = generate_template_id(d.get('name', f.replace('.json', '')))
+                        # Сохраняем template_id в файл для будущего использования
+                        d['template_id'] = template_id
+                        try:
+                            with open(path, 'w', encoding='utf-8') as write_file:
+                                json.dump(d, write_file, ensure_ascii=False, indent=2)
+                        except:
+                            pass  # Если не удалось сохранить - не критично
+
                     templates.append({
                         "name": d.get('name', f.replace('.json', '')),
+                        "template_id": template_id,  # NEW
                         "createdAt": d.get('createdAt', ''),
-                        "slidesCount": len(d.get('slides', []))
+                        "slidesCount": len(d.get('slides', [])),
+                        "slides": d.get('slides', [])  # Добавляем для фронтенда
                     })
             except:
                 pass
@@ -709,7 +769,7 @@ async def list_templates():
 @app.get("/templates/{name}")
 async def get_template(name: str):
     safe = re.sub(r'[^a-zA-Z0-9_\-а-яА-ЯёЁ]', '_', name)
-    path = f"templates/{safe}.json"
+    path = os.path.join(TEMPLATES_DIR, f"{safe}.json")
     if not os.path.exists(path):
         raise HTTPException(status_code=404, detail="Not found")
     with open(path, 'r', encoding='utf-8') as f:
@@ -721,16 +781,22 @@ async def save_template(template: TemplateData):
     from datetime import datetime
     t = template.dict()
     t['createdAt'] = datetime.now().isoformat()
+
+    # NEW v7.0: Генерируем template_id если не передан
+    if not t.get('template_id'):
+        t['template_id'] = generate_template_id(template.name)
+
     safe = re.sub(r'[^a-zA-Z0-9_\-а-яА-ЯёЁ]', '_', template.name)
-    with open(f"templates/{safe}.json", 'w', encoding='utf-8') as f:
+    path = os.path.join(TEMPLATES_DIR, f"{safe}.json")
+    with open(path, 'w', encoding='utf-8') as f:
         json.dump(t, f, ensure_ascii=False, indent=2)
-    return {"success": True, "name": template.name}
+    return {"success": True, "name": template.name, "template_id": t['template_id']}
 
 
 @app.delete("/templates/{name}")
 async def delete_template(name: str):
     safe = re.sub(r'[^a-zA-Z0-9_\-а-яА-ЯёЁ]', '_', name)
-    path = f"templates/{safe}.json"
+    path = os.path.join(TEMPLATES_DIR, f"{safe}.json")
     if os.path.exists(path):
         os.remove(path)
         return {"success": True}
@@ -758,20 +824,48 @@ async def generate_carousel(request: GenerateRequest):
     1. Первый слайд из request.slides → рендерится по INTRO template
     2. Остальные слайды из request.slides → рендерятся по CONTENT template
     3. Ending слайды → добавляются в конец (КАК ЕСТЬ из шаблона)
+
+    NEW v7.0: Поиск шаблона по template_id с fallback на template_name
     """
-    template_name = request.template_id or request.template_name
+    # NEW: приоритет template_id над template_name
+    template_identifier = request.template_id or request.template_name
     username = request.username or request.USERNAME or "@username"
 
-    if not template_name:
-        raise HTTPException(status_code=400, detail="template_name or template_id required")
+    if not template_identifier:
+        raise HTTPException(status_code=400, detail="template_id or template_name required")
 
-    safe = re.sub(r'[^a-zA-Z0-9_\-а-яА-ЯёЁ]', '_', template_name)
-    path = f"templates/{safe}.json"
-    if not os.path.exists(path):
-        raise HTTPException(status_code=404, detail=f"Template '{template_name}' not found")
+    # NEW: Поиск шаблона по ID или по имени
+    template_path = None
+    template = None
 
-    with open(path, 'r', encoding='utf-8') as f:
-        template = json.load(f)
+    # Сначала ищем по template_id или name в JSON файлах
+    if os.path.exists(TEMPLATES_DIR):
+        for filename in os.listdir(TEMPLATES_DIR):
+            if not filename.endswith('.json'):
+                continue
+
+            path = os.path.join(TEMPLATES_DIR, filename)
+            try:
+                with open(path, 'r', encoding='utf-8') as f:
+                    t = json.load(f)
+                    # Ищем по template_id или по name
+                    if t.get('template_id') == template_identifier or t.get('name') == template_identifier:
+                        template_path = path
+                        template = t
+                        break
+            except:
+                continue
+
+    # Fallback: старая логика поиска по имени файла (для обратной совместимости)
+    if not template_path:
+        safe = re.sub(r'[^a-zA-Z0-9_\-а-яА-ЯёЁ]', '_', template_identifier)
+        fallback_path = os.path.join(TEMPLATES_DIR, f"{safe}.json")
+        if os.path.exists(fallback_path):
+            with open(fallback_path, 'r', encoding='utf-8') as f:
+                template = json.load(f)
+                template_path = fallback_path
+        else:
+            raise HTTPException(status_code=404, detail=f"Template '{template_identifier}' not found")
 
     settings = template.get('settings', {})
     slides = template.get('slides', [])
@@ -867,7 +961,8 @@ async def generate_carousel(request: GenerateRequest):
         b64 = base64.b64encode(buf.getvalue()).decode()
 
         filename = f"slide_{i+1}_{uuid.uuid4().hex[:8]}.png"
-        with open(f"output/{filename}", 'wb') as f:
+        output_path = os.path.join(OUTPUT_DIR, filename)
+        with open(output_path, 'wb') as f:
             f.write(buf.getvalue())
 
         rendered.append({
@@ -885,7 +980,7 @@ async def generate_carousel(request: GenerateRequest):
 
 @app.get("/output/{filename}")
 async def get_output(filename: str):
-    path = f"output/{filename}"
+    path = os.path.join(OUTPUT_DIR, filename)
     if os.path.exists(path):
         return FileResponse(path, media_type="image/png")
     raise HTTPException(status_code=404, detail="Not found")
