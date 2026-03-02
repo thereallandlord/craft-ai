@@ -85,6 +85,85 @@
             background: var(--bg-hover);
         }
 
+        /* Navigation Bar */
+        .nav-bar {
+            width: 56px;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 16px 0;
+            gap: 4px;
+            flex-shrink: 0;
+        }
+
+        .nav-brand {
+            font-size: 11px;
+            font-weight: 800;
+            color: var(--text-primary);
+            letter-spacing: 1px;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+
+        .nav-item {
+            width: 40px;
+            height: 40px;
+            background: transparent;
+            border: none;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 18px;
+            color: var(--text-secondary);
+            position: relative;
+        }
+
+        .nav-item:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .nav-item.active {
+            background: var(--accent);
+            color: #fff;
+        }
+
+        .nav-item .nav-tooltip {
+            display: none;
+            position: absolute;
+            left: 52px;
+            top: 50%;
+            transform: translateY(-50%);
+            padding: 6px 10px;
+            background: var(--text-primary);
+            color: var(--bg-primary);
+            font-size: 12px;
+            border-radius: 6px;
+            white-space: nowrap;
+            z-index: 1000;
+            pointer-events: none;
+        }
+
+        .nav-item:hover .nav-tooltip {
+            display: block;
+        }
+
+        .nav-spacer {
+            flex: 1;
+        }
+
+        .nav-divider {
+            width: 24px;
+            height: 1px;
+            background: var(--border);
+            margin: 4px 0;
+        }
+
         /* Left Sidebar */
         .sidebar-left {
             width: 180px;
@@ -1015,23 +1094,742 @@
             color: var(--text-muted);
             font-size: 13px;
         }
+
+        /* Tab Content Pages */
+        .tab-page {
+            flex: 1;
+            display: none;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .tab-page.active {
+            display: flex;
+        }
+
+        .tab-page-content {
+            flex: 1;
+            padding: 40px;
+            max-width: 720px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .tab-page-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .tab-page-subtitle {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 32px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .form-input,
+        .form-select,
+        .form-textarea {
+            width: 100%;
+            padding: 10px 14px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 14px;
+            font-family: inherit;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .form-input:focus,
+        .form-select:focus,
+        .form-textarea:focus {
+            border-color: var(--accent);
+        }
+
+        .form-textarea {
+            min-height: 200px;
+            resize: vertical;
+            line-height: 1.5;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 12px;
+        }
+
+        .form-row .form-group {
+            flex: 1;
+        }
+
+        .btn-generate {
+            width: 100%;
+            padding: 14px 24px;
+            background: var(--text-primary);
+            color: var(--bg-primary);
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: opacity 0.2s;
+            font-family: inherit;
+        }
+
+        .btn-generate:hover {
+            opacity: 0.9;
+        }
+
+        .btn-generate:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Preview Grid */
+        .preview-section {
+            margin-top: 32px;
+            display: none;
+        }
+
+        .preview-section.visible {
+            display: block;
+        }
+
+        .preview-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 16px;
+        }
+
+        .preview-grid {
+            display: flex;
+            gap: 12px;
+            overflow-x: auto;
+            padding-bottom: 12px;
+        }
+
+        .preview-slide {
+            flex-shrink: 0;
+            width: 162px;
+            height: 202px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .preview-slide img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .preview-slide-number {
+            position: absolute;
+            top: 6px;
+            left: 6px;
+            width: 20px;
+            height: 20px;
+            background: rgba(0,0,0,0.7);
+            color: #fff;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        .btn-download-all {
+            margin-top: 16px;
+            padding: 12px 20px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+
+        .btn-download-all:hover {
+            background: var(--bg-hover);
+        }
+
+        /* Parsed Slides Editable Preview */
+        .parsed-slides {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .parsed-slide {
+            padding: 14px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+
+        .parsed-slide-header {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .parsed-slide input,
+        .parsed-slide textarea {
+            width: 100%;
+            padding: 8px 10px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-size: 13px;
+            font-family: inherit;
+            outline: none;
+            margin-bottom: 6px;
+        }
+
+        .parsed-slide textarea {
+            min-height: 60px;
+            resize: vertical;
+            line-height: 1.4;
+        }
+
+        /* Wizard Steps */
+        .wizard-steps {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 32px;
+        }
+
+        .wizard-step {
+            flex: 1;
+            height: 4px;
+            background: var(--border);
+            border-radius: 2px;
+            transition: background 0.3s;
+        }
+
+        .wizard-step.active {
+            background: var(--accent);
+        }
+
+        .wizard-step.completed {
+            background: var(--text-primary);
+        }
+
+        .wizard-nav {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .wizard-nav .btn {
+            flex: 1;
+            justify-content: center;
+            padding: 12px;
+        }
+
+        /* Headline Options */
+        .headline-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .headline-option {
+            padding: 12px 14px;
+            background: var(--bg-tertiary);
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+            color: var(--text-primary);
+        }
+
+        .headline-option:hover {
+            border-color: var(--text-muted);
+        }
+
+        .headline-option.selected {
+            border-color: var(--accent);
+            background: var(--accent-light);
+        }
+
+        /* Placeholder Page */
+        .placeholder-page {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--text-muted);
+            gap: 16px;
+        }
+
+        .placeholder-icon {
+            font-size: 48px;
+            opacity: 0.5;
+        }
+
+        .placeholder-text {
+            font-size: 16px;
+            font-weight: 500;
+        }
+
+        .placeholder-desc {
+            font-size: 13px;
+            max-width: 300px;
+            text-align: center;
+            line-height: 1.5;
+        }
+
+        /* Visual Template Selector */
+        .template-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .template-card {
+            background: var(--bg-tertiary);
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .template-card:hover {
+            border-color: var(--text-muted);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px var(--shadow-md);
+        }
+
+        .template-card.selected {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 1px var(--accent);
+        }
+
+        .template-card-preview {
+            aspect-ratio: 4/5;
+            background: var(--bg-primary);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .template-card-preview canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .template-card-preview-placeholder {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            font-size: 11px;
+        }
+
+        .template-card-name {
+            padding: 8px 10px;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-primary);
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Voice Input Button */
+        .voice-input-wrapper {
+            position: relative;
+            display: flex;
+            gap: 8px;
+        }
+
+        .voice-input-wrapper .form-input {
+            flex: 1;
+        }
+
+        .voice-btn {
+            width: 44px;
+            height: 44px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: var(--text-secondary);
+            flex-shrink: 0;
+        }
+
+        .voice-btn:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .voice-btn.recording {
+            background: #ef4444;
+            border-color: #ef4444;
+            color: #fff;
+            animation: pulse-recording 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse-recording {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+            50% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+        }
+
+        .voice-status {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 6px;
+        }
+
+        .voice-status.active {
+            color: #ef4444;
+        }
+
+        /* Loading spinner */
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid transparent;
+            border-top-color: currentColor;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+            display: inline-block;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* === MOBILE ADAPTATION === */
+        @media (max-width: 768px) {
+            .app {
+                flex-direction: column;
+                height: auto;
+                min-height: 100vh;
+            }
+
+            body {
+                overflow: auto;
+            }
+
+            /* Nav bar becomes bottom tab bar */
+            .nav-bar {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                width: 100%;
+                height: 56px;
+                flex-direction: row;
+                justify-content: space-around;
+                padding: 4px 8px;
+                gap: 0;
+                z-index: 9999;
+                border-right: none;
+                border-top: 1px solid var(--border);
+                background: var(--bg-secondary);
+            }
+
+            .nav-brand {
+                display: none;
+            }
+
+            .nav-divider {
+                display: none;
+            }
+
+            .nav-spacer {
+                display: none;
+            }
+
+            .nav-item {
+                width: 36px;
+                height: 36px;
+                font-size: 16px;
+            }
+
+            .nav-item svg {
+                width: 18px;
+                height: 18px;
+            }
+
+            .nav-item .nav-tooltip {
+                display: none !important;
+            }
+
+            /* Controls */
+            .controls {
+                top: 8px;
+                right: 8px;
+            }
+
+            /* Left sidebar hidden on mobile for non-editor tabs */
+            .sidebar-left {
+                width: 100%;
+                height: auto;
+                max-height: 120px;
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+            }
+
+            .sidebar-header {
+                padding: 12px;
+            }
+
+            .slides-list {
+                display: flex;
+                flex-direction: row;
+                overflow-x: auto;
+                overflow-y: hidden;
+                padding: 8px;
+                gap: 8px;
+            }
+
+            .slide-item {
+                flex-shrink: 0;
+                width: 64px;
+                height: 80px;
+                margin-bottom: 0;
+            }
+
+            .slide-number {
+                width: 18px;
+                height: 18px;
+                font-size: 9px;
+                top: 4px;
+                left: 4px;
+            }
+
+            .slide-type {
+                display: none;
+            }
+
+            /* Right sidebar below canvas on mobile */
+            .sidebar-right {
+                width: 100%;
+                border-left: none;
+                border-top: 1px solid var(--border);
+                max-height: none;
+            }
+
+            /* Main area */
+            .main-area {
+                min-height: 0;
+            }
+
+            .top-bar {
+                flex-direction: column;
+                gap: 8px;
+                padding: 12px;
+            }
+
+            .template-info {
+                width: 100%;
+            }
+
+            .template-name {
+                width: 100%;
+            }
+
+            .template-id {
+                width: 100%;
+            }
+
+            .top-actions {
+                width: 100%;
+                flex-wrap: wrap;
+            }
+
+            .top-actions .btn {
+                flex: 1;
+                min-width: 0;
+                font-size: 12px;
+                padding: 8px 10px;
+                justify-content: center;
+            }
+
+            .toolbar {
+                flex-wrap: wrap;
+                padding: 8px 12px;
+                gap: 4px;
+            }
+
+            .tool-btn {
+                font-size: 12px;
+                height: 32px;
+                padding: 0 8px;
+            }
+
+            .canvas-area {
+                padding: 16px;
+            }
+
+            .canvas {
+                width: calc(100vw - 32px);
+                height: calc((100vw - 32px) * 1350 / 1080);
+                max-width: 405px;
+                max-height: 506px;
+            }
+
+            /* Tab pages */
+            .tab-page-content {
+                padding: 20px 16px;
+                padding-bottom: 80px; /* Space for bottom nav */
+            }
+
+            .tab-page-title {
+                font-size: 20px;
+            }
+
+            .form-row {
+                flex-direction: column;
+            }
+
+            .template-grid {
+                grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+                gap: 8px;
+            }
+
+            .preview-grid {
+                gap: 8px;
+            }
+
+            .preview-slide {
+                width: 120px;
+                height: 150px;
+            }
+
+            .wizard-nav {
+                flex-direction: column;
+            }
+
+            .placeholder-page {
+                padding-bottom: 80px;
+            }
+
+            /* Editor tab on mobile: stack vertically */
+            #tab-editor {
+                overflow-y: auto;
+                padding-bottom: 70px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .canvas {
+                width: calc(100vw - 16px);
+                height: calc((100vw - 16px) * 1350 / 1080);
+            }
+
+            .canvas-area {
+                padding: 8px;
+            }
+
+            .template-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
     </style>
 </head>
 <body>
     <div class="controls">
         <div class="control-btn" onclick="toggleTheme()" title="Theme">
-            <span id="themeIcon">☀️</span>
+            <span id="themeIcon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg></span>
         </div>
     </div>
 
     <div class="app">
-        <!-- Left Sidebar -->
-        <div class="sidebar-left">
+        <!-- Navigation Bar -->
+        <nav class="nav-bar">
+            <div class="nav-brand">CRAFT</div>
+            <button class="nav-item active" data-tab="editor" onclick="switchTab('editor')">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/></svg>
+                <span class="nav-tooltip">Редактор</span>
+            </button>
+            <button class="nav-item" data-tab="ready-text" onclick="switchTab('ready-text')">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 13H8"/><path d="M16 17H8"/><path d="M16 13h-2"/></svg>
+                <span class="nav-tooltip">Готовый текст</span>
+            </button>
+            <button class="nav-item" data-tab="create" onclick="switchTab('create')">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg>
+                <span class="nav-tooltip">Создать с нуля</span>
+            </button>
+            <div class="nav-divider"></div>
+            <button class="nav-item" data-tab="rewrite" onclick="switchTab('rewrite')">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 6H3"/><path d="M7 12H3"/><path d="M7 18H3"/><path d="M12.5 12H20"/><path d="M12.5 18H20"/><path d="m16 6-4 6h6l-4 6"/></svg>
+                <span class="nav-tooltip">Рерайт</span>
+            </button>
+            <button class="nav-item" data-tab="chat" onclick="switchTab('chat')">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/><path d="M8 12h.01"/><path d="M12 12h.01"/><path d="M16 12h.01"/></svg>
+                <span class="nav-tooltip">AI Чат</span>
+            </button>
+            <div class="nav-spacer"></div>
+            <div class="nav-divider"></div>
+            <button class="nav-item" data-tab="history" onclick="switchTab('history')">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <span class="nav-tooltip">История</span>
+            </button>
+            <button class="nav-item" data-tab="settings" onclick="switchTab('settings')">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                <span class="nav-tooltip">Настройки</span>
+            </button>
+        </nav>
+
+        <!-- === TAB: Editor (existing) === -->
+        <!-- Left Sidebar (editor only) -->
+        <div class="sidebar-left" id="sidebar-editor">
             <div class="sidebar-header">
                 <div class="brand-container">
                     <div class="brand">
-                        <div class="brand-name">CRAFT</div>
-                        <div class="brand-author">by Kamil Gazizov</div>
+                        <div class="brand-name">Слайды</div>
+                        <div class="brand-author">Редактор шаблонов</div>
                     </div>
                     <button class="add-slide-btn" onclick="addSlide()">+</button>
                 </div>
@@ -1039,8 +1837,7 @@
             <div class="slides-list" id="slidesList"></div>
         </div>
 
-        <!-- Main Area -->
-        <div class="main-area">
+        <div class="main-area tab-page active" id="tab-editor">
             <!-- Top Bar -->
             <div class="top-bar">
                 <div class="template-info">
@@ -1048,23 +1845,23 @@
                     <input type="text" class="template-id" id="templateId" value="" placeholder="template_id (для API)">
                 </div>
                 <div class="top-actions">
-                    <button class="btn" onclick="showTemplatesModal()">📁 Шаблоны</button>
-                    <button class="btn" onclick="showInstructions()">📖 Инструкция</button>
-                    <button class="btn" onclick="exportAllSlides()">📥 Скачать слайды</button>
-                    <button class="btn btn-primary" onclick="saveTemplate()">💾 Сохранить шаблон</button>
+                    <button class="btn" onclick="showTemplatesModal()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg> Шаблоны</button>
+                    <button class="btn" onclick="showInstructions()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg> Инструкция</button>
+                    <button class="btn" onclick="exportAllSlides()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg> Скачать</button>
+                    <button class="btn btn-primary" onclick="saveTemplate()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/></svg> Сохранить</button>
                 </div>
             </div>
 
             <!-- Toolbar -->
             <div class="toolbar">
-                <button class="tool-btn" onclick="addElement('title')"><span class="icon">T</span> Заголовок</button>
-                <button class="tool-btn" onclick="addElement('description')"><span class="icon">T</span> Описание</button>
-                <button class="tool-btn" onclick="addElement('photo')"><span class="icon">🖼</span> Фото</button>
+                <button class="tool-btn" onclick="addElement('title')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" x2="15" y1="20" y2="20"/><line x1="12" x2="12" y1="4" y2="20"/></svg> Заголовок</button>
+                <button class="tool-btn" onclick="addElement('description')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="17" x2="10" y1="10" y2="10"/><line x1="21" x2="3" y1="6" y2="6"/><line x1="21" x2="3" y1="14" y2="14"/><line x1="17" x2="10" y1="18" y2="18"/></svg> Описание</button>
+                <button class="tool-btn" onclick="addElement('photo')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg> Фото</button>
                 <div class="toolbar-separator"></div>
-                <button class="tool-btn" onclick="duplicateSlide()">⧉ Копировать</button>
+                <button class="tool-btn" onclick="duplicateSlide()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg> Копировать</button>
                 <div class="toolbar-separator"></div>
-                <button class="tool-btn" onclick="undo()" title="Undo (Ctrl+Z)">↶ Отменить</button>
-                <button class="tool-btn" onclick="redo()" title="Redo (Ctrl+Y)">↷ Вернуть</button>
+                <button class="tool-btn" onclick="undo()" title="Undo (Ctrl+Z)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg> Отменить</button>
+                <button class="tool-btn" onclick="redo()" title="Redo (Ctrl+Y)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"/></svg> Вернуть</button>
             </div>
 
             <!-- Canvas -->
@@ -1073,8 +1870,224 @@
             </div>
         </div>
 
-        <!-- Right Sidebar -->
+        <!-- Right Sidebar (editor only) -->
         <div class="sidebar-right" id="propsPanel"></div>
+
+        <!-- === TAB: Ready Text === -->
+        <div class="tab-page" id="tab-ready-text">
+            <div class="tab-page-content">
+                <div class="tab-page-title">Создание карусели по тексту</div>
+                <div class="tab-page-subtitle">Вставьте готовый текст карусели — мы разобьём его на слайды и сгенерируем картинки</div>
+
+                <div class="form-group">
+                    <label class="form-label">Выберите шаблон</label>
+                    <div class="template-grid" id="rtTemplateGrid">
+                        <div style="color:var(--text-muted);font-size:13px;grid-column:1/-1;text-align:center;padding:20px;">Загрузка шаблонов...</div>
+                    </div>
+                    <input type="hidden" id="rtTemplateSelect" value="">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Instagram</label>
+                    <input type="text" class="form-input" id="rtUsername" placeholder="@username" value="@username">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Текст карусели</label>
+                    <textarea class="form-textarea" id="rtText" placeholder="Вставьте текст карусели...&#10;&#10;Разделяйте слайды пустой строкой или нумерацией (1. 2. 3. или Слайд 1: Слайд 2:)&#10;&#10;Первая строка каждого слайда = заголовок, остальное = описание"></textarea>
+                </div>
+
+                <button class="btn-generate" id="rtGenerateBtn" onclick="generateFromReadyText()">
+                    Создать карусель
+                </button>
+
+                <!-- Parsed slides preview -->
+                <div id="rtParsedSection" style="display:none; margin-top: 24px;">
+                    <div class="preview-title">Разбивка по слайдам (можно отредактировать)</div>
+                    <div class="parsed-slides" id="rtParsedSlides"></div>
+                    <button class="btn-generate" style="margin-top: 16px;" id="rtRenderBtn" onclick="renderFromParsedSlides()">
+                        Сгенерировать картинки
+                    </button>
+                </div>
+
+                <!-- Generated images preview -->
+                <div class="preview-section" id="rtPreview">
+                    <div class="preview-title">Готовые слайды</div>
+                    <div class="preview-grid" id="rtPreviewGrid"></div>
+                    <button class="btn-download-all" onclick="downloadAllGenerated('rt')">
+                        Скачать все слайды
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- === TAB: Create from Scratch (Wizard) === -->
+        <div class="tab-page" id="tab-create">
+            <div class="tab-page-content">
+                <div class="tab-page-title">Создать карусель с нуля</div>
+                <div class="tab-page-subtitle">Пошаговый помощник: тема → заголовки → текст → генерация</div>
+
+                <div class="wizard-steps">
+                    <div class="wizard-step active" id="wizStep1"></div>
+                    <div class="wizard-step" id="wizStep2"></div>
+                    <div class="wizard-step" id="wizStep3"></div>
+                </div>
+
+                <!-- Step 1: Topic -->
+                <div id="wizardPage1">
+                    <div style="font-size: 16px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">Шаг 1 из 3: Тема</div>
+                    <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 20px;">О чём будет карусель?</div>
+
+                    <div class="form-group">
+                        <label class="form-label">Тема карусели</label>
+                        <div class="voice-input-wrapper">
+                            <input type="text" class="form-input" id="wizTopic" placeholder="Например: 5 ошибок начинающих предпринимателей">
+                            <button class="voice-btn" id="wizVoiceBtn" onclick="toggleVoiceInput('wizTopic', 'wizVoiceBtn', 'wizVoiceStatus')" title="Голосовой ввод">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+                            </button>
+                        </div>
+                        <div class="voice-status" id="wizVoiceStatus"></div>
+                    </div>
+
+                    <div class="wizard-nav">
+                        <button class="btn btn-primary" onclick="wizardStep1Next()" style="flex:1;justify-content:center;padding:12px;">
+                            Сгенерировать заголовки →
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 2: Headlines -->
+                <div id="wizardPage2" style="display:none">
+                    <div style="font-size: 16px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">Шаг 2 из 3: Выбери заголовок</div>
+                    <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 20px;">Выберите лучший заголовок для карусели</div>
+
+                    <div class="headline-list" id="wizHeadlines"></div>
+
+                    <div class="wizard-nav">
+                        <button class="btn" onclick="wizardGoBack(1)" style="flex:1;justify-content:center;padding:12px;">← Назад</button>
+                        <button class="btn btn-primary" onclick="wizardStep2Next()" id="wizStep2NextBtn" disabled style="flex:1;justify-content:center;padding:12px;">
+                            Создать текст →
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Step 3: Text + Generate -->
+                <div id="wizardPage3" style="display:none">
+                    <div style="font-size: 16px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">Шаг 3 из 3: Текст карусели</div>
+                    <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 20px;">Отредактируйте слайды и сгенерируйте картинки</div>
+
+                    <div class="form-group">
+                        <label class="form-label">Выберите шаблон</label>
+                        <div class="template-grid" id="wizTemplateGrid">
+                            <div style="color:var(--text-muted);font-size:13px;grid-column:1/-1;text-align:center;padding:20px;">Загрузка шаблонов...</div>
+                        </div>
+                        <input type="hidden" id="wizTemplateSelect" value="">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Instagram</label>
+                        <input type="text" class="form-input" id="wizUsername" placeholder="@username" value="@username">
+                    </div>
+
+                    <div class="parsed-slides" id="wizSlides"></div>
+
+                    <div class="wizard-nav">
+                        <button class="btn" onclick="wizardGoBack(2)" style="flex:1;justify-content:center;padding:12px;">← Назад</button>
+                        <button class="btn btn-primary" onclick="wizardGenerate()" id="wizGenerateBtn" style="flex:1;justify-content:center;padding:12px;">
+                            Создать карусель
+                        </button>
+                    </div>
+
+                    <!-- Generated images -->
+                    <div class="preview-section" id="wizPreview">
+                        <div class="preview-title">Готовые слайды</div>
+                        <div class="preview-grid" id="wizPreviewGrid"></div>
+                        <button class="btn-download-all" onclick="downloadAllGenerated('wiz')">
+                            Скачать все слайды
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- === TAB: Rewrite (placeholder) === -->
+        <div class="tab-page" id="tab-rewrite">
+            <div class="placeholder-page">
+                <div class="placeholder-icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 6H3"/><path d="M7 12H3"/><path d="M7 18H3"/><path d="M12.5 12H20"/><path d="M12.5 18H20"/><path d="m16 6-4 6h6l-4 6"/></svg></div>
+                <div class="placeholder-text">Рерайт конкурента</div>
+                <div class="placeholder-desc">Скоро здесь можно будет вставить ссылку на карусель конкурента и создать свою версию</div>
+            </div>
+        </div>
+
+        <!-- === TAB: Chat (placeholder) === -->
+        <div class="tab-page" id="tab-chat">
+            <div class="placeholder-page">
+                <div class="placeholder-icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/><path d="M8 12h.01"/><path d="M12 12h.01"/><path d="M16 12h.01"/></svg></div>
+                <div class="placeholder-text">AI Чат</div>
+                <div class="placeholder-desc">Скоро здесь будет умный ассистент, который поможет с идеями и текстами для каруселей</div>
+            </div>
+        </div>
+
+        <!-- === TAB: History (placeholder) === -->
+        <div class="tab-page" id="tab-history">
+            <div class="placeholder-page">
+                <div class="placeholder-icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+                <div class="placeholder-text">История</div>
+                <div class="placeholder-desc">Здесь будут сохраняться все созданные карусели</div>
+            </div>
+        </div>
+
+        <!-- === TAB: Settings === -->
+        <div class="tab-page" id="tab-settings">
+            <div class="tab-page-content">
+                <div class="tab-page-title">Настройки</div>
+                <div class="tab-page-subtitle">Подключение n8n вебхуков и настройки приложения</div>
+
+                <div style="background:var(--bg-tertiary);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:24px;">
+                    <div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:12px;">n8n Webhooks</div>
+                    <div style="font-size:12px;color:var(--text-secondary);margin-bottom:16px;">
+                        Укажите URL вебхуков из n8n для работы AI-функций. Без них будет использоваться демо-режим.
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Генератор заголовков (АГЕНТ 2)</label>
+                        <input type="text" class="form-input" id="settingsWebhookHeadlines" placeholder="https://your-n8n.com/webhook/headlines" value="">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Генератор текста (КОПИРАЙТЕР)</label>
+                        <input type="text" class="form-input" id="settingsWebhookCopywriter" placeholder="https://your-n8n.com/webhook/copywriter" value="">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Форматирование текста (FORMAT CAROUSEL TEXT)</label>
+                        <input type="text" class="form-input" id="settingsWebhookFormat" placeholder="https://your-n8n.com/webhook/format-text" value="">
+                    </div>
+
+                    <button class="btn btn-primary" onclick="saveWebhookSettings()" style="width:100%;justify-content:center;">
+                        Сохранить настройки
+                    </button>
+                </div>
+
+                <div style="background:var(--bg-tertiary);border:1px solid var(--border);border-radius:10px;padding:20px;">
+                    <div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:12px;">Инструкция по настройке n8n</div>
+                    <div style="font-size:13px;color:var(--text-secondary);line-height:1.6;">
+                        <p style="margin-bottom:8px;">Для каждого workflow в n8n нужно добавить <b>Webhook</b> ноду:</p>
+                        <ol style="padding-left:20px;">
+                            <li style="margin-bottom:6px;">Откройте workflow в n8n</li>
+                            <li style="margin-bottom:6px;">Добавьте ноду "Webhook" (HTTP Method: POST)</li>
+                            <li style="margin-bottom:6px;">Подключите её параллельно к существующему executeWorkflowTrigger</li>
+                            <li style="margin-bottom:6px;">Скопируйте Production URL вебхука и вставьте выше</li>
+                        </ol>
+                        <p style="margin-top:12px;padding:10px;background:var(--bg-primary);border-radius:6px;font-family:monospace;font-size:11px;">
+                            Генератор заголовков: входные поля — user_text<br>
+                            Генератор текста: входные поля — user_text, selected_headline, slides_count<br>
+                            FORMAT TEXT: входные поля — user_text
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Templates Modal -->
@@ -1085,7 +2098,7 @@
                 <button class="modal-close" onclick="hideTemplatesModal()">×</button>
             </div>
             <div class="modal-actions">
-                <label class="btn" style="cursor:pointer">📤 Импорт<input type="file" accept=".json" onchange="importTemplate(event)" class="hidden-input"></label>
+                <label class="btn" style="cursor:pointer">Импорт<input type="file" accept=".json" onchange="importTemplate(event)" class="hidden-input"></label>
             </div>
             <div class="template-list" id="templateList"></div>
         </div>
@@ -1099,6 +2112,614 @@
     <div class="toast" id="toast"></div>
 
     <script>
+        // Tab Navigation
+        let currentTab = 'editor';
+
+        function switchTab(tabId) {
+            currentTab = tabId;
+
+            // Hide all tab pages
+            document.querySelectorAll('.tab-page').forEach(el => el.classList.remove('active'));
+            // Show selected tab
+            const tabEl = document.getElementById(`tab-${tabId}`);
+            if (tabEl) tabEl.classList.add('active');
+
+            // Update nav items
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            const navItem = document.querySelector(`.nav-item[data-tab="${tabId}"]`);
+            if (navItem) navItem.classList.add('active');
+
+            // Show/hide editor sidebar and props panel
+            const sidebarEditor = document.getElementById('sidebar-editor');
+            const propsPanel = document.getElementById('propsPanel');
+            if (tabId === 'editor') {
+                sidebarEditor.style.display = '';
+                propsPanel.style.display = '';
+            } else {
+                sidebarEditor.style.display = 'none';
+                propsPanel.style.display = 'none';
+            }
+
+            // Load template selectors when switching to tabs that need them
+            if (tabId === 'ready-text' || tabId === 'create') {
+                loadTemplateSelectors();
+            }
+        }
+
+        // Load templates into select dropdowns for Ready Text and Wizard tabs
+        let templateCache = []; // Cache loaded templates
+
+        async function loadTemplateSelectors() {
+            let templates = [];
+            try {
+                const r = await fetch(`${API_URL}/templates`);
+                if (r.ok) {
+                    const d = await r.json();
+                    templates = d.templates || [];
+                }
+            } catch (e) {
+                templates = Object.values(JSON.parse(localStorage.getItem('carousel_templates') || '{}'));
+            }
+
+            templateCache = templates;
+
+            // Render visual grids
+            ['rt', 'wiz'].forEach(prefix => {
+                const grid = document.getElementById(`${prefix}TemplateGrid`);
+                const hiddenInput = document.getElementById(`${prefix}TemplateSelect`);
+                if (!grid) return;
+
+                if (templates.length === 0) {
+                    grid.innerHTML = '<div style="color:var(--text-muted);font-size:13px;grid-column:1/-1;text-align:center;padding:20px;">Нет доступных шаблонов</div>';
+                    return;
+                }
+
+                grid.innerHTML = templates.map(t => {
+                    const tid = t.template_id || t.name;
+                    const slidesCount = t.slides ? t.slides.length : (t.slidesCount || '?');
+                    return `<div class="template-card" data-template-id="${tid}" onclick="selectTemplateCard('${prefix}', '${tid}')">
+                        <div class="template-card-preview" id="${prefix}-preview-${tid}">
+                            <div class="template-card-preview-placeholder">${slidesCount} слайдов</div>
+                        </div>
+                        <div class="template-card-name">${t.name}</div>
+                    </div>`;
+                }).join('');
+
+                // Load previews for templates that have slides data
+                templates.forEach(t => {
+                    if (t.slides && t.slides.length > 0) {
+                        renderTemplatePreview(prefix, t);
+                    }
+                });
+            });
+        }
+
+        function selectTemplateCard(prefix, templateId) {
+            // Deselect all in this grid
+            const grid = document.getElementById(`${prefix}TemplateGrid`);
+            grid.querySelectorAll('.template-card').forEach(c => c.classList.remove('selected'));
+            // Select clicked
+            const card = grid.querySelector(`[data-template-id="${templateId}"]`);
+            if (card) card.classList.add('selected');
+            // Update hidden input
+            document.getElementById(`${prefix}TemplateSelect`).value = templateId;
+        }
+
+        function renderTemplatePreview(prefix, template) {
+            const tid = template.template_id || template.name;
+            const container = document.getElementById(`${prefix}-preview-${tid}`);
+            if (!container || !template.slides || !template.slides[0]) return;
+
+            // Render first slide as mini preview (same approach as sidebar thumbnails)
+            const slide = template.slides[0];
+            const ms = 0.13; // mini scale
+            let html = '';
+
+            const bg = slide.background || {};
+            if (bg.type === 'photo' && bg.photo) {
+                html += `<div style="position:absolute;inset:0;background-image:url(${bg.photo});background-size:cover;background-position:center;"></div>`;
+                if (bg.overlay > 0) {
+                    const color = (bg.overlayMode || 'darken') === 'lighten' ? '255,255,255' : '0,0,0';
+                    html += `<div style="position:absolute;inset:0;background:rgba(${color},${bg.overlay / 100})"></div>`;
+                }
+            } else {
+                html += `<div style="position:absolute;inset:0;background:${bg.color || '#f5f5f5'}"></div>`;
+            }
+
+            // Render text elements
+            (slide.elements || []).forEach(el => {
+                if (el.type === 'photo') return;
+                let content = el.content || '';
+                if (el.type === 'username') content = template.settings?.username || '@username';
+                if (el.type === 'slidenum') content = `1/${template.slides.length}`;
+                const hc = el.highlightColor || '#c8ff00';
+                content = content.replace(/\*([^*]+)\*/g, `<span style="color:${hc}">$1</span>`).replace(/\n/g, '<br>');
+                const widthStyle = el.maxWidth ? `max-width:${el.maxWidth * ms}px;` : '';
+                const transformStyle = el.align === 'right' ? 'transform:translateX(-100%);' : (el.align === 'center' ? 'transform:translateX(-50%);' : '');
+                html += `<div style="position:absolute;left:${el.x * ms}px;top:${el.y * ms}px;font-family:'${el.fontFamily}',sans-serif;font-size:${Math.max(el.fontSize * ms, 5)}px;font-weight:${el.fontWeight};color:${el.color};opacity:${(el.opacity || 100) / 100};line-height:${el.lineHeight || 1.2};${widthStyle}${transformStyle}overflow:hidden;">${content}</div>`;
+            });
+
+            container.innerHTML = html;
+            container.style.position = 'relative';
+        }
+
+        // === VOICE INPUT (Whisper) ===
+        let voiceMediaRecorder = null;
+        let voiceAudioChunks = [];
+        let voiceTargetInput = null;
+        let voiceTargetBtn = null;
+        let voiceTargetStatus = null;
+
+        function toggleVoiceInput(inputId, btnId, statusId) {
+            const btn = document.getElementById(btnId);
+            const statusEl = document.getElementById(statusId);
+            const input = document.getElementById(inputId);
+
+            if (voiceMediaRecorder && voiceMediaRecorder.state === 'recording') {
+                // Stop recording
+                voiceMediaRecorder.stop();
+                btn.classList.remove('recording');
+                statusEl.textContent = 'Распознавание...';
+                statusEl.classList.remove('active');
+                return;
+            }
+
+            // Start recording
+            voiceTargetInput = input;
+            voiceTargetBtn = btn;
+            voiceTargetStatus = statusEl;
+            voiceAudioChunks = [];
+
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(stream => {
+                    voiceMediaRecorder = new MediaRecorder(stream);
+                    voiceMediaRecorder.ondataavailable = e => {
+                        if (e.data.size > 0) voiceAudioChunks.push(e.data);
+                    };
+                    voiceMediaRecorder.onstop = async () => {
+                        // Stop all tracks
+                        stream.getTracks().forEach(t => t.stop());
+
+                        const audioBlob = new Blob(voiceAudioChunks, { type: 'audio/webm' });
+                        await transcribeAudio(audioBlob);
+                    };
+                    voiceMediaRecorder.start();
+                    btn.classList.add('recording');
+                    statusEl.textContent = 'Запись... нажмите ещё раз для остановки';
+                    statusEl.classList.add('active');
+                })
+                .catch(err => {
+                    console.error('Microphone error:', err);
+                    showToast('Не удалось получить доступ к микрофону', 'error');
+                });
+        }
+
+        async function transcribeAudio(audioBlob) {
+            try {
+                const formData = new FormData();
+                formData.append('file', audioBlob, 'recording.webm');
+
+                const r = await fetch(`${API_URL}/api/transcribe`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (r.ok) {
+                    const data = await r.json();
+                    if (data.text) {
+                        // Append to existing text or set
+                        const current = voiceTargetInput.value.trim();
+                        voiceTargetInput.value = current ? current + ' ' + data.text : data.text;
+                        voiceTargetStatus.textContent = '';
+                        showToast('Текст распознан', 'success');
+                    } else {
+                        voiceTargetStatus.textContent = '';
+                        showToast('Не удалось распознать речь', 'error');
+                    }
+                } else {
+                    const err = await r.json().catch(() => ({}));
+                    voiceTargetStatus.textContent = '';
+                    showToast(err.detail || 'Ошибка распознавания', 'error');
+                }
+            } catch (e) {
+                voiceTargetStatus.textContent = '';
+                showToast('Ошибка подключения к серверу', 'error');
+            }
+        }
+
+        // === READY TEXT TAB ===
+        let rtParsedData = []; // [{TITLE, DESCRIPTION}]
+        let rtGeneratedImages = []; // [{base64, filename}]
+
+        function parseCarouselText(text) {
+            const slides = [];
+            // Try splitting by "Слайд N:" pattern
+            let parts = text.split(/(?:^|\n)\s*(?:Слайд|Slide)\s*\d+\s*[:.]\s*/i).filter(s => s.trim());
+
+            // If only 1 part, try splitting by numbered list (1. 2. 3.)
+            if (parts.length <= 1) {
+                parts = text.split(/(?:^|\n)\s*\d+\s*[.)]\s+/).filter(s => s.trim());
+            }
+
+            // If still 1 part, try splitting by double newlines
+            if (parts.length <= 1) {
+                parts = text.split(/\n\s*\n/).filter(s => s.trim());
+            }
+
+            parts.forEach(part => {
+                const lines = part.trim().split('\n').filter(l => l.trim());
+                if (lines.length === 0) return;
+                slides.push({
+                    TITLE: lines[0].trim(),
+                    DESCRIPTION: lines.slice(1).join('\n').trim() || ''
+                });
+            });
+
+            return slides;
+        }
+
+        async function generateFromReadyText() {
+            const text = document.getElementById('rtText').value.trim();
+            if (!text) {
+                showToast('Вставьте текст карусели', 'error');
+                return;
+            }
+
+            // Try n8n FORMAT CAROUSEL TEXT webhook first
+            if (webhookSettings.format) {
+                const btn = document.getElementById('rtGenerateBtn');
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner"></span> Разбиваем текст...';
+                try {
+                    const r = await fetch(webhookSettings.format, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ user_text: text })
+                    });
+                    if (r.ok) {
+                        const data = await r.json();
+                        // n8n returns [{TITLE, DESCRIPTION}]
+                        rtParsedData = Array.isArray(data) ? data : (data.slides || []);
+                    } else {
+                        throw new Error('Webhook error');
+                    }
+                } catch (e) {
+                    showToast('Ошибка n8n, парсим локально', 'error');
+                    rtParsedData = parseCarouselText(text);
+                }
+                btn.disabled = false;
+                btn.textContent = 'Создать карусель';
+            } else {
+                rtParsedData = parseCarouselText(text);
+            }
+
+            if (rtParsedData.length === 0) {
+                showToast('Не удалось разбить текст на слайды', 'error');
+                return;
+            }
+
+            // Show parsed slides for editing
+            const container = document.getElementById('rtParsedSlides');
+            container.innerHTML = rtParsedData.map((s, i) => `
+                <div class="parsed-slide">
+                    <div class="parsed-slide-header">Слайд ${i + 1}</div>
+                    <input type="text" value="${(s.TITLE || '').replace(/"/g, '&quot;')}" onchange="rtParsedData[${i}].TITLE=this.value" placeholder="Заголовок">
+                    <textarea onchange="rtParsedData[${i}].DESCRIPTION=this.value" placeholder="Описание">${s.DESCRIPTION || ''}</textarea>
+                </div>
+            `).join('');
+
+            document.getElementById('rtParsedSection').style.display = '';
+            document.getElementById('rtPreview').classList.remove('visible');
+            showToast(`Разбито на ${rtParsedData.length} слайдов`, 'success');
+        }
+
+        async function renderFromParsedSlides() {
+            const templateId = document.getElementById('rtTemplateSelect').value;
+            const username = document.getElementById('rtUsername').value || '@username';
+
+            if (!templateId) {
+                showToast('Выберите шаблон', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('rtRenderBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> Генерация...';
+
+            try {
+                const r = await fetch(`${API_URL}/generate`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        template_id: templateId,
+                        username: username,
+                        slides: rtParsedData
+                    })
+                });
+
+                if (r.ok) {
+                    const data = await r.json();
+                    rtGeneratedImages = data.slides || [];
+                    renderPreviewGrid('rt', rtGeneratedImages);
+                    showToast('Карусель готова!', 'success');
+                } else {
+                    const err = await r.json().catch(() => ({}));
+                    showToast(err.detail || 'Ошибка генерации', 'error');
+                }
+            } catch (e) {
+                showToast('Ошибка подключения к серверу', 'error');
+            }
+
+            btn.disabled = false;
+            btn.textContent = 'Сгенерировать картинки';
+        }
+
+        function renderPreviewGrid(prefix, images) {
+            const grid = document.getElementById(`${prefix}PreviewGrid`);
+            grid.innerHTML = images.map((img, i) => `
+                <div class="preview-slide">
+                    <img src="${img.base64}" alt="Slide ${i + 1}">
+                    <div class="preview-slide-number">${i + 1}</div>
+                </div>
+            `).join('');
+            document.getElementById(`${prefix}Preview`).classList.add('visible');
+        }
+
+        function downloadAllGenerated(prefix) {
+            const images = prefix === 'rt' ? rtGeneratedImages : wizGeneratedImages;
+            images.forEach((img, i) => {
+                const a = document.createElement('a');
+                a.href = img.base64;
+                a.download = img.filename || `slide_${i + 1}.png`;
+                a.click();
+            });
+        }
+
+        // === WEBHOOK SETTINGS ===
+        let webhookSettings = JSON.parse(localStorage.getItem('craft_webhooks') || '{}');
+
+        function loadWebhookSettings() {
+            document.getElementById('settingsWebhookHeadlines').value = webhookSettings.headlines || '';
+            document.getElementById('settingsWebhookCopywriter').value = webhookSettings.copywriter || '';
+            document.getElementById('settingsWebhookFormat').value = webhookSettings.format || '';
+        }
+
+        function saveWebhookSettings() {
+            webhookSettings = {
+                headlines: document.getElementById('settingsWebhookHeadlines').value.trim(),
+                copywriter: document.getElementById('settingsWebhookCopywriter').value.trim(),
+                format: document.getElementById('settingsWebhookFormat').value.trim()
+            };
+            localStorage.setItem('craft_webhooks', JSON.stringify(webhookSettings));
+            showToast('Настройки сохранены', 'success');
+        }
+
+        // === CREATE FROM SCRATCH (WIZARD) TAB ===
+        let wizCurrentStep = 1;
+        let wizHeadlines = [];
+        let wizSelectedHeadline = '';
+        let wizSlidesData = [];
+        let wizGeneratedImages = [];
+
+        function wizardUpdateSteps() {
+            for (let i = 1; i <= 3; i++) {
+                const step = document.getElementById(`wizStep${i}`);
+                step.classList.remove('active', 'completed');
+                if (i < wizCurrentStep) step.classList.add('completed');
+                if (i === wizCurrentStep) step.classList.add('active');
+            }
+        }
+
+        function wizardGoBack(toStep) {
+            document.getElementById(`wizardPage${wizCurrentStep}`).style.display = 'none';
+            wizCurrentStep = toStep;
+            document.getElementById(`wizardPage${wizCurrentStep}`).style.display = '';
+            wizardUpdateSteps();
+        }
+
+        async function wizardStep1Next() {
+            const topic = document.getElementById('wizTopic').value.trim();
+            if (!topic) {
+                showToast('Введите тему карусели', 'error');
+                return;
+            }
+
+            // Try n8n webhook first, fallback to demo
+            if (webhookSettings.headlines) {
+                showToast('Генерация заголовков...', 'success');
+                try {
+                    const r = await fetch(webhookSettings.headlines, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ user_text: topic })
+                    });
+                    if (r.ok) {
+                        const data = await r.json();
+                        // n8n returns post_text with numbered headlines
+                        const text = data.post_text || data.text || '';
+                        // Parse numbered headlines from response
+                        const parsed = text.match(/\d+[\.\)]\s*(.+)/g);
+                        if (parsed && parsed.length > 0) {
+                            wizHeadlines = parsed.map(h => h.replace(/^\d+[\.\)]\s*/, '').trim());
+                        } else {
+                            // If can't parse, split by newlines
+                            wizHeadlines = text.split('\n').filter(l => l.trim() && l.trim().length > 5);
+                        }
+                    } else {
+                        throw new Error('Webhook error');
+                    }
+                } catch (e) {
+                    showToast('Ошибка n8n, используем демо-режим', 'error');
+                    wizHeadlines = generateDemoHeadlines(topic);
+                }
+            } else {
+                showToast('Генерация заголовков (демо-режим)', 'success');
+                wizHeadlines = generateDemoHeadlines(topic);
+            }
+
+            if (wizHeadlines.length === 0) {
+                showToast('Не удалось сгенерировать заголовки', 'error');
+                return;
+            }
+
+            // Show step 2
+            document.getElementById('wizardPage1').style.display = 'none';
+            document.getElementById('wizardPage2').style.display = '';
+            wizCurrentStep = 2;
+            wizardUpdateSteps();
+
+            // Render headlines
+            const container = document.getElementById('wizHeadlines');
+            container.innerHTML = wizHeadlines.map((h, i) => `
+                <div class="headline-option" onclick="selectHeadline(${i})" id="headline-${i}">${h}</div>
+            `).join('');
+
+            wizSelectedHeadline = '';
+            document.getElementById('wizStep2NextBtn').disabled = true;
+        }
+
+        function generateDemoHeadlines(topic) {
+            return [
+                `${topic}: полный гайд`,
+                `5 ошибок в "${topic}", которые совершают все`,
+                `Как "${topic}" изменит вашу жизнь`,
+                `${topic}: что нужно знать в 2025`,
+                `Секреты "${topic}", о которых молчат эксперты`,
+                `${topic} для начинающих: пошаговый план`,
+                `Почему "${topic}" — это важно`,
+                `${topic}: мифы vs реальность`,
+                `Топ-10 инсайтов про "${topic}"`,
+                `"${topic}": разбор от А до Я`
+            ];
+        }
+
+        function selectHeadline(index) {
+            document.querySelectorAll('.headline-option').forEach(el => el.classList.remove('selected'));
+            document.getElementById(`headline-${index}`).classList.add('selected');
+            wizSelectedHeadline = wizHeadlines[index];
+            document.getElementById('wizStep2NextBtn').disabled = false;
+        }
+
+        async function wizardStep2Next() {
+            if (!wizSelectedHeadline) {
+                showToast('Выберите заголовок', 'error');
+                return;
+            }
+
+            const topic = document.getElementById('wizTopic').value.trim();
+
+            // Try n8n webhook first, fallback to demo
+            if (webhookSettings.copywriter) {
+                showToast('Генерация текста...', 'success');
+                try {
+                    const r = await fetch(webhookSettings.copywriter, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            user_text: topic,
+                            selected_headline: wizSelectedHeadline,
+                            slides_count: 10
+                        })
+                    });
+                    if (r.ok) {
+                        const data = await r.json();
+                        // n8n returns {slides: [{slide_number, slide_type, TITLE, DESCRIPTION}]}
+                        if (data.slides && Array.isArray(data.slides)) {
+                            wizSlidesData = data.slides.map(s => ({
+                                TITLE: s.TITLE || '',
+                                DESCRIPTION: s.DESCRIPTION || ''
+                            }));
+                        } else if (Array.isArray(data)) {
+                            wizSlidesData = data.map(s => ({
+                                TITLE: s.TITLE || '',
+                                DESCRIPTION: s.DESCRIPTION || ''
+                            }));
+                        } else {
+                            throw new Error('Unexpected response format');
+                        }
+                    } else {
+                        throw new Error('Webhook error');
+                    }
+                } catch (e) {
+                    showToast('Ошибка n8n, используем демо-режим', 'error');
+                    wizSlidesData = generateDemoSlides(wizSelectedHeadline);
+                }
+            } else {
+                showToast('Генерация текста (демо-режим)', 'success');
+                wizSlidesData = generateDemoSlides(wizSelectedHeadline);
+            }
+
+            // Show step 3
+            document.getElementById('wizardPage2').style.display = 'none';
+            document.getElementById('wizardPage3').style.display = '';
+            wizCurrentStep = 3;
+            wizardUpdateSteps();
+
+            // Render editable slides
+            const container = document.getElementById('wizSlides');
+            container.innerHTML = wizSlidesData.map((s, i) => `
+                <div class="parsed-slide">
+                    <div class="parsed-slide-header">Слайд ${i + 1}</div>
+                    <input type="text" value="${s.TITLE.replace(/"/g, '&quot;')}" onchange="wizSlidesData[${i}].TITLE=this.value" placeholder="Заголовок">
+                    <textarea onchange="wizSlidesData[${i}].DESCRIPTION=this.value" placeholder="Описание">${s.DESCRIPTION}</textarea>
+                </div>
+            `).join('');
+        }
+
+        function generateDemoSlides(headline) {
+            return [
+                { TITLE: headline, DESCRIPTION: 'Свайпай, чтобы узнать больше →' },
+                { TITLE: 'Проблема', DESCRIPTION: 'Многие сталкиваются с этой проблемой, но не знают, как её решить' },
+                { TITLE: 'Решение', DESCRIPTION: 'Вот простой пошаговый план, который поможет вам' },
+                { TITLE: 'Шаг 1', DESCRIPTION: 'Начните с анализа текущей ситуации' },
+                { TITLE: 'Шаг 2', DESCRIPTION: 'Составьте план действий' },
+                { TITLE: 'Шаг 3', DESCRIPTION: 'Начните действовать и отслеживайте результаты' },
+                { TITLE: 'Результат', DESCRIPTION: 'Вы увидите первые изменения уже через неделю' },
+                { TITLE: 'Итог', DESCRIPTION: 'Сохрани этот пост и поделись с друзьями!' }
+            ];
+        }
+
+        async function wizardGenerate() {
+            const templateId = document.getElementById('wizTemplateSelect').value;
+            const username = document.getElementById('wizUsername').value || '@username';
+
+            if (!templateId) {
+                showToast('Выберите шаблон', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('wizGenerateBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> Генерация...';
+
+            try {
+                const r = await fetch(`${API_URL}/generate`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        template_id: templateId,
+                        username: username,
+                        slides: wizSlidesData
+                    })
+                });
+
+                if (r.ok) {
+                    const data = await r.json();
+                    wizGeneratedImages = data.slides || [];
+                    renderPreviewGrid('wiz', wizGeneratedImages);
+                    showToast('Карусель готова!', 'success');
+                } else {
+                    const err = await r.json().catch(() => ({}));
+                    showToast(err.detail || 'Ошибка генерации', 'error');
+                }
+            } catch (e) {
+                showToast('Ошибка подключения к серверу', 'error');
+            }
+
+            btn.disabled = false;
+            btn.innerHTML = 'Создать карусель';
+        }
+
         // Constants
         const CANVAS_W = 1080, CANVAS_H = 1350, SCALE = 405 / 1080, EDGE_PADDING = 48;
         const FONT_WEIGHTS = [
@@ -1153,6 +2774,7 @@
             await loadFonts();
             render();
             loadTemplatesList();
+            loadWebhookSettings();
 
             // NEW v7.0: Keyboard shortcuts for Undo/Redo
             document.addEventListener('keydown', (e) => {
@@ -1901,7 +3523,7 @@
                                 style="left:${el.x * SCALE}px;top:${el.y * SCALE}px;width:${el.width * SCALE}px;height:${el.height * SCALE}px;border-radius:${shape};${el.photo ? `background-image:url(${el.photo});` : ''}"
                                 onclick="selectElement('${el.id}',event)"
                                 onmousedown="startDrag('${el.id}',event)">
-                            ${!el.photo ? '🖼' : ''}
+                            ${!el.photo ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.4"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>' : ''}
                             ${isSelected ? `
                                 <div class="resize-handle se" onmousedown="startResize('${el.id}','se',event)"></div>
                                 <div class="resize-handle sw" onmousedown="startResize('${el.id}','sw',event)"></div>
@@ -1995,7 +3617,7 @@
             if (bg.type === 'photo') {
                 html += `<div class="props-group">
                     <button class="btn" style="width: 100%;" onclick="triggerPhotoUpload()">
-                        ${bg.photo ? '🖼 Изменить фото' : '📁 Загрузить фото'}
+                        ${bg.photo ? 'Изменить фото' : 'Загрузить фото'}
                     </button>
                 </div>`;
             }
@@ -2104,7 +3726,7 @@
 
                 if (isPhoto) {
                     html += `<div class="props-group">
-                        <button class="btn" style="width:100%" onclick="triggerElementPhotoUpload()">📷 Загрузить</button>
+                        <button class="btn" style="width:100%" onclick="triggerElementPhotoUpload()">Загрузить фото</button>
                     </div>`;
 
                     // NEW v7.0: Shape toggle (Rectangle/Circle)
@@ -2180,7 +3802,7 @@
                                 ${state.availableFonts.custom.map(f => `<option value="${f}" ${sel.fontFamily === f ? 'selected' : ''}>${f}</option>`).join('')}
                             </optgroup>` : ''}
                         </select>
-                        <button class="btn" style="margin-top: 8px; width: 100%;" onclick="triggerFontUpload()">📁 Upload Font</button>
+                        <button class="btn" style="margin-top: 8px; width: 100%;" onclick="triggerFontUpload()">Upload Font</button>
                     </div>`;
 
                     // Font size slider
@@ -2315,7 +3937,7 @@
 
                 html += `</div>`;
             } else {
-                html += `<div class="props-hint">👆 Выберите элемент</div>`;
+                html += `<div class="props-hint">Выберите элемент на canvas</div>`;
             }
 
             panel.innerHTML = html;
@@ -2681,16 +4303,19 @@
         }
 
         // Theme toggle
+        const sunSvg = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>';
+        const moonSvg = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>';
+
         function toggleTheme() {
             const body = document.body;
             const icon = document.getElementById('themeIcon');
 
             if (body.classList.contains('dark-theme')) {
                 body.classList.remove('dark-theme');
-                icon.textContent = '☀️';
+                icon.innerHTML = sunSvg;
             } else {
                 body.classList.add('dark-theme');
-                icon.textContent = '🌙';
+                icon.innerHTML = moonSvg;
             }
         }
 

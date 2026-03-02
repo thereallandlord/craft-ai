@@ -1061,6 +1061,33 @@ async def get_output(filename: str):
     raise HTTPException(status_code=404, detail="Not found")
 
 
+# === Whisper Transcription ===
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+
+@app.post("/api/transcribe")
+async def transcribe_audio(file: UploadFile = File(...)):
+    if not OPENAI_API_KEY:
+        raise HTTPException(status_code=500, detail="OPENAI_API_KEY not configured")
+
+    audio_data = await file.read()
+    if len(audio_data) == 0:
+        raise HTTPException(status_code=400, detail="Empty audio file")
+
+    try:
+        resp = requests.post(
+            "https://api.openai.com/v1/audio/transcriptions",
+            headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
+            files={"file": (file.filename or "audio.webm", audio_data, file.content_type or "audio/webm")},
+            data={"model": "whisper-1"}
+        )
+        if resp.status_code == 200:
+            return resp.json()
+        else:
+            raise HTTPException(status_code=resp.status_code, detail=resp.text)
+    except requests.RequestException as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
