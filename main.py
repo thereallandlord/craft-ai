@@ -1091,6 +1091,32 @@ async def transcribe_audio(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# === Chat Proxy ===
+class ChatProxyRequest(BaseModel):
+    webhook_url: str
+    payload: Dict[str, Any]
+
+
+@app.post("/api/chat")
+async def chat_proxy(request: ChatProxyRequest):
+    """Proxy chat requests to n8n webhook to avoid CORS issues."""
+    try:
+        resp = requests.post(
+            request.webhook_url,
+            json=request.payload,
+            headers={"Content-Type": "application/json"},
+            timeout=120,
+        )
+        if resp.status_code == 200:
+            return resp.json()
+        else:
+            raise HTTPException(status_code=resp.status_code, detail=resp.text)
+    except requests.Timeout:
+        raise HTTPException(status_code=504, detail="AI response timeout")
+    except requests.RequestException as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # === Telegram Auth ===
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_BOT_USERNAME = os.getenv("TELEGRAM_BOT_USERNAME", "")

@@ -1548,6 +1548,520 @@
             to { transform: rotate(360deg); }
         }
 
+        /* === CHAT INTERFACE === */
+        .chat-layout {
+            display: flex;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        .chat-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+
+        .chat-header {
+            padding: 12px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg-secondary);
+            flex-shrink: 0;
+        }
+
+        .chat-header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .chat-new-btn, .chat-toggle-settings-btn {
+            width: 32px;
+            height: 32px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+        }
+
+        .chat-new-btn:hover, .chat-toggle-settings-btn:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .chat-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .chat-msg {
+            max-width: 85%;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .chat-msg.user { align-self: flex-end; }
+        .chat-msg.ai { align-self: flex-start; }
+
+        .chat-msg-bubble {
+            padding: 10px 14px;
+            border-radius: 16px;
+            font-size: 14px;
+            line-height: 1.5;
+            word-break: break-word;
+            white-space: pre-wrap;
+        }
+
+        .chat-msg.user .chat-msg-bubble {
+            background: var(--accent);
+            color: #fff;
+            border-bottom-right-radius: 4px;
+        }
+
+        .chat-msg.ai .chat-msg-bubble {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border-bottom-left-radius: 4px;
+        }
+
+        .chat-msg-time {
+            font-size: 11px;
+            color: var(--text-muted);
+            padding: 0 4px;
+        }
+
+        .chat-msg.user .chat-msg-time { text-align: right; }
+
+        /* Typing indicator */
+        .chat-typing {
+            display: flex;
+            gap: 4px;
+            padding: 12px 16px;
+            background: var(--bg-tertiary);
+            border-radius: 16px;
+            border-bottom-left-radius: 4px;
+            width: fit-content;
+        }
+
+        .chat-typing-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--text-muted);
+            border-radius: 50%;
+            animation: chatTyping 1.4s infinite;
+        }
+
+        .chat-typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .chat-typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes chatTyping {
+            0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
+            30% { opacity: 1; transform: translateY(-4px); }
+        }
+
+        /* Headlines cards */
+        .chat-headlines-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-top: 8px;
+        }
+
+        .chat-headline-card {
+            padding: 10px 14px;
+            background: var(--bg-primary);
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            color: var(--text-primary);
+            transition: all 0.2s;
+            text-align: left;
+        }
+
+        .chat-headline-card:hover { border-color: var(--text-muted); }
+
+        .chat-headline-card.selected {
+            border-color: var(--accent);
+            background: var(--accent-light);
+        }
+
+        /* Editable slides in chat */
+        .chat-slides-editor {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .chat-slide-card {
+            padding: 10px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+
+        .chat-slide-card input,
+        .chat-slide-card textarea {
+            width: 100%;
+            padding: 6px 8px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-size: 13px;
+            font-family: inherit;
+            outline: none;
+            margin-bottom: 4px;
+        }
+
+        .chat-slide-card input:focus,
+        .chat-slide-card textarea:focus {
+            border-color: var(--accent);
+        }
+
+        .chat-slide-card textarea {
+            min-height: 50px;
+            resize: vertical;
+        }
+
+        .chat-slide-card-header {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+
+        /* Input bar */
+        .chat-input-bar {
+            padding: 12px 20px;
+            border-top: 1px solid var(--border);
+            background: var(--bg-secondary);
+            flex-shrink: 0;
+        }
+
+        .chat-input-wrapper {
+            display: flex;
+            align-items: flex-end;
+            gap: 8px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 6px 6px 6px 14px;
+        }
+
+        .chat-input {
+            flex: 1;
+            border: none;
+            background: transparent;
+            color: var(--text-primary);
+            font-size: 14px;
+            font-family: inherit;
+            outline: none;
+            resize: none;
+            max-height: 120px;
+            line-height: 1.4;
+            padding: 6px 0;
+        }
+
+        .chat-send-btn {
+            width: 36px;
+            height: 36px;
+            background: var(--accent);
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: opacity 0.2s;
+        }
+
+        .chat-send-btn:hover { opacity: 0.8; }
+        .chat-send-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+        .chat-voice-btn {
+            width: 36px;
+            height: 36px;
+            background: none;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .chat-voice-btn:hover { color: var(--text-primary); }
+        .chat-voice-btn.recording {
+            background: #dc2626;
+            color: #fff;
+            border-color: #dc2626;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        /* Settings Panel */
+        .chat-settings-panel {
+            width: 300px;
+            border-left: 1px solid var(--border);
+            background: var(--bg-secondary);
+            overflow-y: auto;
+            padding: 20px;
+            flex-shrink: 0;
+            transition: width 0.3s, padding 0.3s, opacity 0.3s;
+        }
+
+        .chat-settings-panel.collapsed {
+            width: 0;
+            padding: 0;
+            overflow: hidden;
+            border-left: none;
+            opacity: 0;
+        }
+
+        .chat-settings-section {
+            margin-bottom: 20px;
+        }
+
+        .chat-settings-title {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 10px;
+        }
+
+        .chat-username-selector {
+            display: flex;
+            gap: 8px;
+        }
+
+        .chat-username-selector select {
+            flex: 1;
+            padding: 8px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 13px;
+        }
+
+        .chat-add-btn {
+            width: 38px;
+            height: 38px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 18px;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .chat-add-btn:hover { background: var(--bg-hover); }
+
+        .chat-photo-library {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+
+        .chat-photo-thumb {
+            width: 56px;
+            height: 56px;
+            border-radius: 8px;
+            object-fit: cover;
+            border: 2px solid var(--border);
+            cursor: pointer;
+            position: relative;
+        }
+
+        .chat-photo-thumb:hover { border-color: var(--text-muted); }
+
+        .chat-slides-range {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .chat-slides-range input[type="range"] {
+            flex: 1;
+            accent-color: var(--accent);
+        }
+
+        .chat-slides-range span {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            min-width: 24px;
+            text-align: center;
+        }
+
+        .btn-generate-chat {
+            width: 100%;
+            padding: 14px;
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-generate-chat:hover { opacity: 0.9; }
+        .btn-generate-chat:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        /* Preview overlay */
+        .chat-preview-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        }
+
+        .chat-preview-content {
+            background: var(--bg-primary);
+            border-radius: 12px;
+            padding: 24px;
+            max-width: 900px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .chat-preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .chat-preview-close {
+            width: 32px;
+            height: 32px;
+            background: var(--bg-tertiary);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .chat-preview-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .chat-preview-actions .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            border: 1px solid var(--border);
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .chat-preview-actions .btn-primary {
+            background: var(--accent);
+            color: #fff;
+            border-color: var(--accent);
+        }
+
+        /* Welcome state */
+        .chat-welcome {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+            gap: 16px;
+            color: var(--text-muted);
+            text-align: center;
+            padding: 40px;
+        }
+
+        .chat-welcome-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .chat-welcome-suggestions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            margin-top: 8px;
+            max-width: 500px;
+        }
+
+        .chat-suggestion-chip {
+            padding: 8px 14px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 13px;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+        }
+
+        .chat-suggestion-chip:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+            border-color: var(--text-muted);
+        }
+
         /* === MOBILE ADAPTATION === */
         @media (max-width: 768px) {
             .app {
@@ -1775,6 +2289,26 @@
             .template-grid {
                 grid-template-columns: repeat(2, 1fr);
             }
+
+            .chat-layout {
+                flex-direction: column;
+            }
+
+            .chat-settings-panel {
+                width: 100% !important;
+                border-left: none;
+                border-top: 1px solid var(--border);
+                max-height: 50vh;
+                overflow-y: auto;
+            }
+
+            .chat-settings-panel.collapsed {
+                max-height: 0;
+                border-top: none;
+                padding: 0;
+            }
+
+            .chat-msg { max-width: 92%; }
         }
 
         /* === Login Overlay === */
@@ -1914,6 +2448,10 @@
             <div class="login-logo">CRAFT</div>
             <div class="login-subtitle">Генератор Instagram-каруселей</div>
             <div id="telegramLoginWidget"></div>
+            <div class="login-widget-loading" id="loginWidgetLoading" style="color:var(--text-muted);font-size:13px;padding:16px 0;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="animation: spin 1s linear infinite; vertical-align: middle; margin-right:6px;"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                Загрузка кнопки входа...
+            </div>
             <div class="login-loading" id="loginLoading">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="animation: spin 1s linear infinite; vertical-align: middle;"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
                 Проверяем данные...
@@ -2074,89 +2612,112 @@
             </div>
         </div>
 
-        <!-- === TAB: Create from Scratch (Wizard) === -->
+        <!-- === TAB: Create from Scratch (Chat) === -->
         <div class="tab-page" id="tab-create">
-            <div class="tab-page-content">
-                <div class="tab-page-title">Создать карусель с нуля</div>
-                <div class="tab-page-subtitle">Пошаговый помощник: тема → заголовки → текст → генерация</div>
-
-                <div class="wizard-steps">
-                    <div class="wizard-step active" id="wizStep1"></div>
-                    <div class="wizard-step" id="wizStep2"></div>
-                    <div class="wizard-step" id="wizStep3"></div>
-                </div>
-
-                <!-- Step 1: Topic -->
-                <div id="wizardPage1">
-                    <div style="font-size: 16px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">Шаг 1 из 3: Тема</div>
-                    <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 20px;">О чём будет карусель?</div>
-
-                    <div class="form-group">
-                        <label class="form-label">Тема карусели</label>
-                        <div class="voice-input-wrapper">
-                            <input type="text" class="form-input" id="wizTopic" placeholder="Например: 5 ошибок начинающих предпринимателей">
-                            <button class="voice-btn" id="wizVoiceBtn" onclick="toggleVoiceInput('wizTopic', 'wizVoiceBtn', 'wizVoiceStatus')" title="Голосовой ввод">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+            <div class="chat-layout">
+                <!-- Chat Area -->
+                <div class="chat-area">
+                    <div class="chat-header">
+                        <div class="chat-header-left">
+                            <button class="chat-new-btn" onclick="chatNewConversation()" title="Новый чат">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+                            </button>
+                            <span class="chat-title" id="chatTitle">Новая карусель</span>
+                        </div>
+                        <div class="chat-header-right">
+                            <button class="chat-toggle-settings-btn" onclick="toggleChatSettings()" title="Настройки генерации">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
                             </button>
                         </div>
-                        <div class="voice-status" id="wizVoiceStatus"></div>
                     </div>
 
-                    <div class="wizard-nav">
-                        <button class="btn btn-primary" onclick="wizardStep1Next()" style="flex:1;justify-content:center;padding:12px;">
-                            Сгенерировать заголовки →
-                        </button>
+                    <div class="chat-messages" id="chatMessages">
+                        <!-- Rendered by JS -->
                     </div>
-                </div>
 
-                <!-- Step 2: Headlines -->
-                <div id="wizardPage2" style="display:none">
-                    <div style="font-size: 16px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">Шаг 2 из 3: Выбери заголовок</div>
-                    <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 20px;">Выберите лучший заголовок для карусели</div>
-
-                    <div class="headline-list" id="wizHeadlines"></div>
-
-                    <div class="wizard-nav">
-                        <button class="btn" onclick="wizardGoBack(1)" style="flex:1;justify-content:center;padding:12px;">← Назад</button>
-                        <button class="btn btn-primary" onclick="wizardStep2Next()" id="wizStep2NextBtn" disabled style="flex:1;justify-content:center;padding:12px;">
-                            Создать текст →
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Step 3: Text + Generate -->
-                <div id="wizardPage3" style="display:none">
-                    <div style="font-size: 16px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">Шаг 3 из 3: Текст карусели</div>
-                    <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 20px;">Отредактируйте слайды и сгенерируйте картинки</div>
-
-                    <div class="form-group">
-                        <label class="form-label">Выберите шаблон</label>
-                        <div class="template-grid" id="wizTemplateGrid">
-                            <div style="color:var(--text-muted);font-size:13px;grid-column:1/-1;text-align:center;padding:20px;">Загрузка шаблонов...</div>
+                    <div class="chat-input-bar">
+                        <div class="chat-input-wrapper">
+                            <textarea class="chat-input" id="chatInput"
+                                placeholder="Опишите тему карусели или задайте вопрос..."
+                                rows="1"
+                                onkeydown="chatHandleKeydown(event)"
+                                oninput="chatAutoResize(this)"></textarea>
+                            <button class="chat-voice-btn" id="chatVoiceBtn"
+                                onclick="toggleVoiceInput('chatInput', 'chatVoiceBtn', 'chatVoiceStatus')"
+                                title="Голосовой ввод">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+                            </button>
+                            <button class="chat-send-btn" id="chatSendBtn" onclick="chatSendMessage()" title="Отправить">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg>
+                            </button>
                         </div>
-                        <input type="hidden" id="wizTemplateSelect" value="">
+                        <div class="voice-status" id="chatVoiceStatus"></div>
+                    </div>
+                </div>
+
+                <!-- Settings Panel -->
+                <div class="chat-settings-panel" id="chatSettingsPanel">
+                    <div class="chat-settings-section">
+                        <div class="chat-settings-title">Шаблон</div>
+                        <div class="template-grid" id="chatTemplateGrid">
+                            <div style="color:var(--text-muted);font-size:13px;grid-column:1/-1;text-align:center;padding:20px;">Загрузка...</div>
+                        </div>
+                        <input type="hidden" id="chatTemplateSelect" value="">
                     </div>
 
-                    <div class="form-group">
-                        <label class="form-label">Instagram</label>
-                        <input type="text" class="form-input" id="wizUsername" placeholder="@username" value="@username">
+                    <div class="chat-settings-section">
+                        <div class="chat-settings-title">Instagram</div>
+                        <div class="chat-username-selector">
+                            <select id="chatUsernameSelect" onchange="chatSelectUsername(this.value)">
+                                <option value="@username">@username</option>
+                            </select>
+                            <button class="chat-add-btn" onclick="chatAddUsername()" title="Добавить">+</button>
+                        </div>
                     </div>
 
-                    <div class="parsed-slides" id="wizSlides"></div>
-
-                    <div class="wizard-nav">
-                        <button class="btn" onclick="wizardGoBack(2)" style="flex:1;justify-content:center;padding:12px;">← Назад</button>
-                        <button class="btn btn-primary" onclick="wizardGenerate()" id="wizGenerateBtn" style="flex:1;justify-content:center;padding:12px;">
-                            Создать карусель
+                    <div class="chat-settings-section">
+                        <div class="chat-settings-title">Фото</div>
+                        <button class="btn" onclick="chatTriggerPhotoUpload()" style="font-size:13px;padding:8px 14px;width:100%;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+                            Загрузить фото
                         </button>
+                        <input type="file" id="chatPhotoUpload" accept="image/*" multiple
+                            onchange="chatHandlePhotoUpload(event)" style="display:none;">
+                        <div class="chat-photo-library" id="chatPhotoLibrary"></div>
                     </div>
 
-                    <!-- Generated images -->
-                    <div class="preview-section" id="wizPreview">
-                        <div class="preview-title">Готовые слайды</div>
-                        <div class="preview-grid" id="wizPreviewGrid"></div>
-                        <button class="btn-download-all" onclick="downloadAllGenerated('wiz')">
-                            Скачать все слайды
+                    <div class="chat-settings-section">
+                        <div class="chat-settings-title">Кол-во слайдов</div>
+                        <div class="chat-slides-range">
+                            <input type="range" min="3" max="15" value="10"
+                                id="chatSlidesCount" oninput="document.getElementById('chatSlidesCountVal').textContent=this.value">
+                            <span id="chatSlidesCountVal">10</span>
+                        </div>
+                    </div>
+
+                    <button class="btn-generate-chat" id="chatGenerateBtn" onclick="chatGenerateCarousel()" disabled>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/></svg>
+                        Сгенерировать карусель
+                    </button>
+                </div>
+            </div>
+
+            <!-- Preview overlay -->
+            <div class="chat-preview-overlay" id="chatPreviewOverlay" style="display:none">
+                <div class="chat-preview-content">
+                    <div class="chat-preview-header">
+                        <span>Готовая карусель</span>
+                        <button class="chat-preview-close" onclick="chatClosePreview()">&times;</button>
+                    </div>
+                    <div class="preview-grid" id="chatPreviewGrid"></div>
+                    <div class="chat-preview-actions">
+                        <button class="btn" onclick="chatEditInEditor()">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/></svg>
+                            Редактировать в редакторе
+                        </button>
+                        <button class="btn btn-primary" onclick="downloadAllGenerated('chat')">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+                            Скачать все
                         </button>
                     </div>
                 </div>
@@ -2215,6 +2776,11 @@
                     <div class="form-group">
                         <label class="form-label">Форматирование текста (FORMAT CAROUSEL TEXT)</label>
                         <input type="text" class="form-input" id="settingsWebhookFormat" placeholder="https://your-n8n.com/webhook/format-text" value="">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">AI Чат (Chat Webhook)</label>
+                        <input type="text" class="form-input" id="settingsWebhookChat" placeholder="https://your-n8n.com/webhook/carousel-chat" value="">
                     </div>
 
                     <button class="btn btn-primary" onclick="saveWebhookSettings()" style="width:100%;justify-content:center;">
@@ -2294,8 +2860,11 @@
             }
 
             // Load template selectors when switching to tabs that need them
-            if (tabId === 'ready-text' || tabId === 'create') {
+            if (tabId === 'ready-text') {
                 loadTemplateSelectors();
+            }
+            if (tabId === 'create') {
+                chatInitTab();
             }
         }
 
@@ -2317,7 +2886,7 @@
             templateCache = templates;
 
             // Render visual grids
-            ['rt', 'wiz'].forEach(prefix => {
+            ['rt', 'chat'].forEach(prefix => {
                 const grid = document.getElementById(`${prefix}TemplateGrid`);
                 const hiddenInput = document.getElementById(`${prefix}TemplateSelect`);
                 if (!grid) return;
@@ -2356,6 +2925,8 @@
             if (card) card.classList.add('selected');
             // Update hidden input
             document.getElementById(`${prefix}TemplateSelect`).value = templateId;
+            // Update generate button state for chat
+            if (prefix === 'chat') chatUpdateGenerateBtn();
         }
 
         function renderTemplatePreview(prefix, template) {
@@ -2619,7 +3190,7 @@
         }
 
         function downloadAllGenerated(prefix) {
-            const images = prefix === 'rt' ? rtGeneratedImages : wizGeneratedImages;
+            const images = prefix === 'rt' ? rtGeneratedImages : (prefix === 'chat' ? chatGeneratedImages : []);
             images.forEach((img, i) => {
                 const a = document.createElement('a');
                 a.href = img.base64;
@@ -2635,103 +3206,241 @@
             document.getElementById('settingsWebhookHeadlines').value = webhookSettings.headlines || '';
             document.getElementById('settingsWebhookCopywriter').value = webhookSettings.copywriter || '';
             document.getElementById('settingsWebhookFormat').value = webhookSettings.format || '';
+            document.getElementById('settingsWebhookChat').value = webhookSettings.chatWebhook || '';
         }
 
         function saveWebhookSettings() {
             webhookSettings = {
                 headlines: document.getElementById('settingsWebhookHeadlines').value.trim(),
                 copywriter: document.getElementById('settingsWebhookCopywriter').value.trim(),
-                format: document.getElementById('settingsWebhookFormat').value.trim()
+                format: document.getElementById('settingsWebhookFormat').value.trim(),
+                chatWebhook: document.getElementById('settingsWebhookChat').value.trim()
             };
             localStorage.setItem('craft_webhooks', JSON.stringify(webhookSettings));
             showToast('Настройки сохранены', 'success');
         }
 
-        // === CREATE FROM SCRATCH (WIZARD) TAB ===
-        let wizCurrentStep = 1;
-        let wizHeadlines = [];
-        let wizSelectedHeadline = '';
-        let wizSlidesData = [];
-        let wizGeneratedImages = [];
+        // === CREATE FROM SCRATCH (CHAT) TAB ===
+        let chatState = {
+            conversationId: null,
+            messages: [],
+            slidesData: null,
+            selectedHeadline: null,
+            isWaiting: false,
+            settingsCollapsed: false
+        };
+        let chatGeneratedImages = [];
 
-        function wizardUpdateSteps() {
-            for (let i = 1; i <= 3; i++) {
-                const step = document.getElementById(`wizStep${i}`);
-                step.classList.remove('active', 'completed');
-                if (i < wizCurrentStep) step.classList.add('completed');
-                if (i === wizCurrentStep) step.classList.add('active');
+        function chatNewConversation() {
+            const id = 'chat_' + Date.now();
+            chatState.conversationId = id;
+            chatState.messages = [];
+            chatState.slidesData = null;
+            chatState.selectedHeadline = null;
+            chatState.isWaiting = false;
+            localStorage.setItem('craft_chat_current', id);
+            chatRenderMessages();
+            chatUpdateGenerateBtn();
+            document.getElementById('chatTitle').textContent = 'Новая карусель';
+        }
+
+        function chatSaveMessages() {
+            if (!chatState.conversationId) return;
+            localStorage.setItem('craft_chat_msg_' + chatState.conversationId, JSON.stringify(chatState.messages));
+            let convos = JSON.parse(localStorage.getItem('craft_chat_conversations') || '[]');
+            const existing = convos.find(c => c.id === chatState.conversationId);
+            const title = chatState.messages.find(m => m.role === 'user')?.content?.substring(0, 50) || 'Новая карусель';
+            if (existing) {
+                existing.title = title;
+            } else {
+                convos.push({ id: chatState.conversationId, title, createdAt: new Date().toISOString() });
             }
+            localStorage.setItem('craft_chat_conversations', JSON.stringify(convos));
+            document.getElementById('chatTitle').textContent = title;
         }
 
-        function wizardGoBack(toStep) {
-            document.getElementById(`wizardPage${wizCurrentStep}`).style.display = 'none';
-            wizCurrentStep = toStep;
-            document.getElementById(`wizardPage${wizCurrentStep}`).style.display = '';
-            wizardUpdateSteps();
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
 
-        async function wizardStep1Next() {
-            const topic = document.getElementById('wizTopic').value.trim();
-            if (!topic) {
-                showToast('Введите тему карусели', 'error');
+        function chatRenderMessages() {
+            const container = document.getElementById('chatMessages');
+
+            if (chatState.messages.length === 0) {
+                container.innerHTML = `
+                    <div class="chat-welcome">
+                        <div class="chat-welcome-title">Создать карусель с помощью AI</div>
+                        <div style="font-size:13px;color:var(--text-secondary);max-width:400px;">
+                            Опишите тему карусели, и AI поможет создать заголовки и тексты для слайдов
+                        </div>
+                        <div class="chat-welcome-suggestions">
+                            <div class="chat-suggestion-chip" onclick="chatUseSuggestion('5 ошибок начинающих предпринимателей')">5 ошибок предпринимателей</div>
+                            <div class="chat-suggestion-chip" onclick="chatUseSuggestion('Как увеличить продажи в Instagram')">Продажи в Instagram</div>
+                            <div class="chat-suggestion-chip" onclick="chatUseSuggestion('Утренние привычки успешных людей')">Утренние привычки</div>
+                        </div>
+                    </div>
+                `;
                 return;
             }
 
-            // Try n8n webhook first, fallback to demo
-            if (webhookSettings.headlines) {
-                showToast('Генерация заголовков...', 'success');
-                try {
-                    const r = await fetch(webhookSettings.headlines, {
+            container.innerHTML = chatState.messages.map((msg, idx) => {
+                const side = msg.role === 'user' ? 'user' : 'ai';
+                let bubbleContent = escapeHtml(msg.content);
+
+                if (msg.type === 'headlines' && msg.data) {
+                    bubbleContent += `<div class="chat-headlines-grid">
+                        ${msg.data.map((h, i) => `
+                            <div class="chat-headline-card ${chatState.selectedHeadline === h ? 'selected' : ''}"
+                                 onclick="chatSelectHeadline(${idx}, ${i})">
+                                ${escapeHtml(h)}
+                            </div>
+                        `).join('')}
+                    </div>`;
+                }
+
+                if (msg.type === 'slides' && msg.data) {
+                    bubbleContent += `<div class="chat-slides-editor">
+                        ${msg.data.map((s, i) => `
+                            <div class="chat-slide-card">
+                                <div class="chat-slide-card-header">Слайд ${i + 1}</div>
+                                <input type="text" value="${escapeHtml(s.TITLE || '')}"
+                                    onchange="chatUpdateSlide(${idx}, ${i}, 'TITLE', this.value)">
+                                <textarea onchange="chatUpdateSlide(${idx}, ${i}, 'DESCRIPTION', this.value)">${escapeHtml(s.DESCRIPTION || '')}</textarea>
+                            </div>
+                        `).join('')}
+                    </div>`;
+                }
+
+                const time = new Date(msg.timestamp).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+
+                return `<div class="chat-msg ${side}">
+                    <div class="chat-msg-bubble">${bubbleContent}</div>
+                    <div class="chat-msg-time">${time}</div>
+                </div>`;
+            }).join('');
+
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function chatUseSuggestion(text) {
+            document.getElementById('chatInput').value = text;
+            chatSendMessage();
+        }
+
+        function chatHandleKeydown(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                chatSendMessage();
+            }
+        }
+
+        function chatAutoResize(textarea) {
+            textarea.style.height = 'auto';
+            textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
+        }
+
+        async function chatSendMessage() {
+            const input = document.getElementById('chatInput');
+            const text = input.value.trim();
+            if (!text || chatState.isWaiting) return;
+
+            chatState.messages.push({
+                role: 'user', content: text, type: 'text', data: null, timestamp: Date.now()
+            });
+
+            input.value = '';
+            chatAutoResize(input);
+            chatRenderMessages();
+            chatSaveMessages();
+
+            chatState.isWaiting = true;
+            chatShowTyping();
+
+            const messagesForAI = chatState.messages.map(m => ({
+                role: m.role === 'ai' ? 'assistant' : 'user',
+                content: m.content
+            }));
+
+            const slidesCount = parseInt(document.getElementById('chatSlidesCount')?.value || '10');
+
+            try {
+                const webhookUrl = webhookSettings.chatWebhook;
+                let aiResponse;
+
+                if (webhookUrl) {
+                    // Use n8n webhook via backend proxy
+                    const r = await fetch(`${API_URL}/api/chat`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ user_text: topic })
+                        body: JSON.stringify({
+                            webhook_url: webhookUrl,
+                            payload: { messages: messagesForAI, slides_count: slidesCount }
+                        })
                     });
-                    if (r.ok) {
-                        const data = await r.json();
-                        // n8n returns post_text with numbered headlines
-                        const text = data.post_text || data.text || '';
-                        // Parse numbered headlines from response
-                        const parsed = text.match(/\d+[\.\)]\s*(.+)/g);
-                        if (parsed && parsed.length > 0) {
-                            wizHeadlines = parsed.map(h => h.replace(/^\d+[\.\)]\s*/, '').trim());
-                        } else {
-                            // If can't parse, split by newlines
-                            wizHeadlines = text.split('\n').filter(l => l.trim() && l.trim().length > 5);
-                        }
-                    } else {
-                        throw new Error('Webhook error');
-                    }
-                } catch (e) {
-                    showToast('Ошибка n8n, используем демо-режим', 'error');
-                    wizHeadlines = generateDemoHeadlines(topic);
+                    if (!r.ok) throw new Error('Webhook error');
+                    aiResponse = await r.json();
+                } else {
+                    // Demo fallback
+                    aiResponse = chatDemoResponse(text, chatState);
                 }
-            } else {
-                showToast('Генерация заголовков (демо-режим)', 'success');
-                wizHeadlines = generateDemoHeadlines(topic);
+
+                const aiMsg = {
+                    role: 'ai',
+                    content: aiResponse.message || aiResponse.text || '',
+                    type: aiResponse.type || 'text',
+                    data: null,
+                    timestamp: Date.now()
+                };
+
+                if (aiResponse.type === 'headlines' && aiResponse.headlines) {
+                    aiMsg.data = aiResponse.headlines;
+                } else if (aiResponse.type === 'slides' && aiResponse.slides) {
+                    aiMsg.data = aiResponse.slides;
+                    chatState.slidesData = aiResponse.slides;
+                }
+
+                chatState.messages.push(aiMsg);
+
+            } catch (e) {
+                chatState.messages.push({
+                    role: 'ai',
+                    content: 'Не удалось подключиться к AI. Проверьте настройку Chat Webhook в разделе Настройки.',
+                    type: 'text', data: null, timestamp: Date.now()
+                });
             }
 
-            if (wizHeadlines.length === 0) {
-                showToast('Не удалось сгенерировать заголовки', 'error');
-                return;
-            }
-
-            // Show step 2
-            document.getElementById('wizardPage1').style.display = 'none';
-            document.getElementById('wizardPage2').style.display = '';
-            wizCurrentStep = 2;
-            wizardUpdateSteps();
-
-            // Render headlines
-            const container = document.getElementById('wizHeadlines');
-            container.innerHTML = wizHeadlines.map((h, i) => `
-                <div class="headline-option" onclick="selectHeadline(${i})" id="headline-${i}">${h}</div>
-            `).join('');
-
-            wizSelectedHeadline = '';
-            document.getElementById('wizStep2NextBtn').disabled = true;
+            chatState.isWaiting = false;
+            chatHideTyping();
+            chatRenderMessages();
+            chatSaveMessages();
+            chatUpdateGenerateBtn();
         }
 
-        function generateDemoHeadlines(topic) {
+        // Demo fallback when no webhook configured
+        function chatDemoResponse(userText, state) {
+            const lowerText = userText.toLowerCase();
+
+            // If user selected a headline (auto-sent message)
+            if (lowerText.includes('мне нравится:') || lowerText.includes('выбираю:') || lowerText.includes('создай текст')) {
+                const headline = state.selectedHeadline || userText;
+                return {
+                    message: `Отлично! Создал текст для ${parseInt(document.getElementById('chatSlidesCount')?.value || '10')} слайдов. Вы можете отредактировать каждый слайд:`,
+                    type: 'slides',
+                    slides: chatGenerateDemoSlides(headline)
+                };
+            }
+
+            // Default: generate headlines
+            return {
+                message: `Вот 10 вариантов заголовков для карусели на тему "${userText}". Нажмите на понравившийся:`,
+                type: 'headlines',
+                headlines: chatGenerateDemoHeadlines(userText)
+            };
+        }
+
+        function chatGenerateDemoHeadlines(topic) {
             return [
                 `${topic}: полный гайд`,
                 `5 ошибок в "${topic}", которые совершают все`,
@@ -2746,82 +3455,9 @@
             ];
         }
 
-        function selectHeadline(index) {
-            document.querySelectorAll('.headline-option').forEach(el => el.classList.remove('selected'));
-            document.getElementById(`headline-${index}`).classList.add('selected');
-            wizSelectedHeadline = wizHeadlines[index];
-            document.getElementById('wizStep2NextBtn').disabled = false;
-        }
-
-        async function wizardStep2Next() {
-            if (!wizSelectedHeadline) {
-                showToast('Выберите заголовок', 'error');
-                return;
-            }
-
-            const topic = document.getElementById('wizTopic').value.trim();
-
-            // Try n8n webhook first, fallback to demo
-            if (webhookSettings.copywriter) {
-                showToast('Генерация текста...', 'success');
-                try {
-                    const r = await fetch(webhookSettings.copywriter, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            user_text: topic,
-                            selected_headline: wizSelectedHeadline,
-                            slides_count: 10
-                        })
-                    });
-                    if (r.ok) {
-                        const data = await r.json();
-                        // n8n returns {slides: [{slide_number, slide_type, TITLE, DESCRIPTION}]}
-                        if (data.slides && Array.isArray(data.slides)) {
-                            wizSlidesData = data.slides.map(s => ({
-                                TITLE: s.TITLE || '',
-                                DESCRIPTION: s.DESCRIPTION || ''
-                            }));
-                        } else if (Array.isArray(data)) {
-                            wizSlidesData = data.map(s => ({
-                                TITLE: s.TITLE || '',
-                                DESCRIPTION: s.DESCRIPTION || ''
-                            }));
-                        } else {
-                            throw new Error('Unexpected response format');
-                        }
-                    } else {
-                        throw new Error('Webhook error');
-                    }
-                } catch (e) {
-                    showToast('Ошибка n8n, используем демо-режим', 'error');
-                    wizSlidesData = generateDemoSlides(wizSelectedHeadline);
-                }
-            } else {
-                showToast('Генерация текста (демо-режим)', 'success');
-                wizSlidesData = generateDemoSlides(wizSelectedHeadline);
-            }
-
-            // Show step 3
-            document.getElementById('wizardPage2').style.display = 'none';
-            document.getElementById('wizardPage3').style.display = '';
-            wizCurrentStep = 3;
-            wizardUpdateSteps();
-
-            // Render editable slides
-            const container = document.getElementById('wizSlides');
-            container.innerHTML = wizSlidesData.map((s, i) => `
-                <div class="parsed-slide">
-                    <div class="parsed-slide-header">Слайд ${i + 1}</div>
-                    <input type="text" value="${s.TITLE.replace(/"/g, '&quot;')}" onchange="wizSlidesData[${i}].TITLE=this.value" placeholder="Заголовок">
-                    <textarea onchange="wizSlidesData[${i}].DESCRIPTION=this.value" placeholder="Описание">${s.DESCRIPTION}</textarea>
-                </div>
-            `).join('');
-        }
-
-        function generateDemoSlides(headline) {
+        function chatGenerateDemoSlides(headline) {
             return [
-                { TITLE: headline, DESCRIPTION: 'Свайпай, чтобы узнать больше →' },
+                { TITLE: headline, DESCRIPTION: 'Свайпай, чтобы узнать больше' },
                 { TITLE: 'Проблема', DESCRIPTION: 'Многие сталкиваются с этой проблемой, но не знают, как её решить' },
                 { TITLE: 'Решение', DESCRIPTION: 'Вот простой пошаговый план, который поможет вам' },
                 { TITLE: 'Шаг 1', DESCRIPTION: 'Начните с анализа текущей ситуации' },
@@ -2832,18 +3468,72 @@
             ];
         }
 
-        async function wizardGenerate() {
-            const templateId = document.getElementById('wizTemplateSelect').value;
-            const username = document.getElementById('wizUsername').value || '@username';
+        function chatSelectHeadline(msgIdx, headlineIdx) {
+            const headline = chatState.messages[msgIdx]?.data?.[headlineIdx];
+            if (!headline) return;
+            chatState.selectedHeadline = headline;
+            chatRenderMessages();
+
+            document.getElementById('chatInput').value = `Мне нравится: "${headline}". Создай текст для слайдов.`;
+            chatSendMessage();
+        }
+
+        function chatUpdateSlide(msgIdx, slideIdx, field, value) {
+            if (chatState.messages[msgIdx]?.data?.[slideIdx]) {
+                chatState.messages[msgIdx].data[slideIdx][field] = value;
+            }
+            if (chatState.slidesData?.[slideIdx]) {
+                chatState.slidesData[slideIdx][field] = value;
+            }
+            chatSaveMessages();
+            chatUpdateGenerateBtn();
+        }
+
+        function chatShowTyping() {
+            const container = document.getElementById('chatMessages');
+            const typing = document.createElement('div');
+            typing.id = 'chatTypingIndicator';
+            typing.className = 'chat-msg ai';
+            typing.innerHTML = `<div class="chat-typing">
+                <div class="chat-typing-dot"></div>
+                <div class="chat-typing-dot"></div>
+                <div class="chat-typing-dot"></div>
+            </div>`;
+            container.appendChild(typing);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function chatHideTyping() {
+            const el = document.getElementById('chatTypingIndicator');
+            if (el) el.remove();
+        }
+
+        function chatUpdateGenerateBtn() {
+            const btn = document.getElementById('chatGenerateBtn');
+            const templateId = document.getElementById('chatTemplateSelect')?.value;
+            if (btn) {
+                btn.disabled = !(chatState.slidesData && chatState.slidesData.length > 0 && templateId);
+            }
+        }
+
+        async function chatGenerateCarousel() {
+            if (!chatState.slidesData || chatState.slidesData.length === 0) {
+                showToast('Нет данных для генерации. Продолжите диалог с AI.', 'error');
+                return;
+            }
+
+            const templateId = document.getElementById('chatTemplateSelect').value;
+            const username = document.getElementById('chatUsernameSelect').value || '@username';
 
             if (!templateId) {
                 showToast('Выберите шаблон', 'error');
                 return;
             }
 
-            const btn = document.getElementById('wizGenerateBtn');
+            const btn = document.getElementById('chatGenerateBtn');
             btn.disabled = true;
-            btn.innerHTML = '<span class="spinner"></span> Генерация...';
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation:spin 1s linear infinite"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Генерация...';
 
             try {
                 const r = await fetch(`${API_URL}/generate`, {
@@ -2852,14 +3542,15 @@
                     body: JSON.stringify({
                         template_id: templateId,
                         username: username,
-                        slides: wizSlidesData
+                        slides: chatState.slidesData
                     })
                 });
 
                 if (r.ok) {
                     const data = await r.json();
-                    wizGeneratedImages = data.slides || [];
-                    renderPreviewGrid('wiz', wizGeneratedImages);
+                    chatGeneratedImages = data.slides || [];
+                    renderPreviewGrid('chat', chatGeneratedImages);
+                    chatShowPreview();
                     showToast('Карусель готова!', 'success');
                 } else {
                     const err = await r.json().catch(() => ({}));
@@ -2870,7 +3561,102 @@
             }
 
             btn.disabled = false;
-            btn.innerHTML = 'Создать карусель';
+            btn.innerHTML = originalText;
+            chatUpdateGenerateBtn();
+        }
+
+        function chatShowPreview() {
+            document.getElementById('chatPreviewOverlay').style.display = 'flex';
+        }
+
+        function chatClosePreview() {
+            document.getElementById('chatPreviewOverlay').style.display = 'none';
+        }
+
+        function chatEditInEditor() {
+            chatClosePreview();
+            switchTab('editor');
+            showToast('Карусель загружена в редактор', 'success');
+        }
+
+        function toggleChatSettings() {
+            const panel = document.getElementById('chatSettingsPanel');
+            chatState.settingsCollapsed = !chatState.settingsCollapsed;
+            panel.classList.toggle('collapsed', chatState.settingsCollapsed);
+        }
+
+        // Username management
+        function chatLoadUsernames() {
+            const usernames = JSON.parse(localStorage.getItem('craft_usernames') || '["@username"]');
+            const select = document.getElementById('chatUsernameSelect');
+            if (select) {
+                select.innerHTML = usernames.map(u => `<option value="${u}">${u}</option>`).join('');
+            }
+        }
+
+        function chatAddUsername() {
+            const name = prompt('Instagram username:');
+            if (!name) return;
+            const formatted = name.startsWith('@') ? name : '@' + name;
+            let usernames = JSON.parse(localStorage.getItem('craft_usernames') || '["@username"]');
+            if (!usernames.includes(formatted)) {
+                usernames.push(formatted);
+                localStorage.setItem('craft_usernames', JSON.stringify(usernames));
+            }
+            chatLoadUsernames();
+            document.getElementById('chatUsernameSelect').value = formatted;
+        }
+
+        function chatSelectUsername(value) {}
+
+        // Photo library
+        function chatTriggerPhotoUpload() {
+            document.getElementById('chatPhotoUpload').click();
+        }
+
+        function chatHandlePhotoUpload(event) {
+            const files = event.target.files;
+            if (!files.length) return;
+            let library = JSON.parse(localStorage.getItem('craft_photo_library') || '[]');
+            Array.from(files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    library.push({
+                        id: 'photo_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+                        data: e.target.result,
+                        name: file.name,
+                        addedAt: Date.now()
+                    });
+                    localStorage.setItem('craft_photo_library', JSON.stringify(library));
+                    chatRenderPhotoLibrary();
+                };
+                reader.readAsDataURL(file);
+            });
+            event.target.value = '';
+        }
+
+        function chatRenderPhotoLibrary() {
+            const container = document.getElementById('chatPhotoLibrary');
+            if (!container) return;
+            const library = JSON.parse(localStorage.getItem('craft_photo_library') || '[]');
+            if (library.length === 0) {
+                container.innerHTML = '<div style="font-size:12px;color:var(--text-muted);">Нет загруженных фото</div>';
+                return;
+            }
+            container.innerHTML = library.map(p =>
+                `<img class="chat-photo-thumb" src="${p.data}" title="${escapeHtml(p.name)}">`
+            ).join('');
+        }
+
+        function chatInitTab() {
+            loadTemplateSelectors();
+            chatLoadUsernames();
+            chatRenderPhotoLibrary();
+            if (!chatState.conversationId) {
+                chatNewConversation();
+            } else {
+                chatRenderMessages();
+            }
         }
 
         // Constants
@@ -2944,6 +3730,7 @@
                 } catch(e) {}
 
                 if (!botUsername) {
+                    document.getElementById('loginWidgetLoading').style.display = 'none';
                     document.getElementById('loginError').textContent = 'Telegram Login не настроен. Обратитесь к администратору.';
                     document.getElementById('loginError').style.display = 'block';
                     return;
@@ -2957,6 +3744,12 @@
                 script.setAttribute('data-radius', '12');
                 script.setAttribute('data-onauth', 'onTelegramAuth(user)');
                 script.setAttribute('data-request-access', 'write');
+                script.onload = () => {
+                    // Hide loading spinner when widget script loads
+                    setTimeout(() => {
+                        document.getElementById('loginWidgetLoading').style.display = 'none';
+                    }, 500);
+                };
                 container.appendChild(script);
             }
         }
