@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CRAFT v7.0 - Carousel Studio</title>
+    <title>Craft AI</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%233b82f6'/><text x='50' y='68' font-size='50' font-family='Arial' font-weight='bold' fill='white' text-anchor='middle'>C</text></svg>">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Montserrat:wght@300;400;500;600;700;800;900&family=Roboto:wght@300;400;500;700;900&family=Open+Sans:wght@300;400;500;600;700;800&family=Oswald:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
         * {
@@ -2644,7 +2645,22 @@
 
                 <div class="form-group">
                     <label class="form-label">Instagram</label>
-                    <input type="text" class="form-input" id="rtUsername" placeholder="@username" value="@username">
+                    <div style="display:flex;gap:8px;">
+                        <select class="form-input" id="rtUsername" style="flex:1;">
+                            <option value="@username">@username</option>
+                        </select>
+                        <button class="btn" onclick="rtAddUsername()" style="white-space:nowrap;padding:8px 12px;">+</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Фото</label>
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <button class="btn" onclick="document.getElementById('rtPhotoInput').click()" style="white-space:nowrap;">Загрузить фото</button>
+                        <input type="file" id="rtPhotoInput" accept="image/*" style="display:none" onchange="rtHandlePhoto(this)">
+                        <span id="rtPhotoName" style="font-size:12px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+                    </div>
+                    <div id="rtPhotoLibrary" style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;"></div>
                 </div>
 
                 <div class="form-group">
@@ -2723,7 +2739,11 @@
                 <div class="chat-settings-panel" id="chatSettingsPanel">
                     <div class="chat-settings-section">
                         <div class="chat-settings-title">Шаблон</div>
-                        <div class="template-grid" id="chatTemplateGrid">
+                        <button class="btn" id="chatTemplatePickerBtn" onclick="chatToggleTemplatePicker()" style="width:100%;justify-content:center;gap:8px;display:flex;align-items:center;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>
+                            <span id="chatTemplatePickerLabel">Выбрать шаблон</span>
+                        </button>
+                        <div class="template-grid" id="chatTemplateGrid" style="display:none;margin-top:8px;">
                             <div style="color:var(--text-muted);font-size:13px;grid-column:1/-1;text-align:center;padding:20px;">Загрузка...</div>
                         </div>
                         <input type="hidden" id="chatTemplateSelect" value="">
@@ -2945,6 +2965,8 @@
             // Load template selectors when switching to tabs that need them
             if (tabId === 'ready-text') {
                 loadTemplateSelectors();
+                rtLoadUsernames();
+                rtRenderPhotoLibrary();
             }
             if (tabId === 'create') {
                 chatInitTab();
@@ -3015,7 +3037,23 @@
             // Update hidden input
             document.getElementById(`${prefix}TemplateSelect`).value = templateId;
             // Update generate button state for chat
-            if (prefix === 'chat') chatUpdateGenerateBtn();
+            if (prefix === 'chat') {
+                chatUpdateGenerateBtn();
+                // Update picker button label and collapse grid
+                const t = templateCache.find(t => (t.template_id || t.name) === templateId);
+                const label = document.getElementById('chatTemplatePickerLabel');
+                if (label && t) label.textContent = t.name;
+                const chatGrid = document.getElementById('chatTemplateGrid');
+                if (chatGrid) chatGrid.style.display = 'none';
+            }
+        }
+
+        function chatToggleTemplatePicker() {
+            const grid = document.getElementById('chatTemplateGrid');
+            if (!grid) return;
+            const isHidden = grid.style.display === 'none';
+            grid.style.display = isHidden ? '' : 'none';
+            if (isHidden) loadTemplateSelectors();
         }
 
         function renderTemplatePreview(prefix, template) {
@@ -3023,10 +3061,12 @@
             const container = document.getElementById(`${prefix}-preview-${tid}`);
             if (!container || !template.slides || !template.slides[0]) return;
 
-            // Render first slide as mini preview (same approach as sidebar thumbnails)
             const slide = template.slides[0];
-            const ms = 0.13; // mini scale
-            let html = '';
+            const W = 1080, H = 1350;
+            const containerW = container.offsetWidth || 80;
+            const scale = containerW / W;
+
+            let html = `<div style="position:absolute;top:0;left:0;width:${W}px;height:${H}px;transform:scale(${scale});transform-origin:top left;">`;
 
             const bg = slide.background || {};
             if (bg.type === 'photo' && bg.photo) {
@@ -3039,10 +3079,29 @@
                 html += `<div style="position:absolute;inset:0;background:${bg.color || '#f5f5f5'}"></div>`;
             }
 
-            // Skip text elements in mini previews — too small to read
+            // Render text elements at full size, CSS scale handles the rest
+            (slide.elements || []).forEach(el => {
+                if (el.type === 'photo') {
+                    if (el.src) {
+                        html += `<div style="position:absolute;left:${el.x}px;top:${el.y}px;width:${el.width || 200}px;height:${el.height || 200}px;border-radius:${el.borderRadius || 0}px;overflow:hidden;"><img src="${el.src}" style="width:100%;height:100%;object-fit:cover;"></div>`;
+                    }
+                    return;
+                }
+                let content = el.content || '';
+                if (el.type === 'username') content = template.settings?.username || '@username';
+                if (el.type === 'slidenum') content = `1/${template.slides.length}`;
+                const hc = el.highlightColor || '#c8ff00';
+                content = content.replace(/\*([^*]+)\*/g, `<span style="color:${hc}">$1</span>`).replace(/\n/g, '<br>');
+                const widthStyle = el.maxWidth ? `max-width:${el.maxWidth}px;` : '';
+                const alignMap = { right: 'translateX(-100%)', center: 'translateX(-50%)' };
+                const transformStyle = alignMap[el.align] ? `transform:${alignMap[el.align]};` : '';
+                html += `<div style="position:absolute;left:${el.x}px;top:${el.y}px;font-family:'${el.fontFamily}',sans-serif;font-size:${el.fontSize}px;font-weight:${el.fontWeight};color:${el.color};opacity:${(el.opacity || 100) / 100};line-height:${el.lineHeight || 1.2};${widthStyle}${transformStyle}overflow:hidden;white-space:nowrap;">${content}</div>`;
+            });
 
+            html += '</div>';
             container.innerHTML = html;
             container.style.position = 'relative';
+            container.style.overflow = 'hidden';
         }
 
         // === VOICE INPUT (Whisper) ===
@@ -3158,6 +3217,58 @@
             });
 
             return slides;
+        }
+
+        // Ready Text: username selector (shared with chat)
+        function rtLoadUsernames() {
+            const select = document.getElementById('rtUsername');
+            if (!select) return;
+            const usernames = JSON.parse(localStorage.getItem('craft_usernames') || '[]');
+            const current = select.value;
+            select.innerHTML = '<option value="@username">@username</option>';
+            usernames.forEach(u => {
+                select.innerHTML += `<option value="${u}" ${u === current ? 'selected' : ''}>${u}</option>`;
+            });
+        }
+
+        function rtAddUsername() {
+            const name = prompt('Введите Instagram username:');
+            if (!name) return;
+            const username = name.startsWith('@') ? name : '@' + name;
+            const list = JSON.parse(localStorage.getItem('craft_usernames') || '[]');
+            if (!list.includes(username)) {
+                list.push(username);
+                localStorage.setItem('craft_usernames', JSON.stringify(list));
+            }
+            rtLoadUsernames();
+            document.getElementById('rtUsername').value = username;
+        }
+
+        function rtHandlePhoto(input) {
+            const file = input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const lib = JSON.parse(localStorage.getItem('craft_photo_library') || '[]');
+                const entry = { id: 'photo_' + Date.now(), data: e.target.result, name: file.name };
+                lib.push(entry);
+                localStorage.setItem('craft_photo_library', JSON.stringify(lib));
+                document.getElementById('rtPhotoName').textContent = file.name;
+                rtRenderPhotoLibrary();
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function rtRenderPhotoLibrary() {
+            const container = document.getElementById('rtPhotoLibrary');
+            if (!container) return;
+            const lib = JSON.parse(localStorage.getItem('craft_photo_library') || '[]');
+            if (lib.length === 0) { container.innerHTML = ''; return; }
+            container.innerHTML = lib.map(p => `
+                <div style="width:48px;height:48px;border-radius:6px;overflow:hidden;border:2px solid var(--border);cursor:pointer;flex-shrink:0;" title="${escapeHtml(p.name)}">
+                    <img src="${p.data}" style="width:100%;height:100%;object-fit:cover;">
+                </div>
+            `).join('');
         }
 
         async function generateFromReadyText() {
