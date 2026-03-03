@@ -25,6 +25,9 @@ import os
 import io
 import re
 import uuid
+import hashlib
+import hmac
+import time
 import numpy as np
 
 app = FastAPI(title="Carousel Studio", version="7.0")
@@ -1086,6 +1089,90 @@ async def transcribe_audio(file: UploadFile = File(...)):
             raise HTTPException(status_code=resp.status_code, detail=resp.text)
     except requests.RequestException as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# === Telegram Auth ===
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
+TELEGRAM_BOT_USERNAME = os.getenv("TELEGRAM_BOT_USERNAME", "")
+ADMIN_TELEGRAM_IDS = [x.strip() for x in os.getenv("ADMIN_TELEGRAM_IDS", "").split(",") if x.strip()]
+CLUB_CHAT_ID = "-1002841247853"
+
+
+def verify_telegram_hash(auth_data: dict) -> bool:
+    """Verify data from Telegram Login Widget using HMAC-SHA256."""
+    if not TELEGRAM_BOT_TOKEN:
+        return False
+    check_hash = auth_data.get("hash", "")
+    # Build data-check-string: sorted key=value pairs excluding hash
+    data_pairs = sorted(
+        f"{k}={v}" for k, v in auth_data.items() if k != "hash"
+    )
+    data_check_string = "\n".join(data_pairs)
+    # Secret key = SHA256(bot_token)
+    secret_key = hashlib.sha256(TELEGRAM_BOT_TOKEN.encode()).digest()
+    # HMAC-SHA256
+    computed_hash = hmac.new(
+        secret_key, data_check_string.encode(), hashlib.sha256
+    ).hexdigest()
+    return computed_hash == check_hash
+
+
+def check_club_membership(user_id: int) -> bool:
+    """Check if user is a member of the club channel via Telegram Bot API."""
+    if not TELEGRAM_BOT_TOKEN:
+        return False
+    try:
+        resp = requests.get(
+            f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/getChatMember",
+            params={"chat_id": CLUB_CHAT_ID, "user_id": user_id},
+            timeout=10,
+        )
+        if resp.status_code == 200:
+            data = resp.json()
+            if data.get("ok"):
+                status = data["result"].get("status", "")
+                return status in ("member", "administrator", "creator")
+    except requests.RequestException:
+        pass
+    return False
+
+
+@app.get("/api/auth/config")
+async def auth_config():
+    """Return auth config for frontend (bot username)."""
+    return {"bot_username": TELEGRAM_BOT_USERNAME}
+
+
+@app.post("/api/auth/telegram")
+async def auth_telegram(data: dict):
+    """Authenticate user via Telegram Login Widget."""
+    if not TELEGRAM_BOT_TOKEN:
+        raise HTTPException(status_code=500, detail="TELEGRAM_BOT_TOKEN not configured")
+
+    # Verify hash
+    if not verify_telegram_hash(data):
+        raise HTTPException(status_code=401, detail="Invalid Telegram auth data")
+
+    # Check auth_date (not older than 24 hours)
+    auth_date = int(data.get("auth_date", 0))
+    if time.time() - auth_date > 86400:
+        raise HTTPException(status_code=401, detail="Auth data expired")
+
+    user_id = int(data.get("id", 0))
+    is_club_member = check_club_membership(user_id)
+    is_admin = str(user_id) in ADMIN_TELEGRAM_IDS
+
+    return {
+        "user": {
+            "id": user_id,
+            "first_name": data.get("first_name", ""),
+            "last_name": data.get("last_name", ""),
+            "username": data.get("username", ""),
+            "photo_url": data.get("photo_url", ""),
+            "is_club_member": is_club_member,
+            "is_admin": is_admin,
+        }
+    }
 
 
 if __name__ == "__main__":

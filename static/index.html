@@ -1776,9 +1776,155 @@
                 grid-template-columns: repeat(2, 1fr);
             }
         }
+
+        /* === Login Overlay === */
+        .login-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--bg-primary);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .login-overlay.hidden {
+            display: none;
+        }
+
+        .login-card {
+            text-align: center;
+            max-width: 400px;
+            padding: 48px 32px;
+        }
+
+        .login-logo {
+            font-size: 48px;
+            font-weight: 800;
+            letter-spacing: -1px;
+            color: var(--accent);
+            margin-bottom: 8px;
+        }
+
+        .login-subtitle {
+            font-size: 16px;
+            color: var(--text-secondary);
+            margin-bottom: 40px;
+        }
+
+        .login-tg-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: #2AABEE;
+            color: #fff;
+            border: none;
+            border-radius: 12px;
+            padding: 14px 32px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .login-tg-btn:hover {
+            background: #229ED9;
+        }
+
+        .login-note {
+            margin-top: 24px;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .login-error {
+            margin-top: 20px;
+            padding: 16px;
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 10px;
+            color: #dc2626;
+            font-size: 14px;
+            display: none;
+        }
+
+        body.dark-theme .login-error {
+            background: #451a1a;
+            border-color: #7f1d1d;
+            color: #fca5a5;
+        }
+
+        .login-loading {
+            margin-top: 20px;
+            color: var(--text-secondary);
+            font-size: 14px;
+            display: none;
+        }
+
+        /* User info in nav bar */
+        .nav-user {
+            margin-top: auto;
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .nav-user-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid var(--border);
+        }
+
+        .nav-user-name {
+            font-size: 9px;
+            color: var(--text-muted);
+            text-align: center;
+            max-width: 50px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .nav-logout {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            transition: color 0.2s;
+        }
+
+        .nav-logout:hover {
+            color: #dc2626;
+        }
     </style>
 </head>
 <body>
+    <!-- Login Overlay -->
+    <div class="login-overlay" id="loginOverlay">
+        <div class="login-card">
+            <div class="login-logo">CRAFT</div>
+            <div class="login-subtitle">Генератор Instagram-каруселей</div>
+            <div id="telegramLoginWidget"></div>
+            <div class="login-loading" id="loginLoading">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="animation: spin 1s linear infinite; vertical-align: middle;"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                Проверяем данные...
+            </div>
+            <div class="login-error" id="loginError"></div>
+            <div class="login-note">Доступно только для участников клуба</div>
+        </div>
+    </div>
+
+    <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
+
     <div class="controls">
         <div class="control-btn" onclick="toggleTheme()" title="Theme">
             <span id="themeIcon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg></span>
@@ -1820,6 +1966,13 @@
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
                 <span class="nav-tooltip">Настройки</span>
             </button>
+            <div class="nav-user" id="navUser" style="display:none">
+                <img class="nav-user-avatar" id="navUserAvatar" src="" alt="">
+                <span class="nav-user-name" id="navUserName"></span>
+                <button class="nav-logout" onclick="logout()" title="Выйти">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                </button>
+            </div>
         </nav>
 
         <!-- === TAB: Editor (existing) === -->
@@ -2756,6 +2909,142 @@
         let draggedSlideIndex = null;
 
         // Initialize
+        // === AUTH ===
+        let currentUser = null;
+
+        function initAuth() {
+            const saved = localStorage.getItem('craft_user');
+            if (saved) {
+                try {
+                    currentUser = JSON.parse(saved);
+                    hideLogin();
+                    updateUIForUser();
+                } catch(e) {
+                    localStorage.removeItem('craft_user');
+                    showLogin();
+                }
+            } else {
+                showLogin();
+            }
+        }
+
+        async function showLogin() {
+            document.getElementById('loginOverlay').classList.remove('hidden');
+            // Dynamically insert Telegram Login Widget
+            const container = document.getElementById('telegramLoginWidget');
+            if (!container.querySelector('script')) {
+                // Get bot username from server config
+                let botUsername = '';
+                try {
+                    const cfgResp = await fetch(`${API_URL}/api/auth/config`);
+                    if (cfgResp.ok) {
+                        const cfg = await cfgResp.json();
+                        botUsername = cfg.bot_username;
+                    }
+                } catch(e) {}
+
+                if (!botUsername) {
+                    document.getElementById('loginError').textContent = 'Telegram Login не настроен. Обратитесь к администратору.';
+                    document.getElementById('loginError').style.display = 'block';
+                    return;
+                }
+
+                const script = document.createElement('script');
+                script.async = true;
+                script.src = 'https://telegram.org/js/telegram-widget.js?22';
+                script.setAttribute('data-telegram-login', botUsername);
+                script.setAttribute('data-size', 'large');
+                script.setAttribute('data-radius', '12');
+                script.setAttribute('data-onauth', 'onTelegramAuth(user)');
+                script.setAttribute('data-request-access', 'write');
+                container.appendChild(script);
+            }
+        }
+
+        function hideLogin() {
+            document.getElementById('loginOverlay').classList.add('hidden');
+        }
+
+        function showLoginError(msg) {
+            const el = document.getElementById('loginError');
+            el.textContent = msg;
+            el.style.display = 'block';
+            document.getElementById('loginLoading').style.display = 'none';
+        }
+
+        async function onTelegramAuth(user) {
+            document.getElementById('loginLoading').style.display = 'block';
+            document.getElementById('loginError').style.display = 'none';
+
+            try {
+                const resp = await fetch(`${API_URL}/api/auth/telegram`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(user)
+                });
+
+                if (!resp.ok) {
+                    const err = await resp.json().catch(() => ({ detail: 'Ошибка сервера' }));
+                    showLoginError(err.detail || 'Ошибка авторизации');
+                    return;
+                }
+
+                const data = await resp.json();
+
+                if (!data.user.is_club_member) {
+                    showLoginError('Доступ только для активных участников клуба. Если вы состоите в клубе, попробуйте позже.');
+                    return;
+                }
+
+                currentUser = data.user;
+                localStorage.setItem('craft_user', JSON.stringify(data.user));
+                hideLogin();
+                updateUIForUser();
+            } catch(e) {
+                showLoginError('Ошибка подключения к серверу');
+            }
+        }
+        // Make onTelegramAuth globally accessible for the widget callback
+        window.onTelegramAuth = onTelegramAuth;
+
+        function updateUIForUser() {
+            if (!currentUser) return;
+
+            // Show user info in nav
+            const navUser = document.getElementById('navUser');
+            const navAvatar = document.getElementById('navUserAvatar');
+            const navName = document.getElementById('navUserName');
+
+            navUser.style.display = 'flex';
+            navName.textContent = currentUser.first_name || currentUser.username || '';
+
+            if (currentUser.photo_url) {
+                navAvatar.src = currentUser.photo_url;
+                navAvatar.style.display = 'block';
+            } else {
+                navAvatar.style.display = 'none';
+            }
+
+            // Hide/show settings tab based on admin status
+            const settingsBtn = document.querySelector('.nav-item[data-tab="settings"]');
+            if (settingsBtn) {
+                settingsBtn.style.display = currentUser.is_admin ? '' : 'none';
+            }
+        }
+
+        function logout() {
+            currentUser = null;
+            localStorage.removeItem('craft_user');
+            // Hide user info
+            document.getElementById('navUser').style.display = 'none';
+            // Show settings back (reset)
+            const settingsBtn = document.querySelector('.nav-item[data-tab="settings"]');
+            if (settingsBtn) settingsBtn.style.display = '';
+            // Switch to editor tab
+            switchTab('editor');
+            showLogin();
+        }
+
         async function init() {
             // NEW: Load MargulanGames template by default instead of empty template
             try {
@@ -2775,6 +3064,7 @@
             render();
             loadTemplatesList();
             loadWebhookSettings();
+            initAuth();
 
             // NEW v7.0: Keyboard shortcuts for Undo/Redo
             document.addEventListener('keydown', (e) => {
