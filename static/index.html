@@ -58,32 +58,7 @@
             height: 100vh;
         }
 
-        .controls {
-            position: fixed;
-            top: 16px;
-            right: 16px;
-            display: flex;
-            gap: 8px;
-            z-index: 9999;
-        }
-
-        .control-btn {
-            width: 40px;
-            height: 40px;
-            background: var(--bg-tertiary);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-size: 18px;
-        }
-
-        .control-btn:hover {
-            background: var(--bg-hover);
-        }
+        /* Theme toggle in nav-bar */
 
         /* Navigation Bar */
         .nav-bar {
@@ -1421,15 +1396,15 @@
         /* Visual Template Selector */
         .template-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-            gap: 12px;
+            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+            gap: 8px;
             margin-bottom: 20px;
         }
 
         .template-card {
             background: var(--bg-tertiary);
             border: 2px solid var(--border);
-            border-radius: 10px;
+            border-radius: 6px;
             overflow: hidden;
             cursor: pointer;
             transition: all 0.2s;
@@ -1470,8 +1445,8 @@
         }
 
         .template-card-name {
-            padding: 8px 10px;
-            font-size: 12px;
+            padding: 4px 6px;
+            font-size: 10px;
             font-weight: 500;
             color: var(--text-primary);
             text-align: center;
@@ -2062,6 +2037,100 @@
             border-color: var(--text-muted);
         }
 
+        /* History items */
+        .history-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 16px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .history-item:hover {
+            border-color: var(--accent);
+            background: var(--bg-hover);
+        }
+        .history-item-content { flex: 1; min-width: 0; }
+        .history-item-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .history-item-meta {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+        .history-item-preview {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .history-item-delete {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 4px 8px;
+            font-size: 20px;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+        .history-item-delete:hover {
+            color: #ef4444;
+            background: rgba(239,68,68,0.1);
+        }
+
+        /* Translate modal */
+        .translate-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .translate-modal-content {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            max-width: 400px;
+            width: 90%;
+        }
+        .translate-lang-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-top: 16px;
+        }
+        .translate-lang-btn {
+            padding: 10px 16px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+        .translate-lang-btn:hover {
+            border-color: var(--accent);
+            background: var(--bg-hover);
+        }
+
         /* === MOBILE ADAPTATION === */
         @media (max-width: 768px) {
             .app {
@@ -2248,8 +2317,8 @@
             }
 
             .template-grid {
-                grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-                gap: 8px;
+                grid-template-columns: repeat(auto-fill, minmax(75px, 1fr));
+                gap: 6px;
             }
 
             .preview-grid {
@@ -2287,7 +2356,7 @@
             }
 
             .template-grid {
-                grid-template-columns: repeat(2, 1fr);
+                grid-template-columns: repeat(3, 1fr);
             }
 
             .chat-layout {
@@ -2463,17 +2532,12 @@
 
     <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
 
-    <div class="controls">
-        <div class="control-btn" onclick="toggleTheme()" title="Theme">
-            <span id="themeIcon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg></span>
-        </div>
-    </div>
 
     <div class="app">
         <!-- Navigation Bar -->
         <nav class="nav-bar">
             <div class="nav-brand">CRAFT</div>
-            <button class="nav-item active" data-tab="editor" onclick="switchTab('editor')">
+            <button class="nav-item" data-tab="editor" onclick="switchTab('editor')">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/></svg>
                 <span class="nav-tooltip">Редактор</span>
             </button>
@@ -2481,18 +2545,14 @@
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 13H8"/><path d="M16 17H8"/><path d="M16 13h-2"/></svg>
                 <span class="nav-tooltip">Готовый текст</span>
             </button>
-            <button class="nav-item" data-tab="create" onclick="switchTab('create')">
+            <button class="nav-item active" data-tab="create" onclick="switchTab('create')">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg>
                 <span class="nav-tooltip">Создать с нуля</span>
             </button>
             <div class="nav-divider"></div>
             <button class="nav-item" data-tab="rewrite" onclick="switchTab('rewrite')">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 6H3"/><path d="M7 12H3"/><path d="M7 18H3"/><path d="M12.5 12H20"/><path d="M12.5 18H20"/><path d="m16 6-4 6h6l-4 6"/></svg>
-                <span class="nav-tooltip">Рерайт</span>
-            </button>
-            <button class="nav-item" data-tab="chat" onclick="switchTab('chat')">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/><path d="M8 12h.01"/><path d="M12 12h.01"/><path d="M16 12h.01"/></svg>
-                <span class="nav-tooltip">AI Чат</span>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                <span class="nav-tooltip">Конкуренты</span>
             </button>
             <div class="nav-spacer"></div>
             <div class="nav-divider"></div>
@@ -2503,6 +2563,10 @@
             <button class="nav-item" data-tab="settings" onclick="switchTab('settings')">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
                 <span class="nav-tooltip">Настройки</span>
+            </button>
+            <button class="nav-item" onclick="toggleTheme()" title="Сменить тему">
+                <span id="themeIcon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg></span>
+                <span class="nav-tooltip">Тема</span>
             </button>
             <div class="nav-user" id="navUser" style="display:none">
                 <img class="nav-user-avatar" id="navUserAvatar" src="" alt="">
@@ -2515,7 +2579,7 @@
 
         <!-- === TAB: Editor (existing) === -->
         <!-- Left Sidebar (editor only) -->
-        <div class="sidebar-left" id="sidebar-editor">
+        <div class="sidebar-left" id="sidebar-editor" style="display:none">
             <div class="sidebar-header">
                 <div class="brand-container">
                     <div class="brand">
@@ -2528,7 +2592,7 @@
             <div class="slides-list" id="slidesList"></div>
         </div>
 
-        <div class="main-area tab-page active" id="tab-editor">
+        <div class="main-area tab-page" id="tab-editor">
             <!-- Top Bar -->
             <div class="top-bar">
                 <div class="template-info">
@@ -2562,7 +2626,7 @@
         </div>
 
         <!-- Right Sidebar (editor only) -->
-        <div class="sidebar-right" id="propsPanel"></div>
+        <div class="sidebar-right" id="propsPanel" style="display:none"></div>
 
         <!-- === TAB: Ready Text === -->
         <div class="tab-page" id="tab-ready-text">
@@ -2613,7 +2677,7 @@
         </div>
 
         <!-- === TAB: Create from Scratch (Chat) === -->
-        <div class="tab-page" id="tab-create">
+        <div class="tab-page active" id="tab-create">
             <div class="chat-layout">
                 <!-- Chat Area -->
                 <div class="chat-area">
@@ -2699,6 +2763,10 @@
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/></svg>
                         Сгенерировать карусель
                     </button>
+                    <button class="btn-generate-chat" id="chatTranslateBtn" onclick="chatShowTranslateModal()" disabled style="background:var(--bg-tertiary);color:var(--text-primary);border:1px solid var(--border);margin-top:8px;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></svg>
+                        Перевести карусель
+                    </button>
                 </div>
             </div>
 
@@ -2726,28 +2794,43 @@
 
         <!-- === TAB: Rewrite (placeholder) === -->
         <div class="tab-page" id="tab-rewrite">
-            <div class="placeholder-page">
-                <div class="placeholder-icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 6H3"/><path d="M7 12H3"/><path d="M7 18H3"/><path d="M12.5 12H20"/><path d="M12.5 18H20"/><path d="m16 6-4 6h6l-4 6"/></svg></div>
-                <div class="placeholder-text">Рерайт конкурента</div>
-                <div class="placeholder-desc">Скоро здесь можно будет вставить ссылку на карусель конкурента и создать свою версию</div>
+            <div class="tab-page-content">
+                <div class="tab-page-title">Конкуренты</div>
+                <div class="tab-page-subtitle">Отслеживайте конкурентов и анализируйте их контент</div>
+
+                <!-- Мои конкуренты -->
+                <div style="background:var(--bg-tertiary);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:24px;">
+                    <div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:12px;">Мои конкуренты</div>
+                    <div id="competitorsList" style="margin-bottom:12px;"></div>
+                    <div style="display:flex;gap:8px;">
+                        <input type="text" id="competitorInput" placeholder="@username" style="flex:1;padding:8px 12px;background:var(--bg-primary);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-size:13px;">
+                        <button class="btn" onclick="competitorAdd()" style="white-space:nowrap;">Добавить</button>
+                    </div>
+                </div>
+
+                <!-- Анализ контента -->
+                <div style="background:var(--bg-tertiary);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:24px;">
+                    <div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:12px;">Анализ контента</div>
+                    <div style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;">Вставьте ссылку на карусель или рилс конкурента для анализа</div>
+                    <div style="display:flex;gap:8px;margin-bottom:12px;">
+                        <input type="text" id="competitorLinkInput" placeholder="https://instagram.com/p/..." style="flex:1;padding:8px 12px;background:var(--bg-primary);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-size:13px;">
+                        <button class="btn" onclick="competitorAnalyze()" id="competitorAnalyzeBtn">Анализировать</button>
+                    </div>
+                    <div id="competitorAnalysisResult" style="display:none;padding:16px;background:var(--bg-primary);border:1px solid var(--border);border-radius:8px;margin-bottom:12px;">
+                        <div style="font-size:13px;color:var(--text-secondary);text-align:center;">Анализ будет доступен после подключения AI</div>
+                    </div>
+                    <button class="btn" id="competitorRewriteBtn" disabled style="width:100%;opacity:0.5;cursor:not-allowed;">Рерайт под мой стиль</button>
+                </div>
             </div>
         </div>
 
-        <!-- === TAB: Chat (placeholder) === -->
-        <div class="tab-page" id="tab-chat">
-            <div class="placeholder-page">
-                <div class="placeholder-icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/><path d="M8 12h.01"/><path d="M12 12h.01"/><path d="M16 12h.01"/></svg></div>
-                <div class="placeholder-text">AI Чат</div>
-                <div class="placeholder-desc">Скоро здесь будет умный ассистент, который поможет с идеями и текстами для каруселей</div>
-            </div>
-        </div>
 
-        <!-- === TAB: History (placeholder) === -->
+        <!-- === TAB: History === -->
         <div class="tab-page" id="tab-history">
-            <div class="placeholder-page">
-                <div class="placeholder-icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
-                <div class="placeholder-text">История</div>
-                <div class="placeholder-desc">Здесь будут сохраняться все созданные карусели</div>
+            <div class="tab-page-content">
+                <div class="tab-page-title">История</div>
+                <div class="tab-page-subtitle">Все ваши созданные карусели и чаты</div>
+                <div id="historyList"></div>
             </div>
         </div>
 
@@ -2832,7 +2915,7 @@
 
     <script>
         // Tab Navigation
-        let currentTab = 'editor';
+        let currentTab = 'create';
 
         function switchTab(tabId) {
             currentTab = tabId;
@@ -2865,6 +2948,12 @@
             }
             if (tabId === 'create') {
                 chatInitTab();
+            }
+            if (tabId === 'rewrite') {
+                competitorsLoad();
+            }
+            if (tabId === 'history') {
+                historyRender();
             }
         }
 
@@ -2950,18 +3039,7 @@
                 html += `<div style="position:absolute;inset:0;background:${bg.color || '#f5f5f5'}"></div>`;
             }
 
-            // Render text elements
-            (slide.elements || []).forEach(el => {
-                if (el.type === 'photo') return;
-                let content = el.content || '';
-                if (el.type === 'username') content = template.settings?.username || '@username';
-                if (el.type === 'slidenum') content = `1/${template.slides.length}`;
-                const hc = el.highlightColor || '#c8ff00';
-                content = content.replace(/\*([^*]+)\*/g, `<span style="color:${hc}">$1</span>`).replace(/\n/g, '<br>');
-                const widthStyle = el.maxWidth ? `max-width:${el.maxWidth * ms}px;` : '';
-                const transformStyle = el.align === 'right' ? 'transform:translateX(-100%);' : (el.align === 'center' ? 'transform:translateX(-50%);' : '');
-                html += `<div style="position:absolute;left:${el.x * ms}px;top:${el.y * ms}px;font-family:'${el.fontFamily}',sans-serif;font-size:${Math.max(el.fontSize * ms, 5)}px;font-weight:${el.fontWeight};color:${el.color};opacity:${(el.opacity || 100) / 100};line-height:${el.lineHeight || 1.2};${widthStyle}${transformStyle}overflow:hidden;">${content}</div>`;
-            });
+            // Skip text elements in mini previews — too small to read
 
             container.innerHTML = html;
             container.style.position = 'relative';
@@ -3514,6 +3592,7 @@
             if (btn) {
                 btn.disabled = !(chatState.slidesData && chatState.slidesData.length > 0 && templateId);
             }
+            chatUpdateTranslateBtn();
         }
 
         async function chatGenerateCarousel() {
@@ -3657,6 +3736,176 @@
             } else {
                 chatRenderMessages();
             }
+        }
+
+        // === COMPETITORS TAB ===
+        function competitorsLoad() {
+            const list = JSON.parse(localStorage.getItem('craft_competitors') || '[]');
+            const container = document.getElementById('competitorsList');
+            if (!container) return;
+            if (list.length === 0) {
+                container.innerHTML = '<div style="font-size:12px;color:var(--text-muted);padding:8px 0;">Нет добавленных конкурентов</div>';
+                return;
+            }
+            container.innerHTML = list.map((c, i) => `
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg-primary);border:1px solid var(--border);border-radius:6px;margin-bottom:6px;">
+                    <span style="font-size:13px;color:var(--text-primary);">${escapeHtml(c)}</span>
+                    <button onclick="competitorRemove(${i})" style="background:none;border:none;color:var(--text-muted);cursor:pointer;padding:4px;font-size:16px;" title="Удалить">&times;</button>
+                </div>
+            `).join('');
+        }
+
+        function competitorAdd() {
+            const input = document.getElementById('competitorInput');
+            let username = input.value.trim();
+            if (!username) return;
+            if (!username.startsWith('@')) username = '@' + username;
+            const list = JSON.parse(localStorage.getItem('craft_competitors') || '[]');
+            if (list.includes(username)) { input.value = ''; return; }
+            list.push(username);
+            localStorage.setItem('craft_competitors', JSON.stringify(list));
+            input.value = '';
+            competitorsLoad();
+        }
+
+        function competitorRemove(idx) {
+            const list = JSON.parse(localStorage.getItem('craft_competitors') || '[]');
+            list.splice(idx, 1);
+            localStorage.setItem('craft_competitors', JSON.stringify(list));
+            competitorsLoad();
+        }
+
+        function competitorAnalyze() {
+            const link = document.getElementById('competitorLinkInput').value.trim();
+            if (!link) return;
+            const result = document.getElementById('competitorAnalysisResult');
+            result.style.display = 'block';
+            result.innerHTML = '<div style="font-size:13px;color:var(--text-secondary);text-align:center;">Анализ будет доступен после подключения AI webhook</div>';
+        }
+
+        // === HISTORY TAB ===
+        function historyRender() {
+            const container = document.getElementById('historyList');
+            if (!container) return;
+            const conversations = JSON.parse(localStorage.getItem('craft_chat_conversations') || '[]');
+            if (conversations.length === 0) {
+                container.innerHTML = `
+                    <div class="placeholder-page">
+                        <div class="placeholder-icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+                        <div class="placeholder-text">Нет сохранённых каруселей</div>
+                        <div class="placeholder-desc">Начните создание во вкладке «Создать с нуля»</div>
+                    </div>`;
+                return;
+            }
+            container.innerHTML = conversations.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).map(conv => {
+                const msgs = JSON.parse(localStorage.getItem(`craft_chat_msg_${conv.id}`) || '[]');
+                const msgCount = msgs.length;
+                const date = conv.createdAt ? new Date(conv.createdAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+                const title = conv.title || 'Без названия';
+                const preview = msgs.find(m => m.role === 'user')?.content || '';
+                return `
+                    <div class="history-item" onclick="historyLoadChat('${conv.id}')">
+                        <div class="history-item-content">
+                            <div class="history-item-title">${escapeHtml(title)}</div>
+                            <div class="history-item-meta">${date} &middot; ${msgCount} сообщ.</div>
+                            ${preview ? `<div class="history-item-preview">${escapeHtml(preview.substring(0, 80))}${preview.length > 80 ? '...' : ''}</div>` : ''}
+                        </div>
+                        <button class="history-item-delete" onclick="event.stopPropagation(); historyDeleteChat('${conv.id}')" title="Удалить">&times;</button>
+                    </div>`;
+            }).join('');
+        }
+
+        function historyLoadChat(id) {
+            const msgs = JSON.parse(localStorage.getItem(`craft_chat_msg_${id}`) || '[]');
+            chatState.conversationId = id;
+            chatState.messages = msgs;
+            chatState.slidesData = null;
+            chatState.selectedHeadline = null;
+            chatState.isWaiting = false;
+            // Find slides data from messages
+            for (let i = msgs.length - 1; i >= 0; i--) {
+                if (msgs[i].type === 'slides' && msgs[i].data) {
+                    chatState.slidesData = msgs[i].data;
+                    break;
+                }
+            }
+            localStorage.setItem('craft_chat_current', id);
+            const convs = JSON.parse(localStorage.getItem('craft_chat_conversations') || '[]');
+            const conv = convs.find(c => c.id === id);
+            if (conv) {
+                document.getElementById('chatTitle').textContent = conv.title || 'Карусель';
+            }
+            switchTab('create');
+        }
+
+        function historyDeleteChat(id) {
+            let convs = JSON.parse(localStorage.getItem('craft_chat_conversations') || '[]');
+            convs = convs.filter(c => c.id !== id);
+            localStorage.setItem('craft_chat_conversations', JSON.stringify(convs));
+            localStorage.removeItem(`craft_chat_msg_${id}`);
+            if (chatState.conversationId === id) {
+                chatNewConversation();
+            }
+            historyRender();
+        }
+
+        // === TRANSLATE CAROUSEL ===
+        function chatShowTranslateModal() {
+            if (!chatState.slidesData || chatState.slidesData.length === 0) return;
+            const languages = [
+                { code: 'en', name: 'English' },
+                { code: 'es', name: 'Español' },
+                { code: 'de', name: 'Deutsch' },
+                { code: 'fr', name: 'Français' },
+                { code: 'pt', name: 'Português' },
+                { code: 'it', name: 'Italiano' },
+                { code: 'tr', name: 'Türkçe' },
+                { code: 'ar', name: 'العربية' },
+                { code: 'zh', name: '中文' },
+                { code: 'ja', name: '日本語' }
+            ];
+            const modal = document.createElement('div');
+            modal.className = 'translate-modal';
+            modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+            modal.innerHTML = `
+                <div class="translate-modal-content">
+                    <div style="font-size:16px;font-weight:600;color:var(--text-primary);">Перевести карусель</div>
+                    <div style="font-size:12px;color:var(--text-secondary);margin-top:4px;">Выберите язык перевода</div>
+                    <div class="translate-lang-grid">
+                        ${languages.map(l => `<button class="translate-lang-btn" onclick="chatTranslateCarousel('${l.code}', '${l.name}')">${l.name}</button>`).join('')}
+                    </div>
+                </div>`;
+            document.body.appendChild(modal);
+        }
+
+        function chatTranslateCarousel(langCode, langName) {
+            document.querySelector('.translate-modal')?.remove();
+            const slidesText = chatState.slidesData.map((s, i) =>
+                `Слайд ${i+1}: "${s.TITLE}" — "${s.DESCRIPTION}"`
+            ).join('\n');
+
+            chatNewConversation();
+            document.getElementById('chatTitle').textContent = `Перевод: ${langName}`;
+
+            const webhookUrl = webhookSettings.chatWebhook;
+            if (!webhookUrl) {
+                chatState.messages.push({
+                    role: 'ai', content: `Перевод карусели на ${langName} будет доступен после подключения AI Chat Webhook в Настройках.`,
+                    type: 'text', data: null, timestamp: Date.now()
+                });
+                chatRenderMessages();
+                chatSaveMessages();
+                return;
+            }
+
+            const msg = `Переведи эту карусель на ${langName}:\n${slidesText}`;
+            document.getElementById('chatInput').value = msg;
+            chatSendMessage();
+        }
+
+        function chatUpdateTranslateBtn() {
+            const btn = document.getElementById('chatTranslateBtn');
+            if (btn) btn.disabled = !chatState.slidesData || chatState.slidesData.length === 0;
         }
 
         // Constants
@@ -3857,6 +4106,7 @@
             render();
             loadTemplatesList();
             loadWebhookSettings();
+            chatInitTab();
             initAuth();
 
             // NEW v7.0: Keyboard shortcuts for Undo/Redo
