@@ -1351,12 +1351,17 @@
             .rt-preview-card { width:calc(100vw - 32px); }
             .rt-toolbar-tab { font-size:12px; padding:8px 0; }
         }
-        /* Color picker popup */
-        .rt-color-popup-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:9999; display:flex; align-items:flex-end; justify-content:center; }
-        .rt-color-popup { background:var(--bg-primary); border-radius:16px 16px 0 0; padding:20px; width:100%; max-width:400px; max-height:60vh; overflow-y:auto; }
+        /* Popup overlay — centered on desktop, bottom sheet on mobile */
+        .rt-color-popup-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:9999; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); }
+        .rt-color-popup { background:var(--bg-primary); border-radius:16px; padding:24px; width:90%; max-width:440px; max-height:80vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.3); animation:rtPopupIn 0.2s ease-out; }
+        @keyframes rtPopupIn { from { opacity:0; transform:scale(0.95) translateY(10px); } to { opacity:1; transform:scale(1) translateY(0); } }
+        @media(max-width:480px) {
+            .rt-color-popup-overlay { align-items:flex-end; }
+            .rt-color-popup { border-radius:16px 16px 0 0; width:100%; max-width:100%; max-height:85vh; padding:20px 16px calc(20px + var(--tg-safe-bottom)); }
+        }
         .rt-color-popup-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
-        .rt-color-popup-title { font-size:15px; font-weight:600; color:var(--text-primary); }
-        .rt-color-popup-close { background:none; border:none; font-size:20px; color:var(--text-muted); cursor:pointer; padding:4px; }
+        .rt-color-popup-title { font-size:16px; font-weight:600; color:var(--text-primary); }
+        .rt-color-popup-close { background:none; border:none; font-size:24px; color:var(--text-muted); cursor:pointer; padding:4px 8px; line-height:1; }
         .rt-color-grid { display:grid; grid-template-columns:repeat(6,1fr); gap:10px; margin-bottom:16px; }
         .rt-color-swatch { width:100%; aspect-ratio:1; border-radius:8px; cursor:pointer; border:2px solid transparent; transition:all 0.2s; }
         .rt-color-swatch.active { border-color:var(--text-primary); box-shadow:0 0 0 2px var(--bg-primary), 0 0 0 4px var(--text-primary); }
@@ -3170,7 +3175,14 @@
         // Template selection modal for Ready Text
         function rtOpenTemplateModal() {
             if (templateCache.length === 0) {
-                showToast('Нет доступных шаблонов', 'error');
+                // Try loading templates first
+                loadTemplateSelectors().then(() => {
+                    if (templateCache.length === 0) {
+                        showToast('Нет доступных шаблонов', 'error');
+                    } else {
+                        rtOpenTemplateModal(); // retry
+                    }
+                });
                 return;
             }
             const overlay = document.createElement('div');
@@ -3178,28 +3190,30 @@
             overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
             const curId = document.getElementById('rtTemplateSelect').value;
             overlay.innerHTML = `
-                <div class="rt-color-popup" style="max-height:80vh;">
+                <div class="rt-color-popup" style="max-width:520px;">
                     <div class="rt-color-popup-header">
                         <span class="rt-color-popup-title">Выберите шаблон</span>
                         <button class="rt-color-popup-close" onclick="this.closest('.rt-color-popup-overlay').remove()">&times;</button>
                     </div>
-                    <div class="template-grid" id="rtModalTemplateGrid" style="max-height:60vh;overflow-y:auto;">
+                    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px;max-height:60vh;overflow-y:auto;padding:4px;" id="rtModalTemplateGrid">
                         ${templateCache.map(t => {
                             const tid = t.template_id || t.name;
                             const count = t.slides ? t.slides.length : '?';
-                            return `<div class="template-card ${tid === curId ? 'selected' : ''}" data-template-id="${tid}" onclick="rtSelectTemplateFromModal('${tid}')">
-                                <div class="template-card-preview" id="rtModal-preview-${tid}">
-                                    <div class="template-card-preview-placeholder">${count} сл.</div>
+                            return `<div class="template-card ${tid === curId ? 'selected' : ''}" data-template-id="${tid}" onclick="rtSelectTemplateFromModal('${tid}')" style="border-radius:10px;">
+                                <div class="template-card-preview" id="rtModal-preview-${tid}" style="aspect-ratio:4/5;">
+                                    <div class="template-card-preview-placeholder">${count} слайдов</div>
                                 </div>
-                                <div class="template-card-name">${escapeHtml(t.name)}</div>
+                                <div class="template-card-name" style="font-size:12px;padding:6px 8px;">${escapeHtml(t.name)}</div>
                             </div>`;
                         }).join('')}
                     </div>
                 </div>`;
             document.body.appendChild(overlay);
-            // Render previews
-            templateCache.forEach(t => {
-                if (t.slides && t.slides.length > 0) renderTemplatePreview('rtModal', t);
+            // Render previews after DOM insertion
+            requestAnimationFrame(() => {
+                templateCache.forEach(t => {
+                    if (t.slides && t.slides.length > 0) renderTemplatePreview('rtModal', t);
+                });
             });
         }
 
@@ -4976,6 +4990,7 @@
             await loadFonts();
             render();
             loadTemplatesList();
+            await loadTemplateSelectors();
             loadWebhookSettings();
             chatInitTab();
             initAuth();
