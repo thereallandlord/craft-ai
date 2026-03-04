@@ -3432,12 +3432,12 @@
                 return;
             }
 
-            // Per-slide photo: use rtSlidePhotos[i], fallback to rtSelectedPhoto (general photo)
+            // Per-slide photo: use rtSlidePhotos[i]; general photo only for FIRST slide
             const defaultPhoto = rtSelectedPhoto || null;
 
             const slidesWithPhoto = rtParsedData.map((s, i) => {
                 const slide = { ...s };
-                const photo = (rtSlidePhotos[i]) || defaultPhoto;
+                const photo = rtSlidePhotos[i] || (i === 0 ? defaultPhoto : null);
                 if (photo) slide.PHOTO = photo;
                 return slide;
             });
@@ -3883,63 +3883,31 @@
             showToast('Карусель загружена в редактор', 'success');
         }
 
-        async function rtEditInEditor() {
-            const templateId = document.getElementById('rtTemplateSelect').value;
-            if (!templateId) {
-                showToast('Сначала выберите шаблон', 'error');
+        function rtEditInEditor() {
+            if (rtGeneratedImages.length === 0) {
+                showToast('Сначала сгенерируйте карусель', 'error');
                 return;
             }
-            try {
-                const r = await fetch(`${API_URL}/templates/${encodeURIComponent(templateId)}`);
-                if (r.ok) {
-                    const template = await r.json();
-                    applyTemplate(template);
-                    // Update username from RT tab
-                    const username = document.getElementById('rtUsername').value || '@username';
-                    state.settings.username = username;
-                    // Apply photo to background if selected
-                    if (rtSelectedPhoto) {
-                        state.slides.forEach(s => {
-                            if (s.background && s.background.type === 'photo') {
-                                s.background.photo = rtSelectedPhoto;
-                            }
-                        });
-                    }
-                    // Apply text from parsed slides
-                    if (rtParsedData.length > 0) {
-                        const introSlides = state.slides.filter(s => s.type === 'intro');
-                        const contentSlides = state.slides.filter(s => s.type && s.type.startsWith('content'));
-                        let dataIdx = 0;
-                        // Apply to intro
-                        introSlides.forEach(slide => {
-                            if (dataIdx < rtParsedData.length) {
-                                slide.elements.forEach(el => {
-                                    if (el.varName === 'TITLE') el.content = rtParsedData[dataIdx].TITLE || '';
-                                    if (el.varName === 'DESCRIPTION') el.content = rtParsedData[dataIdx].DESCRIPTION || '';
-                                });
-                                dataIdx++;
-                            }
-                        });
-                        // Apply to content slides
-                        contentSlides.forEach(slide => {
-                            if (dataIdx < rtParsedData.length) {
-                                slide.elements.forEach(el => {
-                                    if (el.varName === 'TITLE') el.content = rtParsedData[dataIdx].TITLE || '';
-                                    if (el.varName === 'DESCRIPTION') el.content = rtParsedData[dataIdx].DESCRIPTION || '';
-                                });
-                                dataIdx++;
-                            }
-                        });
-                    }
-                    render();
-                    switchTab('editor');
-                    showToast('Карусель загружена в редактор', 'success');
-                } else {
-                    showToast('Шаблон не найден', 'error');
-                }
-            } catch (e) {
-                showToast('Ошибка загрузки шаблона', 'error');
-            }
+            // Create new slides with generated images as photo backgrounds
+            state.slides = rtGeneratedImages.map((img, i) => {
+                const slide = createSlide(i === 0 ? 'intro' : 'content');
+                slide.background.type = 'photo';
+                slide.background.photo = img.base64;
+                slide.background.photoPosition = { x: 50, y: 50 };
+                slide.background.photoZoom = 1;
+                slide.background.overlay = 0;
+                // Clear text elements — image already has text baked in
+                slide.elements = slide.elements.filter(el => el.type === 'username' || el.type === 'slidenum');
+                // Hide username and slidenum too since they're in the image
+                slide.elements.forEach(el => el.opacity = 0);
+                return slide;
+            });
+            state.currentSlideIndex = 0;
+            const username = document.getElementById('rtUsername').value || '@username';
+            state.settings.username = username;
+            render();
+            switchTab('editor');
+            showToast('Карусель загружена в редактор как изображения', 'success');
         }
 
         function toggleChatSettings() {
