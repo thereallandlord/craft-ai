@@ -1324,7 +1324,7 @@
         .rt-preview-strip::-webkit-scrollbar { display:none; }
         .rt-preview-card { flex-shrink:0; width:200px; aspect-ratio:4/5; border-radius:10px; overflow:hidden; position:relative; cursor:pointer; border:2px solid var(--border); transition:border-color 0.2s,box-shadow 0.2s; scroll-snap-align:center; background:var(--bg-tertiary); }
         .rt-preview-card:hover { border-color:var(--text-muted); }
-        .rt-preview-card.active { border-color:var(--accent); box-shadow:0 0 0 2px var(--accent); }
+        .rt-preview-card.active { border-color:var(--border); }
         .rt-preview-card-inner { position:absolute; inset:0; pointer-events:none; overflow:hidden; }
         .rt-preview-card-number { position:absolute; top:6px; left:6px; width:22px; height:22px; background:rgba(0,0,0,0.7); color:#fff; border-radius:5px; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:600; z-index:2; }
         .rt-toolbar-tabs { display:flex; border-bottom:1px solid var(--border); margin-top:12px; }
@@ -3406,12 +3406,36 @@
                 parts = text.split(/\n\s*\n/).filter(s => s.trim());
             }
 
+            // Strip label prefixes: "Заголовок:", "Описание:", "Title:", "Description:"
+            const stripLabel = (line) => line.replace(/^\s*(?:Заголовок|Название|Title)\s*[:.\-–—]\s*/i, '').trim();
+            const stripDescLabel = (line) => line.replace(/^\s*(?:Описание|Текст|Description|Body)\s*[:.\-–—]\s*/i, '').trim();
+
             parts.forEach(part => {
                 const lines = part.trim().split('\n').filter(l => l.trim());
                 if (lines.length === 0) return;
+                let title = '';
+                let descLines = [];
+                // Check if first line is a "Заголовок:" labeled line
+                if (/^\s*(?:Заголовок|Название|Title)\s*[:.\-–—]/i.test(lines[0])) {
+                    title = stripLabel(lines[0]);
+                    // Find description lines, stripping "Описание:" label if present
+                    for (let k = 1; k < lines.length; k++) {
+                        if (/^\s*(?:Описание|Текст|Description|Body)\s*[:.\-–—]/i.test(lines[k])) {
+                            descLines.push(stripDescLabel(lines[k]));
+                        } else {
+                            descLines.push(lines[k].trim());
+                        }
+                    }
+                } else {
+                    title = lines[0].trim();
+                    descLines = lines.slice(1).map(l => {
+                        if (/^\s*(?:Описание|Текст|Description|Body)\s*[:.\-–—]/i.test(l)) return stripDescLabel(l);
+                        return l.trim();
+                    });
+                }
                 slides.push({
-                    TITLE: lines[0].trim(),
-                    DESCRIPTION: lines.slice(1).join('\n').trim() || ''
+                    TITLE: title,
+                    DESCRIPTION: descLines.join('\n').trim() || ''
                 });
             });
 
@@ -3581,8 +3605,53 @@
             } else {
                 inner += `<div style="position:absolute;inset:0;background:${bg.color || '#f5f5f5'}"></div>`;
             }
+
+            // Auto-height: calculate Y offsets (port of server logic)
+            const elements = slide.elements || [];
+            const yOffsets = {};
+            const textEls = elements.filter(e => e.type !== 'photo').sort((a,b) => (a.y||0) - (b.y||0));
+            let accOffset = 0;
+            textEls.forEach(el => {
+                const ah = el.autoHeight || 'none';
+                yOffsets[el.id] = accOffset;
+                if (ah === 'none') return;
+                const content = (el.content || '').replace(/\{#[0-9a-fA-F]{3,8}:([^}]+)\}/g, '$1').replace(/\*([^*]+)\*/g, '$1');
+                const fontSize = el.fontSize || 24;
+                const lh = el.lineHeight || 1.2;
+                const mw = el.maxWidth || 0;
+                // Estimate line count: measure with a hidden span
+                let lineCount = 1;
+                if (mw > 0 && content.length > 0) {
+                    const lines = content.split('\n');
+                    lineCount = 0;
+                    lines.forEach(line => {
+                        if (!line.trim()) { lineCount++; return; }
+                        // Approximate: avg char width ≈ fontSize * 0.55 for proportional fonts
+                        const avgCharW = fontSize * 0.55;
+                        const charsPerLine = Math.max(1, Math.floor(mw / avgCharW));
+                        lineCount += Math.max(1, Math.ceil(line.length / charsPerLine));
+                    });
+                } else {
+                    lineCount = (content.match(/\n/g) || []).length + 1;
+                }
+                if (lineCount <= 1) return;
+                const realH = lineCount * fontSize * lh;
+                const expectedH = fontSize * lh;
+                const diff = Math.round(realH - expectedH);
+                if (ah === 'up') {
+                    yOffsets[el.id] = accOffset - diff;
+                } else if (ah === 'down') {
+                    accOffset += diff;
+                } else if (ah === 'center') {
+                    const half = Math.round(diff / 2);
+                    yOffsets[el.id] = accOffset - half;
+                    accOffset += half;
+                }
+            });
+
             // Render elements at FULL 1080x1350 coordinates
-            (slide.elements || []).forEach(el => {
+            elements.forEach(el => {
+                const yOff = yOffsets[el.id] || 0;
                 if (el.type === 'photo') {
                     const shape = el.shape === 'circle' ? '50%' : `${el.borderRadius||0}px`;
                     inner += `<div style="position:absolute;left:${el.x}px;top:${el.y}px;width:${el.width||200}px;height:${el.height||200}px;border-radius:${shape};${el.photo?`background-image:url(${el.photo});background-size:cover;background-position:center;`:'background:#333;'}"></div>`;
@@ -3593,7 +3662,7 @@
                     content = content.replace(/\*([^*]+)\*/g, `<span style="color:${hc}">$1</span>`).replace(/\n/g, '<br>');
                     const wS = el.maxWidth ? `max-width:${el.maxWidth}px;` : '';
                     const tS = el.align==='right' ? 'transform:translateX(-100%);' : (el.align==='center' ? 'transform:translateX(-50%);' : '');
-                    inner += `<div style="position:absolute;left:${el.x}px;top:${el.y}px;font-family:'${el.fontFamily||'Inter'}',sans-serif;font-size:${el.fontSize||24}px;font-weight:${el.fontWeight||400};color:${el.color||'#000'};opacity:${(el.opacity||100)/100};line-height:${el.lineHeight||1.2};${wS}${tS}word-wrap:break-word;overflow-wrap:break-word;letter-spacing:${el.letterSpacing||0}px;">${content}</div>`;
+                    inner += `<div style="position:absolute;left:${el.x}px;top:${(el.y||0) + yOff}px;font-family:'${el.fontFamily||'Inter'}',sans-serif;font-size:${el.fontSize||24}px;font-weight:${el.fontWeight||400};color:${el.color||'#000'};opacity:${(el.opacity||100)/100};line-height:${el.lineHeight||1.2};${wS}${tS}word-wrap:break-word;overflow-wrap:break-word;letter-spacing:${el.letterSpacing||0}px;">${content}</div>`;
                 }
             });
             // Wrap in a full-size div scaled down via CSS transform
@@ -3615,7 +3684,7 @@
             if (!strip || rtSlides.length === 0) return;
             // First render cards without inner content to get actual width
             strip.innerHTML = rtSlides.map((slide, i) => `
-                <div class="rt-preview-card ${i === rtActiveSlideIndex ? 'active' : ''}" onclick="rtSelectSlide(${i})">
+                <div class="rt-preview-card" onclick="rtSelectSlide(${i})">
                     <div class="rt-preview-card-number">${i + 1}</div>
                     <div class="rt-preview-card-inner"></div>
                 </div>`).join('');
@@ -3626,8 +3695,37 @@
                 const inner = card.querySelector('.rt-preview-card-inner');
                 if (inner) inner.innerHTML = rtRenderMiniPreview(rtSlides[i], cw);
             });
-            const ac = strip.querySelector('.rt-preview-card.active');
+            const ac = cards[rtActiveSlideIndex];
             if (ac) ac.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
+            // Attach scroll listener to detect swipe and sync active slide
+            rtAttachStripScrollListener(strip);
+        }
+
+        let rtScrollTimer = null;
+        function rtAttachStripScrollListener(strip) {
+            strip.removeEventListener('scroll', rtOnStripScroll);
+            strip.addEventListener('scroll', rtOnStripScroll, {passive: true});
+        }
+        function rtOnStripScroll() {
+            clearTimeout(rtScrollTimer);
+            rtScrollTimer = setTimeout(() => {
+                const strip = document.getElementById('rtPreviewStrip');
+                if (!strip) return;
+                const cards = strip.querySelectorAll('.rt-preview-card');
+                if (cards.length === 0) return;
+                const stripRect = strip.getBoundingClientRect();
+                const stripCenter = stripRect.left + stripRect.width / 2;
+                let closest = 0, minDist = Infinity;
+                cards.forEach((card, i) => {
+                    const r = card.getBoundingClientRect();
+                    const cardCenter = r.left + r.width / 2;
+                    const dist = Math.abs(cardCenter - stripCenter);
+                    if (dist < minDist) { minDist = dist; closest = i; }
+                });
+                if (closest !== rtActiveSlideIndex) {
+                    rtSelectSlide(closest);
+                }
+            }, 80);
         }
 
         function rtRenderSinglePreview(index) {
@@ -3641,10 +3739,6 @@
 
         function rtSelectSlide(index) {
             rtActiveSlideIndex = index;
-            // Update active class
-            document.querySelectorAll('#rtPreviewStrip .rt-preview-card').forEach((c,i) => {
-                c.classList.toggle('active', i === index);
-            });
             rtRenderActivePanel();
         }
 
