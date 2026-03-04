@@ -2609,6 +2609,7 @@
                 Проверяем данные...
             </div>
             <div class="login-error" id="loginError"></div>
+            <div id="debugLog" style="color:#888;font-size:10px;margin-top:16px;text-align:left;max-height:200px;overflow-y:auto;word-break:break-all;"></div>
             <div class="login-note">Доступно только для участников клуба</div>
         </div>
     </div>
@@ -3040,6 +3041,11 @@
     <div class="toast" id="toast"></div>
 
     <script>
+        function dbg(msg) {
+            var d = document.getElementById('debugLog');
+            if (d) d.innerHTML += msg + '<br>';
+            console.log('[CRAFT]', msg);
+        }
         // Tab Navigation
         let currentTab = 'create';
 
@@ -4856,17 +4862,13 @@
         let currentUser = null;
 
         async function initAuth() {
-            console.log('[CRAFT] initAuth() started');
-            // Check if running inside Telegram Mini App
+            dbg('initAuth started');
             const tg = window.Telegram && window.Telegram.WebApp;
-            console.log('[CRAFT] tg=', !!tg, 'initData=', tg ? (tg.initData ? 'has data' : 'empty') : 'N/A');
+            dbg('tg=' + !!tg + ' initData=' + (tg ? (tg.initData ? 'YES(' + tg.initData.length + ')' : 'empty') : 'N/A'));
             if (tg && tg.initData) {
-                // Telegram Mini App — auto-authenticate
                 tg.ready();
                 tg.expand();
                 document.body.classList.add('tg-miniapp');
-
-                // Safe area insets for Dynamic Island / notch
                 function tgUpdateInsets() {
                     const root = document.documentElement.style;
                     const sa = tg.safeAreaInset || {};
@@ -4881,27 +4883,34 @@
                     tg.onEvent('contentSafeAreaChanged', tgUpdateInsets);
                 }
                 if (tg.enableClosingConfirmation) tg.enableClosingConfirmation();
+                dbg('calling /api/auth/miniapp...');
                 try {
                     const resp = await fetch(`${API_URL}/api/auth/miniapp`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ initData: tg.initData })
                     });
+                    dbg('miniapp resp status=' + resp.status);
                     if (resp.ok) {
                         const data = await resp.json();
+                        dbg('miniapp OK user=' + data.user.id);
                         currentUser = data.user;
                         localStorage.setItem('craft_user', JSON.stringify(data.user));
                         hideLogin();
                         updateUIForUser();
                         return;
+                    } else {
+                        const errText = await resp.text().catch(()=>'');
+                        dbg('miniapp FAIL: ' + errText.substring(0, 150));
                     }
                 } catch(e) {
-                    console.log('Mini App auth failed, falling back', e);
+                    dbg('miniapp ERROR: ' + e.message);
                 }
             }
 
             // Regular auth: check localStorage or show login
             const saved = localStorage.getItem('craft_user');
+            dbg('localStorage saved=' + (saved ? 'yes' : 'no'));
             if (saved) {
                 try {
                     currentUser = JSON.parse(saved);
@@ -4917,7 +4926,7 @@
         }
 
         async function showLogin() {
-            console.log('[CRAFT] showLogin() called');
+            dbg('showLogin called');
             document.getElementById('loginOverlay').classList.remove('hidden');
             // Dynamically insert Telegram Login Widget
             const container = document.getElementById('telegramLoginWidget');
@@ -5037,7 +5046,7 @@
         }
 
         async function init() {
-            console.log('[CRAFT] init() started');
+            dbg('init started');
             // NEW: Load MargulanGames template by default instead of empty template
             try {
                 const r = await fetch(`${API_URL}/templates/margulangames`);
@@ -5058,7 +5067,7 @@
             await loadTemplateSelectors();
             loadWebhookSettings();
             chatInitTab();
-            console.log('[CRAFT] calling initAuth()');
+            dbg('calling initAuth');
             initAuth();
 
             // NEW v7.0: Keyboard shortcuts for Undo/Redo
