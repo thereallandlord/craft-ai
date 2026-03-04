@@ -4907,17 +4907,15 @@
                     } else {
                         const errData = await resp.json().catch(() => ({}));
                         console.error('Mini App auth error:', resp.status, errData);
-                        if (widgetLoading) widgetLoading.innerHTML = '';
-                        showLoginError(errData.detail || `Ошибка авторизации (${resp.status})`);
-                        return;
+                        // Fall through to localStorage fallback
                     }
                 } catch(e) {
                     console.error('Mini App auth failed:', e);
-                    // Try localStorage fallback
+                    // Fall through to localStorage fallback
                 }
             }
 
-            // Regular auth: check localStorage or show login
+            // Fallback: check localStorage (saved from previous web login)
             const saved = localStorage.getItem('craft_user');
             if (saved) {
                 try {

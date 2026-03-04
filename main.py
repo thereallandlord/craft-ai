@@ -1236,17 +1236,24 @@ async def auth_telegram(data: dict):
 
 def verify_mini_app_data(init_data_raw: str) -> dict:
     """Validate Telegram Mini App initData using HMAC-SHA256."""
-    from urllib.parse import parse_qsl
-    # parse_qsl properly handles URL encoding per-value (safe for JSON with & chars)
-    parsed = dict(parse_qsl(init_data_raw, keep_blank_values=True))
+    from urllib.parse import unquote
+    # Parse initData: split by & first (on raw string), then decode values
+    pairs = init_data_raw.split("&")
+    parsed = {}
+    for pair in pairs:
+        if "=" not in pair:
+            continue
+        key, value = pair.split("=", 1)
+        parsed[key] = unquote(value)
+
     received_hash = parsed.pop("hash", None)
     if not received_hash:
         raise ValueError("Missing hash")
-    # Check freshness (24 hours — Mini App can be open for a while)
+    # Check freshness (24 hours)
     auth_date = int(parsed.get("auth_date", 0))
     if time.time() - auth_date > 86400:
         raise ValueError("Init data expired")
-    # Sort and join
+    # Sort and join — values must be URL-decoded
     data_check_string = "\n".join(f"{k}={v}" for k, v in sorted(parsed.items()))
     # Secret = HMAC-SHA256("WebAppData", bot_token)
     secret_key = hmac.new(b"WebAppData", TELEGRAM_BOT_TOKEN.encode(), hashlib.sha256).digest()
@@ -1268,7 +1275,10 @@ async def auth_miniapp(request: Request):
         raise HTTPException(status_code=400, detail="Missing initData")
     try:
         data = verify_mini_app_data(init_data)
+        print(f"[AUTH] Mini App verify OK: user_id={data['user'].get('id')}")
     except ValueError as e:
+        print(f"[AUTH] Mini App verify FAILED: {e}")
+        print(f"[AUTH] initData length={len(init_data)}, first 100 chars: {init_data[:100]}")
         raise HTTPException(status_code=401, detail=str(e))
     user_id = data["user"].get("id", 0)
     is_club_member = check_club_membership(user_id)
