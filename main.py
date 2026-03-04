@@ -11,7 +11,7 @@ NEW в v7.0:
 - Google Fonts support (автоматическая загрузка)
 - Custom Fonts upload (.ttf/.otf)
 """
-from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi import FastAPI, HTTPException, UploadFile, File, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -31,6 +31,24 @@ import time
 import numpy as np
 
 app = FastAPI(title="Carousel Studio", version="7.0")
+
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request as StarletteRequest
+
+class TelegramMiniAppMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: StarletteRequest, call_next):
+        response = await call_next(request)
+        # Allow Telegram Web to iframe the app
+        response.headers["Content-Security-Policy"] = (
+            "frame-ancestors 'self' https://web.telegram.org https://*.telegram.org"
+        )
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        # Remove restrictive X-Frame-Options if set
+        if "X-Frame-Options" in response.headers:
+            del response.headers["X-Frame-Options"]
+        return response
+
+app.add_middleware(TelegramMiniAppMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
@@ -1201,6 +1219,61 @@ async def auth_telegram(data: dict):
             "last_name": data.get("last_name", ""),
             "username": data.get("username", ""),
             "photo_url": data.get("photo_url", ""),
+            "is_club_member": is_club_member,
+            "is_admin": is_admin,
+        }
+    }
+
+
+def verify_mini_app_data(init_data_raw: str) -> dict:
+    """Validate Telegram Mini App initData using HMAC-SHA256."""
+    from urllib.parse import unquote
+    parsed = dict(
+        pair.split("=", 1)
+        for pair in unquote(init_data_raw).split("&")
+        if "=" in pair
+    )
+    received_hash = parsed.pop("hash", None)
+    if not received_hash:
+        raise ValueError("Missing hash")
+    # Check freshness (1 hour)
+    auth_date = int(parsed.get("auth_date", 0))
+    if time.time() - auth_date > 3600:
+        raise ValueError("Init data expired")
+    # Sort and join
+    data_check_string = "\n".join(f"{k}={v}" for k, v in sorted(parsed.items()))
+    # Secret = HMAC-SHA256("WebAppData", bot_token)
+    secret_key = hmac.new(b"WebAppData", TELEGRAM_BOT_TOKEN.encode(), hashlib.sha256).digest()
+    computed_hash = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(computed_hash, received_hash):
+        raise ValueError("Invalid hash")
+    user_data = json.loads(parsed.get("user", "{}"))
+    return {"user": user_data, "auth_date": auth_date}
+
+
+@app.post("/api/auth/miniapp")
+async def auth_miniapp(request: Request):
+    """Authenticate user via Telegram Mini App initData (auto-login)."""
+    if not TELEGRAM_BOT_TOKEN:
+        raise HTTPException(status_code=500, detail="TELEGRAM_BOT_TOKEN not configured")
+    body = await request.json()
+    init_data = body.get("initData", "")
+    if not init_data:
+        raise HTTPException(status_code=400, detail="Missing initData")
+    try:
+        data = verify_mini_app_data(init_data)
+    except ValueError as e:
+        raise HTTPException(status_code=401, detail=str(e))
+    user_id = data["user"].get("id", 0)
+    is_club_member = check_club_membership(user_id)
+    is_admin = str(user_id) in ADMIN_TELEGRAM_IDS
+    return {
+        "user": {
+            "id": user_id,
+            "first_name": data["user"].get("first_name", ""),
+            "last_name": data["user"].get("last_name", ""),
+            "username": data["user"].get("username", ""),
+            "photo_url": data["user"].get("photo_url", ""),
             "is_club_member": is_club_member,
             "is_admin": is_admin,
         }
