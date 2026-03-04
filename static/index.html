@@ -1304,6 +1304,33 @@
             line-height: 1.4;
         }
 
+        /* RT Mini-Editor */
+        .rt-editor-header { display:flex; align-items:center; gap:12px; margin-bottom:16px; }
+        .rt-editor-title { font-size:16px; font-weight:600; color:var(--text-primary); }
+        .rt-preview-strip { display:flex; gap:10px; overflow-x:auto; overflow-y:hidden; padding:8px 0 12px; scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+        .rt-preview-strip::-webkit-scrollbar { display:none; }
+        .rt-preview-card { flex-shrink:0; width:200px; aspect-ratio:4/5; border-radius:10px; overflow:hidden; position:relative; cursor:pointer; border:2px solid var(--border); transition:border-color 0.2s,box-shadow 0.2s; scroll-snap-align:center; background:var(--bg-tertiary); }
+        .rt-preview-card:hover { border-color:var(--text-muted); }
+        .rt-preview-card.active { border-color:var(--accent); box-shadow:0 0 0 2px var(--accent); }
+        .rt-preview-card-inner { position:absolute; inset:0; pointer-events:none; overflow:hidden; }
+        .rt-preview-card-number { position:absolute; top:6px; left:6px; width:22px; height:22px; background:rgba(0,0,0,0.7); color:#fff; border-radius:5px; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:600; z-index:2; }
+        .rt-toolbar-tabs { display:flex; border-bottom:1px solid var(--border); margin-top:12px; }
+        .rt-toolbar-tab { flex:1; padding:10px 0; background:none; border:none; border-bottom:2px solid transparent; font-family:inherit; font-size:13px; font-weight:500; color:var(--text-secondary); cursor:pointer; transition:all 0.2s; }
+        .rt-toolbar-tab:hover { color:var(--text-primary); }
+        .rt-toolbar-tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+        .rt-panel { padding:16px 0; max-height:45vh; overflow-y:auto; }
+        .rt-download-bar { padding:12px 0; position:sticky; bottom:0; background:var(--bg-primary); border-top:1px solid var(--border); z-index:10; }
+        .rt-download-bar .btn-generate { width:100%; }
+        .rt-bg-toggle { display:flex; border:1px solid var(--border); border-radius:8px; overflow:hidden; margin-bottom:12px; }
+        .rt-bg-toggle button { flex:1; padding:8px 0; background:var(--bg-secondary); border:none; font-family:inherit; font-size:12px; color:var(--text-secondary); cursor:pointer; }
+        .rt-bg-toggle button.active { background:var(--accent); color:#fff; }
+        .rt-photo-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(60px,1fr)); gap:6px; }
+        .rt-photo-grid-item { aspect-ratio:1; border-radius:6px; overflow:hidden; border:2px solid var(--border); cursor:pointer; }
+        .rt-photo-grid-item.active { border-color:var(--accent); }
+        .rt-photo-grid-item img { width:100%; height:100%; object-fit:cover; }
+        @media(max-width:768px) { .rt-preview-card { width:160px; } .rt-panel { max-height:35vh; } }
+        @media(max-width:480px) { .rt-preview-card { width:130px; } .rt-toolbar-tab { font-size:12px; padding:8px 0; } }
+
         /* Wizard Steps */
         .wizard-steps {
             display: flex;
@@ -2634,65 +2661,79 @@
         <!-- === TAB: Ready Text === -->
         <div class="tab-page" id="tab-ready-text">
             <div class="tab-page-content">
-                <div class="tab-page-title">Создание карусели по тексту</div>
-                <div class="tab-page-subtitle">Вставьте готовый текст карусели — мы разобьём его на слайды и сгенерируем картинки</div>
 
-                <div class="form-group">
-                    <label class="form-label">Выберите шаблон</label>
-                    <div class="template-grid" id="rtTemplateGrid">
-                        <div style="color:var(--text-muted);font-size:13px;grid-column:1/-1;text-align:center;padding:20px;">Загрузка шаблонов...</div>
+                <!-- Phase 1: Input -->
+                <div id="rtInputPhase">
+                    <div class="tab-page-title">Создание карусели по тексту</div>
+                    <div class="tab-page-subtitle">Вставьте текст, выберите шаблон — увидите мгновенный превью</div>
+
+                    <div class="form-group">
+                        <label class="form-label">Выберите шаблон</label>
+                        <div class="template-grid" id="rtTemplateGrid">
+                            <div style="color:var(--text-muted);font-size:13px;grid-column:1/-1;text-align:center;padding:20px;">Загрузка шаблонов...</div>
+                        </div>
+                        <input type="hidden" id="rtTemplateSelect" value="">
                     </div>
-                    <input type="hidden" id="rtTemplateSelect" value="">
-                </div>
 
-                <div class="form-group">
-                    <label class="form-label">Instagram</label>
-                    <div style="display:flex;gap:8px;">
-                        <select class="form-input" id="rtUsername" style="flex:1;">
-                            <option value="@username">@username</option>
-                        </select>
-                        <button class="btn" onclick="rtAddUsername()" style="white-space:nowrap;padding:8px 12px;">+</button>
+                    <div class="form-group">
+                        <label class="form-label">Instagram</label>
+                        <div style="display:flex;gap:8px;">
+                            <select class="form-input" id="rtUsername" style="flex:1;">
+                                <option value="@username">@username</option>
+                            </select>
+                            <button class="btn" onclick="rtAddUsername()" style="white-space:nowrap;padding:8px 12px;">+</button>
+                        </div>
                     </div>
-                </div>
 
-                <div class="form-group">
-                    <label class="form-label">Фото</label>
-                    <div style="display:flex;gap:8px;align-items:center;">
-                        <button class="btn" onclick="document.getElementById('rtPhotoInput').click()" style="white-space:nowrap;">Загрузить фото</button>
-                        <input type="file" id="rtPhotoInput" accept="image/*" style="display:none" onchange="rtHandlePhoto(this)">
-                        <span id="rtPhotoName" style="font-size:12px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+                    <div class="form-group">
+                        <label class="form-label">Фото</label>
+                        <div style="display:flex;gap:8px;align-items:center;">
+                            <button class="btn" onclick="document.getElementById('rtPhotoInput').click()" style="white-space:nowrap;">Загрузить фото</button>
+                            <input type="file" id="rtPhotoInput" accept="image/*" style="display:none" onchange="rtHandlePhoto(this)">
+                            <span id="rtPhotoName" style="font-size:12px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+                        </div>
+                        <div id="rtPhotoLibrary" style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;"></div>
                     </div>
-                    <div id="rtPhotoLibrary" style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;"></div>
-                </div>
 
-                <div class="form-group">
-                    <label class="form-label">Текст карусели</label>
-                    <textarea class="form-textarea" id="rtText" placeholder="Вставьте текст карусели...&#10;&#10;Разделяйте слайды пустой строкой или нумерацией (1. 2. 3. или Слайд 1: Слайд 2:)&#10;&#10;Первая строка каждого слайда = заголовок, остальное = описание"></textarea>
-                </div>
+                    <div class="form-group">
+                        <label class="form-label">Текст карусели</label>
+                        <textarea class="form-textarea" id="rtText" placeholder="Вставьте текст карусели...&#10;&#10;Разделяйте слайды пустой строкой или нумерацией (1. 2. 3. или Слайд 1: Слайд 2:)&#10;&#10;Первая строка каждого слайда = заголовок, остальное = описание"></textarea>
+                    </div>
 
-                <button class="btn-generate" id="rtGenerateBtn" onclick="generateFromReadyText()">
-                    Создать карусель
-                </button>
-
-                <!-- Parsed slides preview -->
-                <div id="rtParsedSection" style="display:none; margin-top: 24px;">
-                    <div class="preview-title">Разбивка по слайдам (можно отредактировать)</div>
-                    <div class="parsed-slides" id="rtParsedSlides"></div>
-                    <button class="btn-generate" style="margin-top: 16px;" id="rtRenderBtn" onclick="renderFromParsedSlides()">
-                        Сгенерировать картинки
+                    <button class="btn-generate" id="rtGenerateBtn" onclick="generateFromReadyText()">
+                        Создать карусель
                     </button>
                 </div>
 
-                <!-- Generated images preview -->
-                <div class="preview-section" id="rtPreview">
-                    <div class="preview-title">Готовые слайды</div>
-                    <div class="preview-grid" id="rtPreviewGrid"></div>
-                    <div style="display:flex;gap:12px;margin-top:12px;">
-                        <button class="btn-download-all" onclick="downloadAllGenerated('rt')" style="flex:1;">
+                <!-- Phase 2: Mini-Editor -->
+                <div id="rtEditorPhase" style="display:none;">
+                    <div class="rt-editor-header">
+                        <button class="btn" onclick="rtBackToInput()" style="padding:6px 12px;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+                            Назад
+                        </button>
+                        <span class="rt-editor-title">Предпросмотр карусели</span>
+                    </div>
+
+                    <div class="rt-preview-strip" id="rtPreviewStrip"></div>
+
+                    <div class="rt-toolbar-tabs">
+                        <button class="rt-toolbar-tab active" data-panel="text" onclick="rtSwitchPanel('text')">Текст</button>
+                        <button class="rt-toolbar-tab" data-panel="background" onclick="rtSwitchPanel('background')">Фон</button>
+                        <button class="rt-toolbar-tab" data-panel="template" onclick="rtSwitchPanel('template')">Шаблон</button>
+                    </div>
+
+                    <div class="rt-panel" id="rtPanelText"><div id="rtTextEditArea"></div></div>
+                    <div class="rt-panel" id="rtPanelBackground" style="display:none;"><div id="rtBgEditArea"></div></div>
+                    <div class="rt-panel" id="rtPanelTemplate" style="display:none;"><div class="template-grid" id="rtEditorTemplateGrid"></div></div>
+
+                    <div class="rt-download-bar">
+                        <button class="btn-generate" id="rtDownloadBtn" onclick="rtDownloadAll()">
                             Скачать все слайды
                         </button>
                     </div>
                 </div>
+
             </div>
         </div>
 
@@ -3211,6 +3252,10 @@
         let rtGeneratedImages = []; // [{base64, filename}]
         let rtSelectedPhoto = null; // base64 data URL of selected photo (legacy, used as default)
         let rtSlidePhotos = []; // per-slide photos: [base64 or null, ...]
+        let rtSlides = []; // full slide objects for mini-editor
+        let rtTemplate = null; // current template object
+        let rtActiveSlideIndex = 0;
+        let rtActivePanel = 'text'; // 'text' | 'background' | 'template'
 
         function parseCarouselText(text) {
             const slides = [];
@@ -3324,94 +3369,206 @@
 
         let rtSavedColors = JSON.parse(localStorage.getItem('craft_saved_colors') || '["#c8ff00","#ff5252","#448aff","#ffffff","#000000"]');
 
-        function rtRenderParsedSlides() {
-            const container = document.getElementById('rtParsedSlides');
-            container.innerHTML = rtParsedData.map((s, i) => {
-                const photo = rtSlidePhotos[i];
-                const photoPreview = photo
-                    ? `<div style="position:relative;display:inline-block;margin-top:6px;">
-                        <img src="${photo}" style="width:60px;height:60px;object-fit:cover;border-radius:6px;border:2px solid var(--accent);">
-                        <div onclick="rtRemoveSlidePhoto(${i})" style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;background:var(--danger, #e53e3e);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;line-height:1;">&times;</div>
-                       </div>`
-                    : '';
-                return `
-                <div class="parsed-slide">
-                    <div class="parsed-slide-header" style="display:flex;align-items:center;justify-content:space-between;">
-                        <span>Слайд ${i + 1}</span>
-                        <button class="btn" onclick="document.getElementById('rtSlidePhotoInput_${i}').click()" style="padding:2px 8px;font-size:11px;">
-                            ${photo ? 'Заменить фото' : '+ Фото'}
-                        </button>
-                        <input type="file" id="rtSlidePhotoInput_${i}" accept="image/*" style="display:none" onchange="rtHandleSlidePhoto(${i}, this)">
-                    </div>
-                    ${photoPreview}
-                    <input type="text" id="rtTitle_${i}" value="${(s.TITLE || '').replace(/"/g, '&quot;')}" onchange="rtParsedData[${i}].TITLE=this.value" placeholder="Заголовок">
-                    <div class="rt-color-toolbar" style="display:flex;gap:4px;align-items:center;margin:4px 0;">
-                        ${rtSavedColors.map(c => `<div onclick="rtApplyColor(${i},'title','${c}')" style="width:18px;height:18px;border-radius:4px;background:${c};border:1px solid var(--border);cursor:pointer;" title="${c}"></div>`).join('')}
-                        <input type="color" id="rtColorPicker_title_${i}" style="width:22px;height:22px;border:none;padding:0;cursor:pointer;background:none;" onchange="rtApplyColor(${i},'title',this.value);rtSaveColor(this.value)" title="Свой цвет">
-                        <input type="text" placeholder="#hex" style="width:60px;padding:2px 4px;font-size:10px;border:1px solid var(--border);border-radius:4px;background:var(--bg-primary);color:var(--text-primary);" onkeydown="if(event.key==='Enter'){rtApplyColor(${i},'title',this.value);rtSaveColor(this.value);this.value=''}">
-                        <button class="btn" onclick="rtClearColor(${i},'title')" style="padding:1px 6px;font-size:10px;" title="Убрать цвет">✕</button>
-                    </div>
-                    <textarea id="rtDesc_${i}" onchange="rtParsedData[${i}].DESCRIPTION=this.value" placeholder="Описание">${s.DESCRIPTION || ''}</textarea>
-                    <div class="rt-color-toolbar" style="display:flex;gap:4px;align-items:center;margin:4px 0;">
-                        ${rtSavedColors.map(c => `<div onclick="rtApplyColor(${i},'desc','${c}')" style="width:18px;height:18px;border-radius:4px;background:${c};border:1px solid var(--border);cursor:pointer;" title="${c}"></div>`).join('')}
-                        <input type="color" id="rtColorPicker_desc_${i}" style="width:22px;height:22px;border:none;padding:0;cursor:pointer;background:none;" onchange="rtApplyColor(${i},'desc',this.value);rtSaveColor(this.value)" title="Свой цвет">
-                        <input type="text" placeholder="#hex" style="width:60px;padding:2px 4px;font-size:10px;border:1px solid var(--border);border-radius:4px;background:var(--bg-primary);color:var(--text-primary);" onkeydown="if(event.key==='Enter'){rtApplyColor(${i},'desc',this.value);rtSaveColor(this.value);this.value=''}">
-                        <button class="btn" onclick="rtClearColor(${i},'desc')" style="padding:1px 6px;font-size:10px;" title="Убрать цвет">✕</button>
-                    </div>
-                </div>`;
-            }).join('');
+        // === RT MINI-EDITOR FUNCTIONS ===
+
+        function rtBuildSlides(templateData, parsedData, photos) {
+            const templateSlides = templateData.slides || [];
+            const username = document.getElementById('rtUsername').value || '@username';
+            const introSlides = templateSlides.filter(s => s.type === 'intro');
+            const contentSlides = templateSlides.filter(s => s.type === 'content');
+            const endingSlides = templateSlides.filter(s => s.type === 'ending');
+            const contentSpecific = {};
+            for (let i = 1; i <= 10; i++) {
+                const m = templateSlides.filter(s => s.type === `content${i}`);
+                if (m.length > 0) contentSpecific[`content${i}`] = m[0];
+            }
+            const introTemplate = introSlides[0] || contentSlides[0] || templateSlides[0];
+            const contentTemplate = contentSlides[0] || templateSlides[0];
+            function getContentTemplate(idx) {
+                if (contentSpecific[`content${idx}`]) return contentSpecific[`content${idx}`];
+                const avail = [];
+                for (let i = 1; i <= idx; i++) { if (contentSpecific[`content${i}`]) avail.push(i); }
+                if (avail.length > 0) return contentSpecific[`content${Math.max(...avail)}`];
+                return contentTemplate;
+            }
+            const result = [];
+            const totalSlides = parsedData.length + endingSlides.length;
+            const defaultPhoto = rtSelectedPhoto || null;
+            parsedData.forEach((sv, i) => {
+                const base = (i === 0) ? introTemplate : getContentTemplate(i);
+                const slide = JSON.parse(JSON.stringify(base));
+                const photo = photos[i] || (i === 0 ? defaultPhoto : null);
+                if (photo && slide.background && slide.background.type === 'photo') {
+                    slide.background.photo = photo;
+                }
+                (slide.elements || []).forEach(el => {
+                    const vn = (el.varName || '').toUpperCase();
+                    if (vn === 'TITLE' && sv.TITLE !== undefined) el.content = sv.TITLE;
+                    else if (vn === 'DESCRIPTION' && sv.DESCRIPTION !== undefined) el.content = sv.DESCRIPTION;
+                    if (el.type === 'username') el.content = username;
+                    if (el.type === 'slidenum') el.content = `${i + 1}/${totalSlides}`;
+                });
+                result.push(slide);
+            });
+            endingSlides.forEach(s => {
+                const slide = JSON.parse(JSON.stringify(s));
+                (slide.elements || []).forEach(el => {
+                    if (el.type === 'slidenum') el.content = `${result.length + 1}/${totalSlides}`;
+                    if (el.type === 'username') el.content = username;
+                });
+                result.push(slide);
+            });
+            return result;
         }
 
-        function rtApplyColor(slideIndex, field, color) {
-            if (!color || !color.startsWith('#')) return;
-            const el = field === 'title'
-                ? document.getElementById(`rtTitle_${slideIndex}`)
-                : document.getElementById(`rtDesc_${slideIndex}`);
-            if (!el) return;
+        function rtRenderMiniPreview(slide) {
+            const W = 1080, H = 1350;
+            const bg = slide.background || {};
+            let html = '';
+            // Background
+            if (bg.type === 'photo' && bg.photo) {
+                const pos = bg.photoPosition || {x:50,y:50};
+                const zoom = bg.photoZoom || 1;
+                html += `<div style="position:absolute;inset:0;background-image:url(${bg.photo});background-position:${pos.x}% ${pos.y}%;background-size:cover;transform:scale(${zoom});transform-origin:${pos.x}% ${pos.y}%"></div>`;
+                if (bg.overlay > 0) {
+                    const c = (bg.overlayMode === 'lighten') ? '255,255,255' : '0,0,0';
+                    const g = bg.overlayGradient || 'solid';
+                    const a = bg.overlay / 100;
+                    let os = '';
+                    if (g==='solid') os = `background:rgba(${c},${a})`;
+                    else if (g==='bottom') os = `background:linear-gradient(to top,rgba(${c},${a}) 0%,transparent 60%)`;
+                    else if (g==='top') os = `background:linear-gradient(to bottom,rgba(${c},${a}) 0%,transparent 60%)`;
+                    else if (g==='both') os = `background:linear-gradient(to bottom,rgba(${c},${a}) 0%,transparent 50%,rgba(${c},${a}) 100%)`;
+                    html += `<div style="position:absolute;inset:0;${os}"></div>`;
+                }
+            } else {
+                html += `<div style="position:absolute;inset:0;background:${bg.color || '#f5f5f5'}"></div>`;
+            }
+            // Use CSS scale to render at full size then shrink
+            const containerW = 200; // matches .rt-preview-card width
+            const ms = containerW / W;
+            (slide.elements || []).forEach(el => {
+                if (el.type === 'photo') {
+                    const shape = el.shape === 'circle' ? '50%' : `${(el.borderRadius||0)*ms}px`;
+                    html += `<div style="position:absolute;left:${el.x*ms}px;top:${el.y*ms}px;width:${(el.width||200)*ms}px;height:${(el.height||200)*ms}px;border-radius:${shape};${el.photo?`background-image:url(${el.photo});background-size:cover;background-position:center;`:'background:#333;'}"></div>`;
+                } else {
+                    let content = el.content || '';
+                    content = content.replace(/\{(#[0-9a-fA-F]{3,8}):([^}]+)\}/g, '<span style="color:$1">$2</span>');
+                    const hc = el.highlightColor || '#c8ff00';
+                    content = content.replace(/\*([^*]+)\*/g, `<span style="color:${hc}">$1</span>`).replace(/\n/g, '<br>');
+                    const wS = el.maxWidth ? `max-width:${el.maxWidth*ms}px;` : '';
+                    const tS = el.align==='right' ? 'transform:translateX(-100%);' : (el.align==='center' ? 'transform:translateX(-50%);' : '');
+                    html += `<div style="position:absolute;left:${el.x*ms}px;top:${el.y*ms}px;font-family:'${el.fontFamily||'Inter'}',sans-serif;font-size:${el.fontSize*ms}px;font-weight:${el.fontWeight||400};color:${el.color||'#000'};opacity:${(el.opacity||100)/100};line-height:${el.lineHeight||1.2};${wS}${tS}word-wrap:break-word;overflow-wrap:break-word;letter-spacing:${(el.letterSpacing||0)*ms}px;">${content}</div>`;
+                }
+            });
+            return html;
+        }
 
-            const start = el.selectionStart;
-            const end = el.selectionEnd;
-            const text = el.value;
+        function rtRenderAllPreviews() {
+            const strip = document.getElementById('rtPreviewStrip');
+            if (!strip || rtSlides.length === 0) return;
+            strip.innerHTML = rtSlides.map((slide, i) => `
+                <div class="rt-preview-card ${i === rtActiveSlideIndex ? 'active' : ''}" onclick="rtSelectSlide(${i})">
+                    <div class="rt-preview-card-number">${i + 1}</div>
+                    <div class="rt-preview-card-inner">${rtRenderMiniPreview(slide)}</div>
+                </div>`).join('');
+            const ac = strip.querySelector('.rt-preview-card.active');
+            if (ac) ac.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
+        }
 
-            if (start === end) {
-                showToast('Выделите текст для окрашивания', 'error');
+        function rtRenderSinglePreview(index) {
+            const cards = document.querySelectorAll('#rtPreviewStrip .rt-preview-card');
+            if (cards[index]) {
+                const inner = cards[index].querySelector('.rt-preview-card-inner');
+                if (inner) inner.innerHTML = rtRenderMiniPreview(rtSlides[index]);
+            }
+        }
+
+        function rtSelectSlide(index) {
+            rtActiveSlideIndex = index;
+            // Update active class
+            document.querySelectorAll('#rtPreviewStrip .rt-preview-card').forEach((c,i) => {
+                c.classList.toggle('active', i === index);
+            });
+            rtRenderActivePanel();
+        }
+
+        function rtSwitchPanel(name) {
+            rtActivePanel = name;
+            document.querySelectorAll('.rt-toolbar-tab').forEach(t => t.classList.toggle('active', t.dataset.panel === name));
+            document.getElementById('rtPanelText').style.display = name === 'text' ? '' : 'none';
+            document.getElementById('rtPanelBackground').style.display = name === 'background' ? '' : 'none';
+            document.getElementById('rtPanelTemplate').style.display = name === 'template' ? '' : 'none';
+            rtRenderActivePanel();
+        }
+
+        function rtRenderActivePanel() {
+            if (rtActivePanel === 'text') rtRenderTextPanel();
+            else if (rtActivePanel === 'background') rtRenderBgPanel();
+            else if (rtActivePanel === 'template') rtRenderTemplatePanel();
+        }
+
+        function rtRenderTextPanel() {
+            const c = document.getElementById('rtTextEditArea');
+            const i = rtActiveSlideIndex;
+            const slide = rtSlides[i];
+            if (!slide) return;
+            if (slide.type === 'ending') {
+                c.innerHTML = '<div style="color:var(--text-muted);font-size:13px;text-align:center;padding:20px;">Завершающий слайд — текст из шаблона</div>';
                 return;
             }
-
-            const selected = text.substring(start, end);
-            // Wrap selected text in {#hex:text} markup
-            const colored = `{${color}:${selected}}`;
-            const newText = text.substring(0, start) + colored + text.substring(end);
-            el.value = newText;
-
-            if (field === 'title') {
-                rtParsedData[slideIndex].TITLE = newText;
-            } else {
-                rtParsedData[slideIndex].DESCRIPTION = newText;
+            const titleEl = (slide.elements||[]).find(el => (el.varName||'').toUpperCase() === 'TITLE');
+            const descEl = (slide.elements||[]).find(el => (el.varName||'').toUpperCase() === 'DESCRIPTION');
+            let h = `<div style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;margin-bottom:8px;">Слайд ${i+1}</div>`;
+            if (titleEl) {
+                h += `<label class="form-label" style="font-size:12px;">Заголовок</label>
+                    <input type="text" class="form-input" id="rtEditTitle" value="${escapeHtml(titleEl.content||'')}" oninput="rtUpdateText(${i},'TITLE',this.value)" placeholder="Заголовок">
+                    <div style="display:flex;gap:4px;align-items:center;margin:4px 0;flex-wrap:wrap;">
+                        ${rtSavedColors.map(cl=>`<div onclick="rtApplyColorNew(${i},'title','${cl}')" style="width:18px;height:18px;border-radius:4px;background:${cl};border:1px solid var(--border);cursor:pointer;" title="${cl}"></div>`).join('')}
+                        <input type="color" style="width:22px;height:22px;border:none;padding:0;cursor:pointer;background:none;" onchange="rtApplyColorNew(${i},'title',this.value);rtSaveColor(this.value)">
+                        <button class="btn" onclick="rtClearColorNew(${i},'title')" style="padding:1px 6px;font-size:10px;">✕</button>
+                    </div>`;
             }
-
-            // Restore cursor position after the colored text
-            const newPos = start + colored.length;
-            el.setSelectionRange(newPos, newPos);
-            el.focus();
-            showToast(`Цвет ${color} применён`, 'success');
+            if (descEl) {
+                h += `<label class="form-label" style="font-size:12px;margin-top:8px;">Описание</label>
+                    <textarea class="form-textarea" id="rtEditDesc" style="min-height:80px;" oninput="rtUpdateText(${i},'DESCRIPTION',this.value)" placeholder="Описание">${escapeHtml(descEl.content||'')}</textarea>
+                    <div style="display:flex;gap:4px;align-items:center;margin:4px 0;flex-wrap:wrap;">
+                        ${rtSavedColors.map(cl=>`<div onclick="rtApplyColorNew(${i},'desc','${cl}')" style="width:18px;height:18px;border-radius:4px;background:${cl};border:1px solid var(--border);cursor:pointer;" title="${cl}"></div>`).join('')}
+                        <input type="color" style="width:22px;height:22px;border:none;padding:0;cursor:pointer;background:none;" onchange="rtApplyColorNew(${i},'desc',this.value);rtSaveColor(this.value)">
+                        <button class="btn" onclick="rtClearColorNew(${i},'desc')" style="padding:1px 6px;font-size:10px;">✕</button>
+                    </div>`;
+            }
+            c.innerHTML = h;
         }
 
-        function rtClearColor(slideIndex, field) {
-            const el = field === 'title'
-                ? document.getElementById(`rtTitle_${slideIndex}`)
-                : document.getElementById(`rtDesc_${slideIndex}`);
-            if (!el) return;
+        function rtUpdateText(slideIndex, varName, value) {
+            const slide = rtSlides[slideIndex];
+            if (!slide) return;
+            const el = (slide.elements||[]).find(e => (e.varName||'').toUpperCase() === varName.toUpperCase());
+            if (el) el.content = value;
+            if (slideIndex < rtParsedData.length) rtParsedData[slideIndex][varName] = value;
+            rtRenderSinglePreview(slideIndex);
+        }
 
-            // Remove all {#hex:text} wrappers, keep text
-            const cleaned = el.value.replace(/\{#[0-9a-fA-F]{3,8}:([^}]+)\}/g, '$1');
-            el.value = cleaned;
-            if (field === 'title') {
-                rtParsedData[slideIndex].TITLE = cleaned;
-            } else {
-                rtParsedData[slideIndex].DESCRIPTION = cleaned;
-            }
-            showToast('Цвета убраны', 'success');
+        function rtApplyColorNew(slideIndex, field, color) {
+            if (!color || !color.startsWith('#')) return;
+            const el = field === 'title' ? document.getElementById('rtEditTitle') : document.getElementById('rtEditDesc');
+            if (!el) return;
+            const start = el.selectionStart, end = el.selectionEnd;
+            if (start === end) { showToast('Выделите текст', 'error'); return; }
+            const text = el.value;
+            const colored = `{${color}:${text.substring(start, end)}}`;
+            el.value = text.substring(0, start) + colored + text.substring(end);
+            rtUpdateText(slideIndex, field === 'title' ? 'TITLE' : 'DESCRIPTION', el.value);
+            el.setSelectionRange(start + colored.length, start + colored.length);
+            el.focus();
+        }
+
+        function rtClearColorNew(slideIndex, field) {
+            const el = field === 'title' ? document.getElementById('rtEditTitle') : document.getElementById('rtEditDesc');
+            if (!el) return;
+            el.value = el.value.replace(/\{#[0-9a-fA-F]{3,8}:([^}]+)\}/g, '$1');
+            rtUpdateText(slideIndex, field === 'title' ? 'TITLE' : 'DESCRIPTION', el.value);
         }
 
         function rtSaveColor(color) {
@@ -3423,26 +3580,158 @@
             }
         }
 
-        function rtHandleSlidePhoto(slideIndex, input) {
-            const file = input.files[0];
-            if (!file) return;
+        function rtRenderBgPanel() {
+            const c = document.getElementById('rtBgEditArea');
+            const i = rtActiveSlideIndex;
+            const slide = rtSlides[i];
+            if (!slide) return;
+            const bg = slide.background || {};
+            const isPhoto = bg.type === 'photo';
+            const lib = JSON.parse(localStorage.getItem('craft_photo_library') || '[]');
+            let h = `<div style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;margin-bottom:8px;">Слайд ${i+1} — Фон</div>
+                <div class="rt-bg-toggle">
+                    <button class="${!isPhoto?'active':''}" onclick="rtSetBgType(${i},'color')">Цвет</button>
+                    <button class="${isPhoto?'active':''}" onclick="rtSetBgType(${i},'photo')">Фото</button>
+                </div>`;
+            if (!isPhoto) {
+                h += `<div style="display:flex;gap:8px;align-items:center;">
+                    <input type="color" value="${bg.color||'#f5f5f5'}" onchange="rtSetBgColor(${i},this.value)" style="width:40px;height:40px;border:none;cursor:pointer;">
+                    <input type="text" class="form-input" value="${bg.color||'#f5f5f5'}" onchange="rtSetBgColor(${i},this.value)" style="width:100px;">
+                </div>`;
+            } else {
+                h += `<button class="btn" onclick="document.getElementById('rtBgPhotoInput').click()" style="width:100%;margin-bottom:8px;">Загрузить фото</button>
+                    <input type="file" id="rtBgPhotoInput" accept="image/*" style="display:none" onchange="rtSetBgPhotoFile(${i},this)">
+                    <div class="rt-photo-grid">${lib.map(p => `
+                        <div class="rt-photo-grid-item ${bg.photo===p.data?'active':''}" onclick="rtSetBgPhotoLib(${i},'${p.id}')">
+                            <img src="${p.data}">
+                        </div>`).join('')}
+                    </div>
+                    <div style="margin-top:12px;">
+                        <label class="form-label" style="font-size:12px;">Затемнение: ${bg.overlay||0}%</label>
+                        <input type="range" min="0" max="100" value="${bg.overlay||0}" oninput="rtSetBgOverlay(${i},this.value)" style="width:100%;">
+                    </div>`;
+            }
+            h += `<button class="btn" onclick="rtApplyBgToAll(${i})" style="margin-top:8px;font-size:12px;padding:6px 12px;">Применить ко всем</button>`;
+            c.innerHTML = h;
+        }
+
+        function rtSetBgType(i, type) { rtSlides[i].background.type = type; rtRenderSinglePreview(i); rtRenderBgPanel(); }
+        function rtSetBgColor(i, color) { rtSlides[i].background.color = color; rtSlides[i].background.type = 'color'; rtRenderSinglePreview(i); }
+        function rtSetBgOverlay(i, val) { rtSlides[i].background.overlay = parseInt(val); rtRenderSinglePreview(i); }
+        function rtSetBgPhotoFile(i, input) {
+            const file = input.files[0]; if (!file) return;
             const reader = new FileReader();
             reader.onload = (e) => {
-                rtSlidePhotos[slideIndex] = e.target.result;
-                // Also save to library
+                rtSlides[i].background.photo = e.target.result;
+                rtSlides[i].background.type = 'photo';
+                rtSlidePhotos[i] = e.target.result;
                 const lib = JSON.parse(localStorage.getItem('craft_photo_library') || '[]');
-                const entry = { id: 'photo_' + Date.now(), data: e.target.result, name: file.name };
-                lib.push(entry);
+                lib.push({id:'photo_'+Date.now(), data:e.target.result, name:file.name});
                 localStorage.setItem('craft_photo_library', JSON.stringify(lib));
-                rtRenderPhotoLibrary();
-                rtRenderParsedSlides();
+                rtRenderSinglePreview(i); rtRenderBgPanel();
             };
             reader.readAsDataURL(file);
         }
+        function rtSetBgPhotoLib(i, photoId) {
+            const lib = JSON.parse(localStorage.getItem('craft_photo_library') || '[]');
+            const p = lib.find(x => x.id === photoId); if (!p) return;
+            rtSlides[i].background.photo = p.data;
+            rtSlides[i].background.type = 'photo';
+            rtSlidePhotos[i] = p.data;
+            rtRenderSinglePreview(i); rtRenderBgPanel();
+        }
+        function rtApplyBgToAll(srcIdx) {
+            const bg = JSON.parse(JSON.stringify(rtSlides[srcIdx].background));
+            rtSlides.forEach((s,i) => { if (i !== srcIdx) s.background = JSON.parse(JSON.stringify(bg)); });
+            rtRenderAllPreviews();
+            showToast('Фон применён ко всем', 'success');
+        }
 
-        function rtRemoveSlidePhoto(slideIndex) {
-            rtSlidePhotos[slideIndex] = null;
-            rtRenderParsedSlides();
+        function rtRenderTemplatePanel() {
+            const grid = document.getElementById('rtEditorTemplateGrid');
+            if (!grid || templateCache.length === 0) return;
+            const curTid = rtTemplate ? (rtTemplate.template_id || rtTemplate.name) : '';
+            grid.innerHTML = templateCache.map(t => {
+                const tid = t.template_id || t.name;
+                return `<div class="template-card ${tid===curTid?'selected':''}" onclick="rtChangeTemplate('${tid}')">
+                    <div class="template-card-preview" id="rtEd-preview-${tid}"></div>
+                    <div class="template-card-name">${escapeHtml(t.name)}</div>
+                </div>`;
+            }).join('');
+            templateCache.forEach(t => { if (t.slides && t.slides.length > 0) renderTemplatePreview('rtEd', t); });
+        }
+
+        function rtChangeTemplate(templateId) {
+            const t = templateCache.find(t => (t.template_id || t.name) === templateId);
+            if (!t) return;
+            rtTemplate = t;
+            document.getElementById('rtTemplateSelect').value = templateId;
+            rtSlides = rtBuildSlides(t, rtParsedData, rtSlidePhotos);
+            if (rtActiveSlideIndex >= rtSlides.length) rtActiveSlideIndex = 0;
+            rtRenderAllPreviews();
+            rtRenderActivePanel();
+            // Update template panel selection
+            document.querySelectorAll('#rtEditorTemplateGrid .template-card').forEach(c => {
+                c.classList.toggle('selected', c.onclick.toString().includes(templateId));
+            });
+            showToast(`Шаблон "${t.name}" применён`, 'success');
+        }
+
+        function rtBackToInput() {
+            document.getElementById('rtEditorPhase').style.display = 'none';
+            document.getElementById('rtInputPhase').style.display = '';
+        }
+
+        async function rtDownloadAll() {
+            if (rtSlides.length === 0) return;
+            const btn = document.getElementById('rtDownloadBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> Рендеринг...';
+            const templateId = document.getElementById('rtTemplateSelect').value;
+            const username = document.getElementById('rtUsername').value || '@username';
+            // Rebuild slides data for server
+            const slidesData = rtParsedData.map((s, i) => {
+                const slide = {...s};
+                const photo = rtSlidePhotos[i] || (i === 0 ? rtSelectedPhoto : null);
+                if (photo) slide.PHOTO = photo;
+                return slide;
+            });
+            try {
+                const r = await fetch(`${API_URL}/generate`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({template_id: templateId, username: username, slides: slidesData})
+                });
+                if (r.ok) {
+                    const data = await r.json();
+                    const images = data.slides || [];
+                    images.forEach((img, i) => {
+                        setTimeout(() => {
+                            const a = document.createElement('a');
+                            a.href = img.base64;
+                            a.download = img.filename || `slide_${i+1}.png`;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                        }, i * 300);
+                    });
+                    showToast(`Скачивание ${images.length} слайдов...`, 'success');
+                } else {
+                    const err = await r.json().catch(()=>({}));
+                    showToast(err.detail || 'Ошибка генерации', 'error');
+                }
+            } catch(e) { showToast('Ошибка подключения', 'error'); }
+            btn.disabled = false;
+            btn.textContent = 'Скачать все слайды';
+        }
+
+        function rtSaveColor(color) {
+            if (!color || !color.startsWith('#')) return;
+            if (!rtSavedColors.includes(color)) {
+                rtSavedColors.push(color);
+                if (rtSavedColors.length > 12) rtSavedColors.shift();
+                localStorage.setItem('craft_saved_colors', JSON.stringify(rtSavedColors));
+            }
         }
 
         async function generateFromReadyText() {
@@ -3485,83 +3774,53 @@
                 return;
             }
 
-            // Init per-slide photos array
-            rtSlidePhotos = new Array(rtParsedData.length).fill(null);
-
-            // Show parsed slides for editing
-            rtRenderParsedSlides();
-
-            document.getElementById('rtParsedSection').style.display = '';
-            document.getElementById('rtPreview').classList.remove('visible');
-            showToast(`Разбито на ${rtParsedData.length} слайдов`, 'success');
-        }
-
-        async function renderFromParsedSlides() {
+            // Validate template
             const templateId = document.getElementById('rtTemplateSelect').value;
-            const username = document.getElementById('rtUsername').value || '@username';
-
             if (!templateId) {
                 showToast('Выберите шаблон', 'error');
                 return;
             }
-
-            // Per-slide photo: use rtSlidePhotos[i]; general photo only for FIRST slide
-            const defaultPhoto = rtSelectedPhoto || null;
-
-            const slidesWithPhoto = rtParsedData.map((s, i) => {
-                const slide = { ...s };
-                const photo = rtSlidePhotos[i] || (i === 0 ? defaultPhoto : null);
-                if (photo) slide.PHOTO = photo;
-                return slide;
-            });
-
-            const btn = document.getElementById('rtRenderBtn');
-            btn.disabled = true;
-            btn.innerHTML = '<span class="spinner"></span> Генерация...';
-
-            try {
-                const r = await fetch(`${API_URL}/generate`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        template_id: templateId,
-                        username: username,
-                        slides: slidesWithPhoto
-                    })
-                });
-
-                if (r.ok) {
-                    const data = await r.json();
-                    rtGeneratedImages = data.slides || [];
-                    renderPreviewGrid('rt', rtGeneratedImages);
-                    showToast('Карусель готова!', 'success');
-                } else {
-                    const err = await r.json().catch(() => ({}));
-                    showToast(err.detail || 'Ошибка генерации', 'error');
-                }
-            } catch (e) {
-                showToast('Ошибка подключения к серверу', 'error');
+            rtTemplate = templateCache.find(t => (t.template_id || t.name) === templateId);
+            if (!rtTemplate) {
+                showToast('Шаблон не найден', 'error');
+                return;
             }
 
-            btn.disabled = false;
-            btn.textContent = 'Сгенерировать картинки';
+            // Init per-slide photos array
+            rtSlidePhotos = new Array(rtParsedData.length).fill(null);
+
+            // Build slides client-side
+            rtSlides = rtBuildSlides(rtTemplate, rtParsedData, rtSlidePhotos);
+            rtActiveSlideIndex = 0;
+            rtActivePanel = 'text';
+
+            // Switch to Phase 2 (Editor)
+            document.getElementById('rtInputPhase').style.display = 'none';
+            document.getElementById('rtEditorPhase').style.display = '';
+
+            rtRenderAllPreviews();
+            rtSwitchPanel('text');
+            showToast(`Карусель: ${rtSlides.length} слайдов`, 'success');
         }
 
+
+        // === SHARED HELPERS (used by Chat tab) ===
         function renderPreviewGrid(prefix, images) {
             const grid = document.getElementById(`${prefix}PreviewGrid`);
+            if (!grid) return;
             grid.innerHTML = images.map((img, i) => `
                 <div class="preview-slide">
                     <img src="${img.base64}" alt="Slide ${i + 1}">
                     <div class="preview-slide-number">${i + 1}</div>
                 </div>
             `).join('');
-            document.getElementById(`${prefix}Preview`).classList.add('visible');
+            const container = document.getElementById(`${prefix}Preview`);
+            if (container) container.classList.add('visible');
         }
 
         function downloadAllGenerated(prefix) {
-            const images = prefix === 'rt' ? rtGeneratedImages : (prefix === 'chat' ? chatGeneratedImages : []);
+            const images = prefix === 'chat' ? chatGeneratedImages : [];
             if (images.length === 0) return;
-            // Download with delay to prevent browser blocking multiple downloads
             images.forEach((img, i) => {
                 setTimeout(() => {
                     const a = document.createElement('a');
@@ -3956,32 +4215,6 @@
             showToast('Карусель загружена в редактор', 'success');
         }
 
-        function rtEditInEditor() {
-            if (rtGeneratedImages.length === 0) {
-                showToast('Сначала сгенерируйте карусель', 'error');
-                return;
-            }
-            // Create new slides with generated images as photo backgrounds
-            state.slides = rtGeneratedImages.map((img, i) => {
-                const slide = createSlide(i === 0 ? 'intro' : 'content');
-                slide.background.type = 'photo';
-                slide.background.photo = img.base64;
-                slide.background.photoPosition = { x: 50, y: 50 };
-                slide.background.photoZoom = 1;
-                slide.background.overlay = 0;
-                // Clear text elements — image already has text baked in
-                slide.elements = slide.elements.filter(el => el.type === 'username' || el.type === 'slidenum');
-                // Hide username and slidenum too since they're in the image
-                slide.elements.forEach(el => el.opacity = 0);
-                return slide;
-            });
-            state.currentSlideIndex = 0;
-            const username = document.getElementById('rtUsername').value || '@username';
-            state.settings.username = username;
-            render();
-            switchTab('editor');
-            showToast('Карусель загружена в редактор как изображения', 'success');
-        }
 
         function toggleChatSettings() {
             const panel = document.getElementById('chatSettingsPanel');
