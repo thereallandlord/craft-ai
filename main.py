@@ -1161,7 +1161,6 @@ def verify_telegram_hash(auth_data: dict) -> bool:
 def check_club_membership(user_id: int) -> bool:
     """Check if user is a member of the club channel via Telegram Bot API."""
     if not TELEGRAM_BOT_TOKEN:
-        print(f"[AUTH] No TELEGRAM_BOT_TOKEN set")
         return False
     try:
         resp = requests.get(
@@ -1170,14 +1169,10 @@ def check_club_membership(user_id: int) -> bool:
             timeout=10,
         )
         data = resp.json()
-        print(f"[AUTH] getChatMember user_id={user_id} chat_id={CLUB_CHAT_ID} → status={resp.status_code} response={data}")
         if resp.status_code == 200 and data.get("ok"):
             status = data["result"].get("status", "")
-            is_member = status in ("member", "administrator", "creator")
-            print(f"[AUTH] User {user_id} status='{status}' is_member={is_member}")
-            return is_member
-    except Exception as e:
-        print(f"[AUTH] getChatMember error: {e}")
+            return status in ("member", "administrator", "creator")
+    except Exception:
     return False
 
 
@@ -1185,21 +1180,6 @@ def check_club_membership(user_id: int) -> bool:
 async def auth_config():
     """Return auth config for frontend (bot username)."""
     return {"bot_username": TELEGRAM_BOT_USERNAME}
-
-
-@app.get("/api/auth/debug")
-async def auth_debug(user_id: int = 0):
-    """Debug endpoint to check club membership (temporary)."""
-    if user_id == 0:
-        return {"error": "pass ?user_id=YOUR_TELEGRAM_ID"}
-    is_member = check_club_membership(user_id)
-    return {
-        "user_id": user_id,
-        "club_chat_id": CLUB_CHAT_ID,
-        "is_club_member": is_member,
-        "bot_token_set": bool(TELEGRAM_BOT_TOKEN),
-        "bot_username": TELEGRAM_BOT_USERNAME,
-    }
 
 
 @app.post("/api/auth/telegram")
