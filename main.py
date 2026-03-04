@@ -570,22 +570,22 @@ class SlideRenderer:
         last_end = 0
         for match in re.finditer(pattern, content):
             if match.start() > last_end:
-                segments.append({'text': content[last_end:match.start()]})
+                segments.append({'text': content[last_end:match.start()], 'hl': False})
 
             if match.group(1):
-                segments.append({'text': match.group(1)})
+                segments.append({'text': match.group(1), 'hl': False})
             elif match.group(2):
-                segments.append({'text': match.group(2)})
+                segments.append({'text': match.group(2), 'hl': True})
             elif match.group(4):
-                segments.append({'text': match.group(4)})
+                segments.append({'text': match.group(4), 'hl': False})
 
             last_end = match.end()
 
         if last_end < len(content):
-            segments.append({'text': content[last_end:]})
+            segments.append({'text': content[last_end:], 'hl': False})
 
         if not segments:
-            segments = [{'text': content}]
+            segments = [{'text': content, 'hl': False}]
 
         # Разбиваем на строки
         lines = []

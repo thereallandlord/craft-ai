@@ -2207,10 +2207,11 @@
         /* Telegram Mini App body class */
         body.tg-miniapp {
             padding-top: calc(var(--tg-safe-top) + var(--tg-content-top));
-            padding-bottom: var(--tg-safe-bottom);
         }
         body.tg-miniapp .nav-bar {
-            bottom: var(--tg-safe-bottom);
+            bottom: 0;
+            padding-bottom: var(--tg-safe-bottom);
+            height: calc(56px + var(--tg-safe-bottom));
         }
 
         /* === MOBILE ADAPTATION === */
@@ -2592,7 +2593,7 @@
         }
     </style>
 </head>
-<body>
+<body class="dark-theme">
     <!-- Login Overlay -->
     <div class="login-overlay" id="loginOverlay">
         <div class="login-card">
@@ -2647,7 +2648,7 @@
                 <span class="nav-tooltip">Настройки</span>
             </button>
             <button class="nav-item" onclick="toggleTheme()" title="Сменить тему">
-                <span id="themeIcon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg></span>
+                <span id="themeIcon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg></span>
                 <span class="nav-tooltip">Тема</span>
             </button>
             <div class="nav-user" id="navUser" style="display:none">
@@ -3964,7 +3965,6 @@
                         // Telegram Mini App: send images to user's chat via bot
                         btn.innerHTML = '<span class="spinner"></span> Отправка в чат...';
                         try {
-                            // Extract user chat_id from initData
                             const initParams = new URLSearchParams(tg.initData);
                             const userData = JSON.parse(initParams.get('user') || '{}');
                             const chatId = userData.id;
@@ -3976,15 +3976,18 @@
                                 });
                                 if (sr.ok) {
                                     const result = await sr.json();
-                                    showToast(`Отправлено ${result.sent} слайдов в чат бота`, 'success');
+                                    showToast(`${result.sent} слайдов отправлено в чат бота!`, 'success');
                                 } else {
-                                    showToast('Ошибка отправки в чат', 'error');
+                                    const errText = await sr.text().catch(()=>'');
+                                    showToast('Ошибка отправки: ' + errText.substring(0, 100), 'error');
                                 }
                             } else {
-                                showToast('Не удалось определить chat_id', 'error');
+                                // Fallback: try download via downloadFile
+                                showToast('chat_id не найден, попробуйте перезайти в мини-апп', 'error');
                             }
                         } catch(e) {
-                            showToast('Ошибка отправки в чат', 'error');
+                            showToast('Ошибка: ' + e.message, 'error');
+                            console.error('Send to chat error:', e);
                         }
                     } else {
                         // Desktop: download files directly
@@ -4001,10 +4004,16 @@
                         showToast(`Скачивание ${images.length} слайдов...`, 'success');
                     }
                 } else {
-                    const err = await r.json().catch(()=>({}));
-                    showToast(err.detail || 'Ошибка генерации', 'error');
+                    const errText = await r.text().catch(()=>'');
+                    let detail = 'Ошибка генерации';
+                    try { detail = JSON.parse(errText).detail || detail; } catch(e) {}
+                    showToast(`${detail} (${r.status})`, 'error');
+                    console.error('Generate error:', r.status, errText);
                 }
-            } catch(e) { showToast('Ошибка подключения', 'error'); }
+            } catch(e) {
+                showToast('Ошибка подключения: ' + e.message, 'error');
+                console.error('Generate connection error:', e);
+            }
             btn.disabled = false;
             btn.textContent = 'Скачать все слайды';
         }
