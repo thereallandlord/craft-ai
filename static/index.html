@@ -4856,8 +4856,10 @@
         let currentUser = null;
 
         async function initAuth() {
+            console.log('[CRAFT] initAuth() started');
             // Check if running inside Telegram Mini App
             const tg = window.Telegram && window.Telegram.WebApp;
+            console.log('[CRAFT] tg=', !!tg, 'initData=', tg ? (tg.initData ? 'has data' : 'empty') : 'N/A');
             if (tg && tg.initData) {
                 // Telegram Mini App — auto-authenticate
                 tg.ready();
@@ -4915,6 +4917,7 @@
         }
 
         async function showLogin() {
+            console.log('[CRAFT] showLogin() called');
             document.getElementById('loginOverlay').classList.remove('hidden');
             // Dynamically insert Telegram Login Widget
             const container = document.getElementById('telegramLoginWidget');
@@ -5034,6 +5037,7 @@
         }
 
         async function init() {
+            console.log('[CRAFT] init() started');
             // NEW: Load MargulanGames template by default instead of empty template
             try {
                 const r = await fetch(`${API_URL}/templates/margulangames`);
@@ -5054,6 +5058,7 @@
             await loadTemplateSelectors();
             loadWebhookSettings();
             chatInitTab();
+            console.log('[CRAFT] calling initAuth()');
             initAuth();
 
             // NEW v7.0: Keyboard shortcuts for Undo/Redo
