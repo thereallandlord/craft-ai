@@ -3946,9 +3946,6 @@
             if (tg && tg.BackButton) tg.BackButton.hide();
         }
 
-        // Cache generated images so we don't re-generate for "Send to Telegram"
-        let rtGeneratedImages = null;
-
         async function rtGenerateImages() {
             const templateId = document.getElementById('rtTemplateSelect').value;
             const username = document.getElementById('rtUsername').value || '@username';
