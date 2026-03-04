@@ -4907,7 +4907,9 @@
                     } else {
                         const errData = await resp.json().catch(() => ({}));
                         console.error('Mini App auth error:', resp.status, errData);
-                        // Try localStorage fallback
+                        if (widgetLoading) widgetLoading.innerHTML = '';
+                        showLoginError(errData.detail || `Ошибка авторизации (${resp.status})`);
+                        return;
                     }
                 } catch(e) {
                     console.error('Mini App auth failed:', e);
@@ -5001,8 +5003,8 @@
 
                 const data = await resp.json();
 
-                if (!data.user.is_club_member) {
-                    showLoginError('Доступ только для активных участников клуба. Если вы состоите в клубе, попробуйте позже.');
+                if (!data.user.is_club_member && !data.user.is_admin) {
+                    showLoginError('Доступ только для участников клуба');
                     return;
                 }
 
