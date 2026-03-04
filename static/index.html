@@ -2689,10 +2689,6 @@
                         <button class="btn-download-all" onclick="downloadAllGenerated('rt')" style="flex:1;">
                             Скачать все слайды
                         </button>
-                        <button class="btn" onclick="rtEditInEditor()" style="flex:1;padding:12px;font-size:14px;font-weight:600;">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/></svg>
-                            Редактировать
-                        </button>
                     </div>
                 </div>
             </div>
@@ -3324,6 +3320,8 @@
             rtRenderPhotoLibrary();
         }
 
+        let rtSavedColors = JSON.parse(localStorage.getItem('craft_saved_colors') || '["#c8ff00","#ff5252","#448aff","#ffffff","#000000"]');
+
         function rtRenderParsedSlides() {
             const container = document.getElementById('rtParsedSlides');
             container.innerHTML = rtParsedData.map((s, i) => {
@@ -3344,10 +3342,83 @@
                         <input type="file" id="rtSlidePhotoInput_${i}" accept="image/*" style="display:none" onchange="rtHandleSlidePhoto(${i}, this)">
                     </div>
                     ${photoPreview}
-                    <input type="text" value="${(s.TITLE || '').replace(/"/g, '&quot;')}" onchange="rtParsedData[${i}].TITLE=this.value" placeholder="Заголовок">
-                    <textarea onchange="rtParsedData[${i}].DESCRIPTION=this.value" placeholder="Описание">${s.DESCRIPTION || ''}</textarea>
+                    <input type="text" id="rtTitle_${i}" value="${(s.TITLE || '').replace(/"/g, '&quot;')}" onchange="rtParsedData[${i}].TITLE=this.value" placeholder="Заголовок">
+                    <div class="rt-color-toolbar" style="display:flex;gap:4px;align-items:center;margin:4px 0;">
+                        ${rtSavedColors.map(c => `<div onclick="rtApplyColor(${i},'title','${c}')" style="width:18px;height:18px;border-radius:4px;background:${c};border:1px solid var(--border);cursor:pointer;" title="${c}"></div>`).join('')}
+                        <input type="color" id="rtColorPicker_title_${i}" style="width:22px;height:22px;border:none;padding:0;cursor:pointer;background:none;" onchange="rtApplyColor(${i},'title',this.value);rtSaveColor(this.value)" title="Свой цвет">
+                        <input type="text" placeholder="#hex" style="width:60px;padding:2px 4px;font-size:10px;border:1px solid var(--border);border-radius:4px;background:var(--bg-primary);color:var(--text-primary);" onkeydown="if(event.key==='Enter'){rtApplyColor(${i},'title',this.value);rtSaveColor(this.value);this.value=''}">
+                        <button class="btn" onclick="rtClearColor(${i},'title')" style="padding:1px 6px;font-size:10px;" title="Убрать цвет">✕</button>
+                    </div>
+                    <textarea id="rtDesc_${i}" onchange="rtParsedData[${i}].DESCRIPTION=this.value" placeholder="Описание">${s.DESCRIPTION || ''}</textarea>
+                    <div class="rt-color-toolbar" style="display:flex;gap:4px;align-items:center;margin:4px 0;">
+                        ${rtSavedColors.map(c => `<div onclick="rtApplyColor(${i},'desc','${c}')" style="width:18px;height:18px;border-radius:4px;background:${c};border:1px solid var(--border);cursor:pointer;" title="${c}"></div>`).join('')}
+                        <input type="color" id="rtColorPicker_desc_${i}" style="width:22px;height:22px;border:none;padding:0;cursor:pointer;background:none;" onchange="rtApplyColor(${i},'desc',this.value);rtSaveColor(this.value)" title="Свой цвет">
+                        <input type="text" placeholder="#hex" style="width:60px;padding:2px 4px;font-size:10px;border:1px solid var(--border);border-radius:4px;background:var(--bg-primary);color:var(--text-primary);" onkeydown="if(event.key==='Enter'){rtApplyColor(${i},'desc',this.value);rtSaveColor(this.value);this.value=''}">
+                        <button class="btn" onclick="rtClearColor(${i},'desc')" style="padding:1px 6px;font-size:10px;" title="Убрать цвет">✕</button>
+                    </div>
                 </div>`;
             }).join('');
+        }
+
+        function rtApplyColor(slideIndex, field, color) {
+            if (!color || !color.startsWith('#')) return;
+            const el = field === 'title'
+                ? document.getElementById(`rtTitle_${slideIndex}`)
+                : document.getElementById(`rtDesc_${slideIndex}`);
+            if (!el) return;
+
+            const start = el.selectionStart;
+            const end = el.selectionEnd;
+            const text = el.value;
+
+            if (start === end) {
+                showToast('Выделите текст для окрашивания', 'error');
+                return;
+            }
+
+            const selected = text.substring(start, end);
+            // Wrap selected text in {#hex:text} markup
+            const colored = `{${color}:${selected}}`;
+            const newText = text.substring(0, start) + colored + text.substring(end);
+            el.value = newText;
+
+            if (field === 'title') {
+                rtParsedData[slideIndex].TITLE = newText;
+            } else {
+                rtParsedData[slideIndex].DESCRIPTION = newText;
+            }
+
+            // Restore cursor position after the colored text
+            const newPos = start + colored.length;
+            el.setSelectionRange(newPos, newPos);
+            el.focus();
+            showToast(`Цвет ${color} применён`, 'success');
+        }
+
+        function rtClearColor(slideIndex, field) {
+            const el = field === 'title'
+                ? document.getElementById(`rtTitle_${slideIndex}`)
+                : document.getElementById(`rtDesc_${slideIndex}`);
+            if (!el) return;
+
+            // Remove all {#hex:text} wrappers, keep text
+            const cleaned = el.value.replace(/\{#[0-9a-fA-F]{3,8}:([^}]+)\}/g, '$1');
+            el.value = cleaned;
+            if (field === 'title') {
+                rtParsedData[slideIndex].TITLE = cleaned;
+            } else {
+                rtParsedData[slideIndex].DESCRIPTION = cleaned;
+            }
+            showToast('Цвета убраны', 'success');
+        }
+
+        function rtSaveColor(color) {
+            if (!color || !color.startsWith('#')) return;
+            if (!rtSavedColors.includes(color)) {
+                rtSavedColors.push(color);
+                if (rtSavedColors.length > 12) rtSavedColors.shift();
+                localStorage.setItem('craft_saved_colors', JSON.stringify(rtSavedColors));
+            }
         }
 
         function rtHandleSlidePhoto(slideIndex, input) {

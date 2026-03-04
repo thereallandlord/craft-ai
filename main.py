@@ -451,27 +451,28 @@ class SlideRenderer:
             base_color = tuple(int(c * opacity) for c in base_color)
             hl_color = tuple(int(c * opacity) for c in hl_color)
 
-        # NEW v7.0: Parse both *bold* and _highlight_
+        # Parse markup: *bold*, _highlight_, {#hex:colored text}
         segments = []
-        # Combined pattern: *text* for bold, _text_ for highlight
-        pattern = r'\*([^*]+)\*|_([^_]+)_'
+        pattern = r'\*([^*]+)\*|_([^_]+)_|\{(#[0-9a-fA-F]{3,8}):([^}]+)\}'
         last_end = 0
         for match in re.finditer(pattern, content):
             if match.start() > last_end:
-                segments.append({'text': content[last_end:match.start()], 'hl': False, 'bold': False})
+                segments.append({'text': content[last_end:match.start()], 'hl': False, 'bold': False, 'color': None})
 
             if match.group(1):  # *text* = bold
-                segments.append({'text': match.group(1), 'hl': False, 'bold': True})
-            else:  # _text_ = highlight
-                segments.append({'text': match.group(2), 'hl': True, 'bold': False})
+                segments.append({'text': match.group(1), 'hl': False, 'bold': True, 'color': None})
+            elif match.group(2):  # _text_ = highlight
+                segments.append({'text': match.group(2), 'hl': True, 'bold': False, 'color': None})
+            elif match.group(3) and match.group(4):  # {#hex:text} = colored
+                segments.append({'text': match.group(4), 'hl': False, 'bold': False, 'color': match.group(3)})
 
             last_end = match.end()
 
         if last_end < len(content):
-            segments.append({'text': content[last_end:], 'hl': False, 'bold': False})
+            segments.append({'text': content[last_end:], 'hl': False, 'bold': False, 'color': None})
 
         if not segments:
-            segments = [{'text': content, 'hl': False, 'bold': False}]
+            segments = [{'text': content, 'hl': False, 'bold': False, 'color': None}]
 
         lines = []
         current_words, current_segs = [], []
@@ -484,16 +485,15 @@ class SlideRenderer:
                     if not word:
                         continue
                     test = ' '.join(current_words + [word])
-                    # Use helper function that accounts for letter spacing
                     test_width = self.get_text_width(test, font, letter_spacing, draw)
                     if max_width and test_width > max_width and current_words:
                         lines.append(current_segs)
-                        current_words, current_segs = [word], [{'text': word, 'hl': seg['hl']}]
+                        current_words, current_segs = [word], [{'text': word, 'hl': seg['hl'], 'color': seg.get('color')}]
                     else:
                         if current_words:
-                            current_segs.append({'text': ' ', 'hl': False})
+                            current_segs.append({'text': ' ', 'hl': False, 'color': None})
                         current_words.append(word)
-                        current_segs.append({'text': word, 'hl': seg['hl']})
+                        current_segs.append({'text': word, 'hl': seg['hl'], 'color': seg.get('color')})
         if current_segs:
             lines.append(current_segs)
 
@@ -504,14 +504,20 @@ class SlideRenderer:
                 continue
 
             line_text = ''.join(s['text'] for s in line_segs)
-            # Use helper function that accounts for letter spacing
             line_w = self.get_text_width(line_text, font, letter_spacing, draw)
 
             curr_x = x - line_w if align == 'right' else (x - line_w // 2 if align == 'center' else x)
 
             for seg in line_segs:
-                col = hl_color if seg['hl'] else base_color
-                # NEW v7.0: Use bold font for *bold* segments
+                # Color priority: custom color > highlight > base
+                if seg.get('color'):
+                    col = self.parse_color(seg['color'])
+                    if opacity < 1:
+                        col = tuple(int(c * opacity) for c in col)
+                elif seg['hl']:
+                    col = hl_color
+                else:
+                    col = base_color
                 seg_font = bold_font if seg.get('bold') else font
 
                 if letter_spacing != 0:
@@ -549,28 +555,28 @@ class SlideRenderer:
         temp_img = Image.new('RGB', (1, 1))
         draw = ImageDraw.Draw(temp_img)
 
-        # Разбиваем на сегменты
-        # NEW v7.0: Parse both *bold* and _highlight_
+        # Parse markup: *bold*, _highlight_, {#hex:colored text}
         segments = []
-        # Combined pattern: *text* for bold, _text_ for highlight
-        pattern = r'\*([^*]+)\*|_([^_]+)_'
+        pattern = r'\*([^*]+)\*|_([^_]+)_|\{(#[0-9a-fA-F]{3,8}):([^}]+)\}'
         last_end = 0
         for match in re.finditer(pattern, content):
             if match.start() > last_end:
-                segments.append({'text': content[last_end:match.start()], 'hl': False, 'bold': False})
+                segments.append({'text': content[last_end:match.start()]})
 
-            if match.group(1):  # *text* = bold
-                segments.append({'text': match.group(1), 'hl': False, 'bold': True})
-            else:  # _text_ = highlight
-                segments.append({'text': match.group(2), 'hl': True, 'bold': False})
+            if match.group(1):
+                segments.append({'text': match.group(1)})
+            elif match.group(2):
+                segments.append({'text': match.group(2)})
+            elif match.group(4):
+                segments.append({'text': match.group(4)})
 
             last_end = match.end()
 
         if last_end < len(content):
-            segments.append({'text': content[last_end:], 'hl': False, 'bold': False})
+            segments.append({'text': content[last_end:]})
 
         if not segments:
-            segments = [{'text': content, 'hl': False, 'bold': False}]
+            segments = [{'text': content}]
 
         # Разбиваем на строки
         lines = []
