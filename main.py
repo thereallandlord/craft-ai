@@ -1218,18 +1218,15 @@ async def auth_telegram(data: dict):
 
 def verify_mini_app_data(init_data_raw: str) -> dict:
     """Validate Telegram Mini App initData using HMAC-SHA256."""
-    from urllib.parse import unquote
-    parsed = dict(
-        pair.split("=", 1)
-        for pair in unquote(init_data_raw).split("&")
-        if "=" in pair
-    )
+    from urllib.parse import parse_qsl
+    # parse_qsl properly handles URL encoding per-value (safe for JSON with & chars)
+    parsed = dict(parse_qsl(init_data_raw, keep_blank_values=True))
     received_hash = parsed.pop("hash", None)
     if not received_hash:
         raise ValueError("Missing hash")
-    # Check freshness (1 hour)
+    # Check freshness (24 hours — Mini App can be open for a while)
     auth_date = int(parsed.get("auth_date", 0))
-    if time.time() - auth_date > 3600:
+    if time.time() - auth_date > 86400:
         raise ValueError("Init data expired")
     # Sort and join
     data_check_string = "\n".join(f"{k}={v}" for k, v in sorted(parsed.items()))
