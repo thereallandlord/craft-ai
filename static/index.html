@@ -3211,7 +3211,8 @@
         // === READY TEXT TAB ===
         let rtParsedData = []; // [{TITLE, DESCRIPTION}]
         let rtGeneratedImages = []; // [{base64, filename}]
-        let rtSelectedPhoto = null; // base64 data URL of selected photo
+        let rtSelectedPhoto = null; // base64 data URL of selected photo (legacy, used as default)
+        let rtSlidePhotos = []; // per-slide photos: [base64 or null, ...]
 
         function parseCarouselText(text) {
             const slides = [];
@@ -3302,10 +3303,73 @@
             container.innerHTML = lib.map(p => {
                 const isSelected = rtSelectedPhoto === p.data;
                 return `
-                <div onclick="rtSelectPhoto('${p.id}')" style="width:48px;height:48px;border-radius:6px;overflow:hidden;border:2px solid ${isSelected ? 'var(--accent)' : 'var(--border)'};cursor:pointer;flex-shrink:0;${isSelected ? 'box-shadow:0 0 0 1px var(--accent);' : ''}" title="${escapeHtml(p.name)}">
-                    <img src="${p.data}" style="width:100%;height:100%;object-fit:cover;">
+                <div style="position:relative;flex-shrink:0;">
+                    <div onclick="rtSelectPhoto('${p.id}')" style="width:48px;height:48px;border-radius:6px;overflow:hidden;border:2px solid ${isSelected ? 'var(--accent)' : 'var(--border)'};cursor:pointer;${isSelected ? 'box-shadow:0 0 0 1px var(--accent);' : ''}" title="${escapeHtml(p.name)}">
+                        <img src="${p.data}" style="width:100%;height:100%;object-fit:cover;">
+                    </div>
+                    <div onclick="event.stopPropagation();rtDeletePhoto('${p.id}')" style="position:absolute;top:-5px;right:-5px;width:16px;height:16px;background:var(--danger, #e53e3e);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:10px;line-height:1;">&times;</div>
                 </div>`;
             }).join('');
+        }
+
+        function rtDeletePhoto(photoId) {
+            let lib = JSON.parse(localStorage.getItem('craft_photo_library') || '[]');
+            const photo = lib.find(p => p.id === photoId);
+            if (photo && rtSelectedPhoto === photo.data) {
+                rtSelectedPhoto = null;
+                document.getElementById('rtPhotoName').textContent = '';
+            }
+            lib = lib.filter(p => p.id !== photoId);
+            localStorage.setItem('craft_photo_library', JSON.stringify(lib));
+            rtRenderPhotoLibrary();
+        }
+
+        function rtRenderParsedSlides() {
+            const container = document.getElementById('rtParsedSlides');
+            container.innerHTML = rtParsedData.map((s, i) => {
+                const photo = rtSlidePhotos[i];
+                const photoPreview = photo
+                    ? `<div style="position:relative;display:inline-block;margin-top:6px;">
+                        <img src="${photo}" style="width:60px;height:60px;object-fit:cover;border-radius:6px;border:2px solid var(--accent);">
+                        <div onclick="rtRemoveSlidePhoto(${i})" style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;background:var(--danger, #e53e3e);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;line-height:1;">&times;</div>
+                       </div>`
+                    : '';
+                return `
+                <div class="parsed-slide">
+                    <div class="parsed-slide-header" style="display:flex;align-items:center;justify-content:space-between;">
+                        <span>Слайд ${i + 1}</span>
+                        <button class="btn" onclick="document.getElementById('rtSlidePhotoInput_${i}').click()" style="padding:2px 8px;font-size:11px;">
+                            ${photo ? 'Заменить фото' : '+ Фото'}
+                        </button>
+                        <input type="file" id="rtSlidePhotoInput_${i}" accept="image/*" style="display:none" onchange="rtHandleSlidePhoto(${i}, this)">
+                    </div>
+                    ${photoPreview}
+                    <input type="text" value="${(s.TITLE || '').replace(/"/g, '&quot;')}" onchange="rtParsedData[${i}].TITLE=this.value" placeholder="Заголовок">
+                    <textarea onchange="rtParsedData[${i}].DESCRIPTION=this.value" placeholder="Описание">${s.DESCRIPTION || ''}</textarea>
+                </div>`;
+            }).join('');
+        }
+
+        function rtHandleSlidePhoto(slideIndex, input) {
+            const file = input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                rtSlidePhotos[slideIndex] = e.target.result;
+                // Also save to library
+                const lib = JSON.parse(localStorage.getItem('craft_photo_library') || '[]');
+                const entry = { id: 'photo_' + Date.now(), data: e.target.result, name: file.name };
+                lib.push(entry);
+                localStorage.setItem('craft_photo_library', JSON.stringify(lib));
+                rtRenderPhotoLibrary();
+                rtRenderParsedSlides();
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function rtRemoveSlidePhoto(slideIndex) {
+            rtSlidePhotos[slideIndex] = null;
+            rtRenderParsedSlides();
         }
 
         async function generateFromReadyText() {
@@ -3348,15 +3412,11 @@
                 return;
             }
 
+            // Init per-slide photos array
+            rtSlidePhotos = new Array(rtParsedData.length).fill(null);
+
             // Show parsed slides for editing
-            const container = document.getElementById('rtParsedSlides');
-            container.innerHTML = rtParsedData.map((s, i) => `
-                <div class="parsed-slide">
-                    <div class="parsed-slide-header">Слайд ${i + 1}</div>
-                    <input type="text" value="${(s.TITLE || '').replace(/"/g, '&quot;')}" onchange="rtParsedData[${i}].TITLE=this.value" placeholder="Заголовок">
-                    <textarea onchange="rtParsedData[${i}].DESCRIPTION=this.value" placeholder="Описание">${s.DESCRIPTION || ''}</textarea>
-                </div>
-            `).join('');
+            rtRenderParsedSlides();
 
             document.getElementById('rtParsedSection').style.display = '';
             document.getElementById('rtPreview').classList.remove('visible');
@@ -3372,14 +3432,13 @@
                 return;
             }
 
-            // Get selected photo from library
-            const photoLib = JSON.parse(localStorage.getItem('craft_photo_library') || '[]');
-            const selectedPhoto = rtSelectedPhoto || (photoLib.length > 0 ? photoLib[photoLib.length - 1].data : null);
+            // Per-slide photo: use rtSlidePhotos[i], fallback to rtSelectedPhoto (general photo)
+            const defaultPhoto = rtSelectedPhoto || null;
 
-            // Add PHOTO to slides if available
-            const slidesWithPhoto = rtParsedData.map(s => {
+            const slidesWithPhoto = rtParsedData.map((s, i) => {
                 const slide = { ...s };
-                if (selectedPhoto) slide.PHOTO = selectedPhoto;
+                const photo = (rtSlidePhotos[i]) || defaultPhoto;
+                if (photo) slide.PHOTO = photo;
                 return slide;
             });
 
@@ -3428,12 +3487,19 @@
 
         function downloadAllGenerated(prefix) {
             const images = prefix === 'rt' ? rtGeneratedImages : (prefix === 'chat' ? chatGeneratedImages : []);
+            if (images.length === 0) return;
+            // Download with delay to prevent browser blocking multiple downloads
             images.forEach((img, i) => {
-                const a = document.createElement('a');
-                a.href = img.base64;
-                a.download = img.filename || `slide_${i + 1}.png`;
-                a.click();
+                setTimeout(() => {
+                    const a = document.createElement('a');
+                    a.href = img.base64;
+                    a.download = img.filename || `slide_${i + 1}.png`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                }, i * 300);
             });
+            showToast(`Скачивание ${images.length} слайдов...`, 'success');
         }
 
         // === WEBHOOK SETTINGS ===
