@@ -3393,8 +3393,8 @@
 
         function parseCarouselText(text) {
             const slides = [];
-            // Try splitting by "Слайд N:" pattern
-            let parts = text.split(/(?:^|\n)\s*(?:Слайд|Slide)\s*\d+\s*[:.]\s*/i).filter(s => s.trim());
+            // Try splitting by "Слайд N" pattern (with or without colon/dot, on same or separate line)
+            let parts = text.split(/(?:^|\n)\s*(?:Слайд|Slide)\s*\d+\s*[:.]*\s*\n?/i).filter(s => s.trim());
 
             // If only 1 part, try splitting by numbered list (1. 2. 3.)
             if (parts.length <= 1) {
