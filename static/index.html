@@ -3973,37 +3973,24 @@
             try {
                 const images = await rtGenerateImages();
                 const tg = window.Telegram && window.Telegram.WebApp;
-                if (tg && tg.initData && tg.downloadFile) {
-                    // Telegram Mini App: use downloadFile API for each image
-                    btn.innerHTML = '<span class="spinner"></span> Скачивание...';
-                    let downloaded = 0;
-                    for (let i = 0; i < images.length; i++) {
-                        try {
-                            const img = images[i];
-                            // downloadFile needs a URL, use the server URL
-                            if (img.url) {
-                                tg.downloadFile({url: img.url, file_name: img.filename || `slide_${i+1}.png`});
-                                downloaded++;
-                            } else {
-                                // Fallback: open base64 in new tab for manual save
-                                const blob = await (await fetch(img.base64)).blob();
-                                const blobUrl = URL.createObjectURL(blob);
-                                const a = document.createElement('a');
-                                a.href = blobUrl;
-                                a.download = img.filename || `slide_${i+1}.png`;
-                                document.body.appendChild(a);
-                                a.click();
-                                document.body.removeChild(a);
-                                setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
-                                downloaded++;
-                            }
-                            // Small delay between downloads
-                            if (i < images.length - 1) await new Promise(r => setTimeout(r, 300));
-                        } catch(e) {
-                            console.error(`Download slide ${i+1} error:`, e);
-                        }
+                if (tg && tg.initData) {
+                    // Telegram Mini App: send as album via bot (reliable for all slides)
+                    btn.innerHTML = '<span class="spinner"></span> Отправка...';
+                    const initParams = new URLSearchParams(tg.initData);
+                    const userData = JSON.parse(initParams.get('user') || '{}');
+                    const chatId = userData.id;
+                    if (!chatId) { showToast('Перезайдите в мини-апп', 'error'); return; }
+                    const sr = await fetch(`${API_URL}/api/send-to-chat`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({chat_id: chatId, images: images})
+                    });
+                    if (sr.ok) {
+                        const result = await sr.json();
+                        showToast(`${result.sent} слайдов отправлено — сохрани из чата!`, 'success');
+                    } else {
+                        showToast('Ошибка отправки', 'error');
                     }
-                    showToast(`${downloaded} слайдов скачано!`, 'success');
                 } else {
                     // Desktop or non-Telegram: download via blob
                     images.forEach((img, i) => {

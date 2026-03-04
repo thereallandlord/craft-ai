@@ -1060,7 +1060,7 @@ async def generate_carousel(request: GenerateRequest):
 
         rendered.append({
             "slide_number": i + 1,
-            "url": f"https://carousel-generator-production.up.railway.app/output/{filename}",
+            "url": f"https://app.craftopen.space/output/{filename}",
             "filename": filename,
             "base64": f"data:image/png;base64,{b64}"  # оставь на случай, если понадобится
         })
@@ -1283,26 +1283,34 @@ async def send_images_to_chat(request: Request):
     if not chat_id or not images:
         raise HTTPException(status_code=400, detail="chat_id and images required")
 
-    sent_count = 0
-    for img in images:
-        try:
-            b64 = img.get("base64", "")
-            # Strip data URL prefix
-            if "," in b64:
-                b64 = b64.split(",", 1)[1]
-            img_bytes = base64.b64decode(b64)
-            filename = img.get("filename", f"slide_{sent_count+1}.png")
+    # Prepare image files
+    files = {}
+    media = []
+    for i, img in enumerate(images):
+        b64 = img.get("base64", "")
+        if "," in b64:
+            b64 = b64.split(",", 1)[1]
+        img_bytes = base64.b64decode(b64)
+        attach_key = f"slide_{i}"
+        files[attach_key] = (f"slide_{i+1}.png", img_bytes, "image/png")
+        media.append({"type": "photo", "media": f"attach://{attach_key}"})
 
+    # Send as media group (album), max 10 per group
+    sent_count = 0
+    for chunk_start in range(0, len(media), 10):
+        chunk_media = media[chunk_start:chunk_start + 10]
+        chunk_files = {k: v for k, v in files.items() if any(m["media"] == f"attach://{k}" for m in chunk_media)}
+        try:
             resp = requests.post(
-                f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto",
-                data={"chat_id": chat_id},
-                files={"photo": (filename, img_bytes, "image/png")}
+                f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMediaGroup",
+                data={"chat_id": chat_id, "media": json.dumps(chunk_media)},
+                files=chunk_files,
+                timeout=60,
             )
             if resp.status_code == 200:
-                sent_count += 1
-        except Exception as e:
-            print(f"Error sending image: {e}")
-            continue
+                sent_count += len(chunk_media)
+        except Exception:
+            pass
 
     return {"sent": sent_count, "total": len(images)}
 
