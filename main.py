@@ -32,30 +32,21 @@ import numpy as np
 
 app = FastAPI(title="Carousel Studio", version="7.0")
 
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.requests import Request as StarletteRequest
-
-class TelegramMiniAppMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: StarletteRequest, call_next):
-        response = await call_next(request)
-        # Allow Telegram Web to iframe the app
-        response.headers["Content-Security-Policy"] = (
-            "frame-ancestors 'self' https://web.telegram.org https://*.telegram.org"
-        )
-        response.headers["Access-Control-Allow-Origin"] = "*"
-        # Remove restrictive X-Frame-Options if set
-        if "X-Frame-Options" in response.headers:
-            del response.headers["X-Frame-Options"]
-        return response
-
-app.add_middleware(TelegramMiniAppMiddleware)
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"]
 )
+
+@app.middleware("http")
+async def telegram_headers(request: Request, call_next):
+    response = await call_next(request)
+    # Allow Telegram Web to iframe the app
+    response.headers["Content-Security-Policy"] = (
+        "frame-ancestors 'self' https://web.telegram.org https://*.telegram.org"
+    )
+    return response
 
 # NEW v7.0: Configurable paths for Railway Volume support
 # Railway Volume монтируется в /app/data (настраивается через Railway Dashboard)
