@@ -2788,6 +2788,10 @@
                         <button class="btn-generate" id="rtDownloadBtn" onclick="rtDownloadAll()">
                             Скачать все слайды
                         </button>
+                        <button class="btn-generate" id="rtSendTgBtn" onclick="rtSendToTelegram()" style="display:none;margin-top:8px;background:var(--bg-secondary);color:var(--text-primary);border:1px solid var(--border);">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="margin-right:6px;vertical-align:middle;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.2-.08-.06-.19-.04-.27-.02-.12.03-1.99 1.27-5.62 3.72-.53.36-1.01.54-1.44.53-.47-.01-1.38-.27-2.06-.49-.83-.27-1.49-.42-1.43-.88.03-.24.37-.49 1.02-.74 3.98-1.73 6.64-2.87 7.97-3.44 3.79-1.58 4.58-1.86 5.09-1.87.11 0 .37.03.54.17.14.12.18.28.2.45-.01.06.01.24 0 .38z"/></svg>
+                            Отправить в Telegram
+                        </button>
                     </div>
                 </div>
 
@@ -3936,86 +3940,137 @@
             if (tg && tg.BackButton) tg.BackButton.hide();
         }
 
-        async function rtDownloadAll() {
-            if (rtSlides.length === 0) return;
-            const btn = document.getElementById('rtDownloadBtn');
-            btn.disabled = true;
-            btn.innerHTML = '<span class="spinner"></span> Рендеринг...';
+        // Cache generated images so we don't re-generate for "Send to Telegram"
+        let rtGeneratedImages = null;
+
+        async function rtGenerateImages() {
             const templateId = document.getElementById('rtTemplateSelect').value;
             const username = document.getElementById('rtUsername').value || '@username';
-            // Rebuild slides data for server
             const slidesData = rtParsedData.map((s, i) => {
                 const slide = {...s};
                 const photo = rtSlidePhotos[i] || (i === 0 ? rtSelectedPhoto : null);
                 if (photo) slide.PHOTO = photo;
                 return slide;
             });
-            try {
-                const r = await fetch(`${API_URL}/generate`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({template_id: templateId, username: username, slides: slidesData})
-                });
-                if (r.ok) {
-                    const data = await r.json();
-                    const images = data.slides || [];
-                    const tg = window.Telegram && window.Telegram.WebApp;
+            const r = await fetch(`${API_URL}/generate`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({template_id: templateId, username: username, slides: slidesData})
+            });
+            if (!r.ok) {
+                const errText = await r.text().catch(()=>'');
+                let detail = 'Ошибка генерации';
+                try { detail = JSON.parse(errText).detail || detail; } catch(e) {}
+                throw new Error(`${detail} (${r.status})`);
+            }
+            const data = await r.json();
+            rtGeneratedImages = data.slides || [];
+            return rtGeneratedImages;
+        }
 
-                    if (tg && tg.initData) {
-                        // Telegram Mini App: send images to user's chat via bot
-                        btn.innerHTML = '<span class="spinner"></span> Отправка в чат...';
+        async function rtDownloadAll() {
+            if (rtSlides.length === 0) return;
+            const btn = document.getElementById('rtDownloadBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> Рендеринг...';
+            try {
+                const images = await rtGenerateImages();
+                const tg = window.Telegram && window.Telegram.WebApp;
+                if (tg && tg.initData && tg.downloadFile) {
+                    // Telegram Mini App: use downloadFile API for each image
+                    btn.innerHTML = '<span class="spinner"></span> Скачивание...';
+                    let downloaded = 0;
+                    for (let i = 0; i < images.length; i++) {
                         try {
-                            const initParams = new URLSearchParams(tg.initData);
-                            const userData = JSON.parse(initParams.get('user') || '{}');
-                            const chatId = userData.id;
-                            if (chatId) {
-                                const sr = await fetch(`${API_URL}/api/send-to-chat`, {
-                                    method: 'POST',
-                                    headers: {'Content-Type': 'application/json'},
-                                    body: JSON.stringify({chat_id: chatId, images: images})
-                                });
-                                if (sr.ok) {
-                                    const result = await sr.json();
-                                    showToast(`${result.sent} слайдов отправлено в чат бота!`, 'success');
-                                } else {
-                                    const errText = await sr.text().catch(()=>'');
-                                    showToast('Ошибка отправки: ' + errText.substring(0, 100), 'error');
-                                }
+                            const img = images[i];
+                            // downloadFile needs a URL, use the server URL
+                            if (img.url) {
+                                tg.downloadFile({url: img.url, file_name: img.filename || `slide_${i+1}.png`});
+                                downloaded++;
                             } else {
-                                // Fallback: try download via downloadFile
-                                showToast('chat_id не найден, попробуйте перезайти в мини-апп', 'error');
-                            }
-                        } catch(e) {
-                            showToast('Ошибка: ' + e.message, 'error');
-                            console.error('Send to chat error:', e);
-                        }
-                    } else {
-                        // Desktop: download files directly
-                        images.forEach((img, i) => {
-                            setTimeout(() => {
+                                // Fallback: open base64 in new tab for manual save
+                                const blob = await (await fetch(img.base64)).blob();
+                                const blobUrl = URL.createObjectURL(blob);
                                 const a = document.createElement('a');
-                                a.href = img.base64;
+                                a.href = blobUrl;
                                 a.download = img.filename || `slide_${i+1}.png`;
                                 document.body.appendChild(a);
                                 a.click();
                                 document.body.removeChild(a);
-                            }, i * 300);
-                        });
-                        showToast(`Скачивание ${images.length} слайдов...`, 'success');
+                                setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+                                downloaded++;
+                            }
+                            // Small delay between downloads
+                            if (i < images.length - 1) await new Promise(r => setTimeout(r, 300));
+                        } catch(e) {
+                            console.error(`Download slide ${i+1} error:`, e);
+                        }
                     }
+                    showToast(`${downloaded} слайдов скачано!`, 'success');
                 } else {
-                    const errText = await r.text().catch(()=>'');
-                    let detail = 'Ошибка генерации';
-                    try { detail = JSON.parse(errText).detail || detail; } catch(e) {}
-                    showToast(`${detail} (${r.status})`, 'error');
-                    console.error('Generate error:', r.status, errText);
+                    // Desktop or non-Telegram: download via blob
+                    images.forEach((img, i) => {
+                        setTimeout(async () => {
+                            try {
+                                const blob = await (await fetch(img.base64)).blob();
+                                const blobUrl = URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = blobUrl;
+                                a.download = img.filename || `slide_${i+1}.png`;
+                                document.body.appendChild(a);
+                                a.click();
+                                document.body.removeChild(a);
+                                setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+                            } catch(e) { console.error('Download error:', e); }
+                        }, i * 300);
+                    });
+                    showToast(`Скачивание ${images.length} слайдов...`, 'success');
                 }
             } catch(e) {
-                showToast('Ошибка подключения: ' + e.message, 'error');
-                console.error('Generate connection error:', e);
+                showToast(e.message || 'Ошибка генерации', 'error');
+                console.error('Generate error:', e);
             }
             btn.disabled = false;
             btn.textContent = 'Скачать все слайды';
+        }
+
+        async function rtSendToTelegram() {
+            if (rtSlides.length === 0) return;
+            const tg = window.Telegram && window.Telegram.WebApp;
+            if (!tg || !tg.initData) return;
+            const btn = document.getElementById('rtSendTgBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> Отправка...';
+            try {
+                // Use cached images if available, otherwise generate
+                const images = rtGeneratedImages || await rtGenerateImages();
+                const initParams = new URLSearchParams(tg.initData);
+                const userData = JSON.parse(initParams.get('user') || '{}');
+                const chatId = userData.id;
+                if (!chatId) {
+                    showToast('chat_id не найден, перезайдите в мини-апп', 'error');
+                    btn.disabled = false;
+                    btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="margin-right:6px;vertical-align:middle;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.2-.08-.06-.19-.04-.27-.02-.12.03-1.99 1.27-5.62 3.72-.53.36-1.01.54-1.44.53-.47-.01-1.38-.27-2.06-.49-.83-.27-1.49-.42-1.43-.88.03-.24.37-.49 1.02-.74 3.98-1.73 6.64-2.87 7.97-3.44 3.79-1.58 4.58-1.86 5.09-1.87.11 0 .37.03.54.17.14.12.18.28.2.45-.01.06.01.24 0 .38z"/></svg> Отправить в Telegram';
+                    return;
+                }
+                const sr = await fetch(`${API_URL}/api/send-to-chat`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({chat_id: chatId, images: images})
+                });
+                if (sr.ok) {
+                    const result = await sr.json();
+                    showToast(`${result.sent} слайдов отправлено в чат бота!`, 'success');
+                } else {
+                    const errText = await sr.text().catch(()=>'');
+                    showToast('Ошибка отправки: ' + (errText || '').substring(0, 100), 'error');
+                }
+            } catch(e) {
+                showToast('Ошибка: ' + e.message, 'error');
+                console.error('Send to Telegram error:', e);
+            }
+            btn.disabled = false;
+            btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="margin-right:6px;vertical-align:middle;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.2-.08-.06-.19-.04-.27-.02-.12.03-1.99 1.27-5.62 3.72-.53.36-1.01.54-1.44.53-.47-.01-1.38-.27-2.06-.49-.83-.27-1.49-.42-1.43-.88.03-.24.37-.49 1.02-.74 3.98-1.73 6.64-2.87 7.97-3.44 3.79-1.58 4.58-1.86 5.09-1.87.11 0 .37.03.54.17.14.12.18.28.2.45-.01.06.01.24 0 .38z"/></svg> Отправить в Telegram';
         }
 
         async function generateFromReadyText() {
@@ -4082,13 +4137,16 @@
             document.getElementById('rtInputPhase').style.display = 'none';
             document.getElementById('rtEditorPhase').style.display = '';
 
-            // Show Telegram BackButton instead of in-app back button
+            // Show Telegram BackButton + "Send to Telegram" button
             const tg = window.Telegram && window.Telegram.WebApp;
             if (tg && tg.BackButton) {
                 tg.BackButton.show();
                 tg.BackButton.offClick(rtBackToInput);
                 tg.BackButton.onClick(rtBackToInput);
             }
+            const tgSendBtn = document.getElementById('rtSendTgBtn');
+            if (tgSendBtn) tgSendBtn.style.display = (tg && tg.initData) ? '' : 'none';
+            rtGeneratedImages = null; // Reset cache for new slides
 
             rtRenderAllPreviews();
             rtSwitchPanel('text');
