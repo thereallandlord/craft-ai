@@ -4962,10 +4962,21 @@
                 script.setAttribute('data-onauth', 'onTelegramAuth(user)');
                 script.setAttribute('data-request-access', 'write');
                 script.onload = () => {
-                    // Hide loading spinner when widget script loads
                     setTimeout(() => {
                         document.getElementById('loginWidgetLoading').style.display = 'none';
+                        // Check if widget actually rendered (iframe appeared)
+                        setTimeout(() => {
+                            if (!container.querySelector('iframe')) {
+                                document.getElementById('loginError').textContent = 'Кнопка входа не загрузилась. Домен ' + window.location.hostname + ' может быть не добавлен в BotFather.';
+                                document.getElementById('loginError').style.display = 'block';
+                            }
+                        }, 3000);
                     }, 500);
+                };
+                script.onerror = () => {
+                    document.getElementById('loginWidgetLoading').style.display = 'none';
+                    document.getElementById('loginError').textContent = 'Не удалось загрузить виджет Telegram';
+                    document.getElementById('loginError').style.display = 'block';
                 };
                 container.appendChild(script);
             }
