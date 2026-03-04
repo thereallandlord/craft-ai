@@ -4872,6 +4872,7 @@
                     tg.onEvent('contentSafeAreaChanged', tgUpdateInsets);
                 }
                 if (tg.enableClosingConfirmation) tg.enableClosingConfirmation();
+                if (tg.disableVerticalSwipes) tg.disableVerticalSwipes();
                 try {
                     const resp = await fetch(`${API_URL}/api/auth/miniapp`, {
                         method: 'POST',
