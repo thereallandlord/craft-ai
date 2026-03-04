@@ -1271,6 +1271,43 @@ async def auth_miniapp(request: Request):
     }
 
 
+@app.post("/api/send-to-chat")
+async def send_images_to_chat(request: Request):
+    """Send generated images to user via Telegram bot"""
+    if not TELEGRAM_BOT_TOKEN:
+        raise HTTPException(status_code=500, detail="TELEGRAM_BOT_TOKEN not configured")
+
+    data = await request.json()
+    chat_id = data.get("chat_id")
+    images = data.get("images", [])  # [{base64: "data:image/png;base64,...", filename: "slide_1.png"}]
+
+    if not chat_id or not images:
+        raise HTTPException(status_code=400, detail="chat_id and images required")
+
+    sent_count = 0
+    for img in images:
+        try:
+            b64 = img.get("base64", "")
+            # Strip data URL prefix
+            if "," in b64:
+                b64 = b64.split(",", 1)[1]
+            img_bytes = base64.b64decode(b64)
+            filename = img.get("filename", f"slide_{sent_count+1}.png")
+
+            resp = requests.post(
+                f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendPhoto",
+                data={"chat_id": chat_id},
+                files={"photo": (filename, img_bytes, "image/png")}
+            )
+            if resp.status_code == 200:
+                sent_count += 1
+        except Exception as e:
+            print(f"Error sending image: {e}")
+            continue
+
+    return {"sent": sent_count, "total": len(images)}
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

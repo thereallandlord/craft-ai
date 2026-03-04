@@ -16,6 +16,9 @@
         }
 
         :root {
+            --tg-safe-top: 0px;
+            --tg-safe-bottom: 0px;
+            --tg-content-top: 0px;
             --bg-primary: #ffffff;
             --bg-secondary: #f9fafb;
             --bg-tertiary: #f3f4f6;
@@ -1020,15 +1023,19 @@
 
         .toast {
             position: fixed;
-            bottom: 20px;
-            right: 20px;
+            top: calc(20px + var(--tg-safe-top) + var(--tg-content-top));
+            left: 50%;
+            transform: translateX(-50%);
             padding: 14px 20px;
             background: var(--bg-tertiary);
             border: 1px solid var(--border);
             border-radius: 10px;
             font-size: 13px;
             display: none;
-            z-index: 1001;
+            z-index: 10001;
+            max-width: 90vw;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
 
         .toast.show {
@@ -1137,6 +1144,12 @@
         .form-select:focus,
         .form-textarea:focus {
             border-color: var(--accent);
+            box-shadow: 0 0 0 2px rgba(99,102,241,0.15);
+        }
+
+        .form-input,
+        .form-textarea {
+            caret-color: var(--accent);
         }
 
         .form-textarea {
@@ -1328,8 +1341,33 @@
         .rt-photo-grid-item { aspect-ratio:1; border-radius:6px; overflow:hidden; border:2px solid var(--border); cursor:pointer; }
         .rt-photo-grid-item.active { border-color:var(--accent); }
         .rt-photo-grid-item img { width:100%; height:100%; object-fit:cover; }
-        @media(max-width:768px) { .rt-preview-card { width:160px; } .rt-panel { max-height:35vh; } }
-        @media(max-width:480px) { .rt-preview-card { width:130px; } .rt-toolbar-tab { font-size:12px; padding:8px 0; } }
+        /* Mobile: single large card per screen, swipe to navigate */
+        @media(max-width:768px) {
+            .rt-preview-strip { gap:12px; padding:4px 0 8px; scroll-padding:0 16px; }
+            .rt-preview-card { width:calc(100vw - 48px); aspect-ratio:4/5; }
+            .rt-panel { max-height:35vh; }
+        }
+        @media(max-width:480px) {
+            .rt-preview-card { width:calc(100vw - 32px); }
+            .rt-toolbar-tab { font-size:12px; padding:8px 0; }
+        }
+        /* Color picker popup */
+        .rt-color-popup-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:9999; display:flex; align-items:flex-end; justify-content:center; }
+        .rt-color-popup { background:var(--bg-primary); border-radius:16px 16px 0 0; padding:20px; width:100%; max-width:400px; max-height:60vh; overflow-y:auto; }
+        .rt-color-popup-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+        .rt-color-popup-title { font-size:15px; font-weight:600; color:var(--text-primary); }
+        .rt-color-popup-close { background:none; border:none; font-size:20px; color:var(--text-muted); cursor:pointer; padding:4px; }
+        .rt-color-grid { display:grid; grid-template-columns:repeat(6,1fr); gap:10px; margin-bottom:16px; }
+        .rt-color-swatch { width:100%; aspect-ratio:1; border-radius:8px; cursor:pointer; border:2px solid transparent; transition:all 0.2s; }
+        .rt-color-swatch.active { border-color:var(--text-primary); box-shadow:0 0 0 2px var(--bg-primary), 0 0 0 4px var(--text-primary); }
+        .rt-color-swatch:hover { transform:scale(1.1); }
+        .rt-color-custom { display:flex; gap:8px; align-items:center; padding:12px 0; border-top:1px solid var(--border); }
+        .rt-color-custom input[type="color"] { width:40px; height:40px; border:none; padding:0; cursor:pointer; border-radius:8px; }
+        .rt-color-custom input[type="text"] { flex:1; padding:8px 12px; border:1px solid var(--border); border-radius:8px; font-size:14px; background:var(--bg-secondary); color:var(--text-primary); }
+        .rt-color-preview { display:flex; align-items:center; gap:8px; padding:8px 0; margin-top:4px; }
+        .rt-color-preview-dot { width:24px; height:24px; border-radius:6px; border:1px solid var(--border); }
+        .rt-color-btn { display:flex; align-items:center; gap:6px; padding:6px 12px; background:var(--bg-secondary); border:1px solid var(--border); border-radius:8px; font-size:12px; color:var(--text-primary); cursor:pointer; font-family:inherit; }
+        .rt-color-btn svg { flex-shrink:0; }
 
         /* Wizard Steps */
         .wizard-steps {
@@ -2161,6 +2199,15 @@
             background: var(--bg-hover);
         }
 
+        /* Telegram Mini App body class */
+        body.tg-miniapp {
+            padding-top: calc(var(--tg-safe-top) + var(--tg-content-top));
+            padding-bottom: var(--tg-safe-bottom);
+        }
+        body.tg-miniapp .nav-bar {
+            bottom: var(--tg-safe-bottom);
+        }
+
         /* === MOBILE ADAPTATION === */
         @media (max-width: 768px) {
             .app {
@@ -2668,9 +2715,13 @@
                     <div class="tab-page-subtitle">Вставьте текст, выберите шаблон — увидите мгновенный превью</div>
 
                     <div class="form-group">
-                        <label class="form-label">Выберите шаблон</label>
-                        <div class="template-grid" id="rtTemplateGrid">
-                            <div style="color:var(--text-muted);font-size:13px;grid-column:1/-1;text-align:center;padding:20px;">Загрузка шаблонов...</div>
+                        <label class="form-label">Шаблон</label>
+                        <button class="btn" id="rtTemplateBtn" onclick="rtOpenTemplateModal()" style="width:100%;padding:12px;display:flex;align-items:center;gap:10px;justify-content:center;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+                            <span id="rtTemplateBtnText">Выбрать шаблон</span>
+                        </button>
+                        <div id="rtTemplatePreviewThumb" style="margin-top:8px;display:none;">
+                            <div style="width:80px;aspect-ratio:4/5;border-radius:8px;overflow:hidden;border:1px solid var(--border);position:relative;" id="rtTemplateThumb"></div>
                         </div>
                         <input type="hidden" id="rtTemplateSelect" value="">
                     </div>
@@ -3041,8 +3092,17 @@
 
             templateCache = templates;
 
-            // Render visual grids
-            ['rt', 'chat'].forEach(prefix => {
+            // Auto-select first template for RT if none selected
+            if (templates.length > 0 && !document.getElementById('rtTemplateSelect').value) {
+                const first = templates[0];
+                const firstId = first.template_id || first.name;
+                document.getElementById('rtTemplateSelect').value = firstId;
+                const btnText = document.getElementById('rtTemplateBtnText');
+                if (btnText) btnText.textContent = first.name;
+            }
+
+            // Render visual grids (only 'chat' now — RT uses modal)
+            ['chat'].forEach(prefix => {
                 const grid = document.getElementById(`${prefix}TemplateGrid`);
                 const hiddenInput = document.getElementById(`${prefix}TemplateSelect`);
                 if (!grid) return;
@@ -3075,22 +3135,77 @@
         function selectTemplateCard(prefix, templateId) {
             // Deselect all in this grid
             const grid = document.getElementById(`${prefix}TemplateGrid`);
-            grid.querySelectorAll('.template-card').forEach(c => c.classList.remove('selected'));
-            // Select clicked
-            const card = grid.querySelector(`[data-template-id="${templateId}"]`);
-            if (card) card.classList.add('selected');
+            if (grid) {
+                grid.querySelectorAll('.template-card').forEach(c => c.classList.remove('selected'));
+                const card = grid.querySelector(`[data-template-id="${templateId}"]`);
+                if (card) card.classList.add('selected');
+            }
             // Update hidden input
             document.getElementById(`${prefix}TemplateSelect`).value = templateId;
             // Update generate button state for chat
             if (prefix === 'chat') {
                 chatUpdateGenerateBtn();
-                // Update picker button label and collapse grid
                 const t = templateCache.find(t => (t.template_id || t.name) === templateId);
                 const label = document.getElementById('chatTemplatePickerLabel');
                 if (label && t) label.textContent = t.name;
                 const chatGrid = document.getElementById('chatTemplateGrid');
                 if (chatGrid) chatGrid.style.display = 'none';
             }
+            // Update RT template button
+            if (prefix === 'rt') {
+                const t = templateCache.find(t => (t.template_id || t.name) === templateId);
+                const btnText = document.getElementById('rtTemplateBtnText');
+                if (btnText && t) btnText.textContent = t.name;
+                // Show mini preview thumb
+                const thumb = document.getElementById('rtTemplateThumb');
+                const thumbWrap = document.getElementById('rtTemplatePreviewThumb');
+                if (thumb && thumbWrap && t && t.slides && t.slides[0]) {
+                    thumbWrap.style.display = '';
+                    const tw = thumb.offsetWidth || 80;
+                    thumb.innerHTML = `<div style="position:absolute;inset:0;overflow:hidden;">${rtRenderMiniPreview(JSON.parse(JSON.stringify(t.slides[0])), tw)}</div>`;
+                }
+            }
+        }
+
+        // Template selection modal for Ready Text
+        function rtOpenTemplateModal() {
+            if (templateCache.length === 0) {
+                showToast('Нет доступных шаблонов', 'error');
+                return;
+            }
+            const overlay = document.createElement('div');
+            overlay.className = 'rt-color-popup-overlay';
+            overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+            const curId = document.getElementById('rtTemplateSelect').value;
+            overlay.innerHTML = `
+                <div class="rt-color-popup" style="max-height:80vh;">
+                    <div class="rt-color-popup-header">
+                        <span class="rt-color-popup-title">Выберите шаблон</span>
+                        <button class="rt-color-popup-close" onclick="this.closest('.rt-color-popup-overlay').remove()">&times;</button>
+                    </div>
+                    <div class="template-grid" id="rtModalTemplateGrid" style="max-height:60vh;overflow-y:auto;">
+                        ${templateCache.map(t => {
+                            const tid = t.template_id || t.name;
+                            const count = t.slides ? t.slides.length : '?';
+                            return `<div class="template-card ${tid === curId ? 'selected' : ''}" data-template-id="${tid}" onclick="rtSelectTemplateFromModal('${tid}')">
+                                <div class="template-card-preview" id="rtModal-preview-${tid}">
+                                    <div class="template-card-preview-placeholder">${count} сл.</div>
+                                </div>
+                                <div class="template-card-name">${escapeHtml(t.name)}</div>
+                            </div>`;
+                        }).join('')}
+                    </div>
+                </div>`;
+            document.body.appendChild(overlay);
+            // Render previews
+            templateCache.forEach(t => {
+                if (t.slides && t.slides.length > 0) renderTemplatePreview('rtModal', t);
+            });
+        }
+
+        function rtSelectTemplateFromModal(templateId) {
+            document.querySelector('.rt-color-popup-overlay')?.remove();
+            selectTemplateCard('rt', templateId);
         }
 
         function chatToggleTemplatePicker() {
@@ -3421,15 +3536,18 @@
             return result;
         }
 
-        function rtRenderMiniPreview(slide) {
+        function rtRenderMiniPreview(slide, containerWidth) {
+            // Render at full 1080x1350, then CSS scale down to fit container
             const W = 1080, H = 1350;
+            const cw = containerWidth || 200;
+            const scale = cw / W;
             const bg = slide.background || {};
-            let html = '';
+            let inner = '';
             // Background
             if (bg.type === 'photo' && bg.photo) {
                 const pos = bg.photoPosition || {x:50,y:50};
                 const zoom = bg.photoZoom || 1;
-                html += `<div style="position:absolute;inset:0;background-image:url(${bg.photo});background-position:${pos.x}% ${pos.y}%;background-size:cover;transform:scale(${zoom});transform-origin:${pos.x}% ${pos.y}%"></div>`;
+                inner += `<div style="position:absolute;inset:0;background-image:url(${bg.photo});background-position:${pos.x}% ${pos.y}%;background-size:cover;transform:scale(${zoom});transform-origin:${pos.x}% ${pos.y}%"></div>`;
                 if (bg.overlay > 0) {
                     const c = (bg.overlayMode === 'lighten') ? '255,255,255' : '0,0,0';
                     const g = bg.overlayGradient || 'solid';
@@ -3439,39 +3557,56 @@
                     else if (g==='bottom') os = `background:linear-gradient(to top,rgba(${c},${a}) 0%,transparent 60%)`;
                     else if (g==='top') os = `background:linear-gradient(to bottom,rgba(${c},${a}) 0%,transparent 60%)`;
                     else if (g==='both') os = `background:linear-gradient(to bottom,rgba(${c},${a}) 0%,transparent 50%,rgba(${c},${a}) 100%)`;
-                    html += `<div style="position:absolute;inset:0;${os}"></div>`;
+                    inner += `<div style="position:absolute;inset:0;${os}"></div>`;
                 }
             } else {
-                html += `<div style="position:absolute;inset:0;background:${bg.color || '#f5f5f5'}"></div>`;
+                inner += `<div style="position:absolute;inset:0;background:${bg.color || '#f5f5f5'}"></div>`;
             }
-            // Use CSS scale to render at full size then shrink
-            const containerW = 200; // matches .rt-preview-card width
-            const ms = containerW / W;
+            // Render elements at FULL 1080x1350 coordinates
             (slide.elements || []).forEach(el => {
                 if (el.type === 'photo') {
-                    const shape = el.shape === 'circle' ? '50%' : `${(el.borderRadius||0)*ms}px`;
-                    html += `<div style="position:absolute;left:${el.x*ms}px;top:${el.y*ms}px;width:${(el.width||200)*ms}px;height:${(el.height||200)*ms}px;border-radius:${shape};${el.photo?`background-image:url(${el.photo});background-size:cover;background-position:center;`:'background:#333;'}"></div>`;
+                    const shape = el.shape === 'circle' ? '50%' : `${el.borderRadius||0}px`;
+                    inner += `<div style="position:absolute;left:${el.x}px;top:${el.y}px;width:${el.width||200}px;height:${el.height||200}px;border-radius:${shape};${el.photo?`background-image:url(${el.photo});background-size:cover;background-position:center;`:'background:#333;'}"></div>`;
                 } else {
                     let content = el.content || '';
                     content = content.replace(/\{(#[0-9a-fA-F]{3,8}):([^}]+)\}/g, '<span style="color:$1">$2</span>');
                     const hc = el.highlightColor || '#c8ff00';
                     content = content.replace(/\*([^*]+)\*/g, `<span style="color:${hc}">$1</span>`).replace(/\n/g, '<br>');
-                    const wS = el.maxWidth ? `max-width:${el.maxWidth*ms}px;` : '';
+                    const wS = el.maxWidth ? `max-width:${el.maxWidth}px;` : '';
                     const tS = el.align==='right' ? 'transform:translateX(-100%);' : (el.align==='center' ? 'transform:translateX(-50%);' : '');
-                    html += `<div style="position:absolute;left:${el.x*ms}px;top:${el.y*ms}px;font-family:'${el.fontFamily||'Inter'}',sans-serif;font-size:${el.fontSize*ms}px;font-weight:${el.fontWeight||400};color:${el.color||'#000'};opacity:${(el.opacity||100)/100};line-height:${el.lineHeight||1.2};${wS}${tS}word-wrap:break-word;overflow-wrap:break-word;letter-spacing:${(el.letterSpacing||0)*ms}px;">${content}</div>`;
+                    inner += `<div style="position:absolute;left:${el.x}px;top:${el.y}px;font-family:'${el.fontFamily||'Inter'}',sans-serif;font-size:${el.fontSize||24}px;font-weight:${el.fontWeight||400};color:${el.color||'#000'};opacity:${(el.opacity||100)/100};line-height:${el.lineHeight||1.2};${wS}${tS}word-wrap:break-word;overflow-wrap:break-word;letter-spacing:${el.letterSpacing||0}px;">${content}</div>`;
                 }
             });
-            return html;
+            // Wrap in a full-size div scaled down via CSS transform
+            return `<div style="width:${W}px;height:${H}px;position:absolute;top:0;left:0;transform:scale(${scale});transform-origin:top left;">${inner}</div>`;
+        }
+
+        function rtGetCardWidth() {
+            // Get actual card width for correct scale calculation
+            const card = document.querySelector('.rt-preview-card');
+            if (card) return card.offsetWidth;
+            // Fallback: estimate from viewport
+            if (window.innerWidth <= 480) return window.innerWidth - 32;
+            if (window.innerWidth <= 768) return window.innerWidth - 48;
+            return 200;
         }
 
         function rtRenderAllPreviews() {
             const strip = document.getElementById('rtPreviewStrip');
             if (!strip || rtSlides.length === 0) return;
+            // First render cards without inner content to get actual width
             strip.innerHTML = rtSlides.map((slide, i) => `
                 <div class="rt-preview-card ${i === rtActiveSlideIndex ? 'active' : ''}" onclick="rtSelectSlide(${i})">
                     <div class="rt-preview-card-number">${i + 1}</div>
-                    <div class="rt-preview-card-inner">${rtRenderMiniPreview(slide)}</div>
+                    <div class="rt-preview-card-inner"></div>
                 </div>`).join('');
+            // Now measure and fill
+            const cw = rtGetCardWidth();
+            const cards = strip.querySelectorAll('.rt-preview-card');
+            cards.forEach((card, i) => {
+                const inner = card.querySelector('.rt-preview-card-inner');
+                if (inner) inner.innerHTML = rtRenderMiniPreview(rtSlides[i], cw);
+            });
             const ac = strip.querySelector('.rt-preview-card.active');
             if (ac) ac.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
         }
@@ -3480,7 +3615,8 @@
             const cards = document.querySelectorAll('#rtPreviewStrip .rt-preview-card');
             if (cards[index]) {
                 const inner = cards[index].querySelector('.rt-preview-card-inner');
-                if (inner) inner.innerHTML = rtRenderMiniPreview(rtSlides[index]);
+                const cw = cards[index].offsetWidth || rtGetCardWidth();
+                if (inner) inner.innerHTML = rtRenderMiniPreview(rtSlides[index], cw);
             }
         }
 
@@ -3508,6 +3644,17 @@
             else if (rtActivePanel === 'template') rtRenderTemplatePanel();
         }
 
+        // Strip color markup for display (show clean text to user)
+        function rtStripColorMarkup(text) {
+            return (text || '').replace(/\{#[0-9a-fA-F]{3,8}:([^}]+)\}/g, '$1');
+        }
+
+        // Reconstruct markup from clean text — preserve existing colors by position
+        function rtReapplyMarkup(originalWithMarkup, newCleanText) {
+            // Simple approach: if user edits, lose markup (markup applied via color picker only)
+            return newCleanText;
+        }
+
         function rtRenderTextPanel() {
             const c = document.getElementById('rtTextEditArea');
             const i = rtActiveSlideIndex;
@@ -3519,26 +3666,110 @@
             }
             const titleEl = (slide.elements||[]).find(el => (el.varName||'').toUpperCase() === 'TITLE');
             const descEl = (slide.elements||[]).find(el => (el.varName||'').toUpperCase() === 'DESCRIPTION');
+            // Get current active color
+            const lastColor = rtSavedColors.length > 0 ? rtSavedColors[rtSavedColors.length - 1] : '#ff3b30';
             let h = `<div style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;margin-bottom:8px;">Слайд ${i+1}</div>`;
             if (titleEl) {
+                const cleanTitle = rtStripColorMarkup(titleEl.content);
                 h += `<label class="form-label" style="font-size:12px;">Заголовок</label>
-                    <input type="text" class="form-input" id="rtEditTitle" value="${escapeHtml(titleEl.content||'')}" oninput="rtUpdateText(${i},'TITLE',this.value)" placeholder="Заголовок">
-                    <div style="display:flex;gap:4px;align-items:center;margin:4px 0;flex-wrap:wrap;">
-                        ${rtSavedColors.map(cl=>`<div onclick="rtApplyColorNew(${i},'title','${cl}')" style="width:18px;height:18px;border-radius:4px;background:${cl};border:1px solid var(--border);cursor:pointer;" title="${cl}"></div>`).join('')}
-                        <input type="color" style="width:22px;height:22px;border:none;padding:0;cursor:pointer;background:none;" onchange="rtApplyColorNew(${i},'title',this.value);rtSaveColor(this.value)">
-                        <button class="btn" onclick="rtClearColorNew(${i},'title')" style="padding:1px 6px;font-size:10px;">✕</button>
+                    <input type="text" class="form-input" id="rtEditTitle" value="${escapeHtml(cleanTitle)}" oninput="rtUpdateTextClean(${i},'TITLE',this.value)" placeholder="Заголовок" style="caret-color:var(--accent);">
+                    <div style="display:flex;gap:6px;align-items:center;margin:6px 0;">
+                        <button class="rt-color-btn" onclick="rtOpenColorPicker(${i},'title')">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4" fill="${lastColor}" stroke="none"/></svg>
+                            Цвет текста
+                        </button>
+                        <button class="rt-color-btn" onclick="rtClearColorNew(${i},'title')" style="color:var(--text-muted);">Сбросить</button>
                     </div>`;
             }
             if (descEl) {
+                const cleanDesc = rtStripColorMarkup(descEl.content);
                 h += `<label class="form-label" style="font-size:12px;margin-top:8px;">Описание</label>
-                    <textarea class="form-textarea" id="rtEditDesc" style="min-height:80px;" oninput="rtUpdateText(${i},'DESCRIPTION',this.value)" placeholder="Описание">${escapeHtml(descEl.content||'')}</textarea>
-                    <div style="display:flex;gap:4px;align-items:center;margin:4px 0;flex-wrap:wrap;">
-                        ${rtSavedColors.map(cl=>`<div onclick="rtApplyColorNew(${i},'desc','${cl}')" style="width:18px;height:18px;border-radius:4px;background:${cl};border:1px solid var(--border);cursor:pointer;" title="${cl}"></div>`).join('')}
-                        <input type="color" style="width:22px;height:22px;border:none;padding:0;cursor:pointer;background:none;" onchange="rtApplyColorNew(${i},'desc',this.value);rtSaveColor(this.value)">
-                        <button class="btn" onclick="rtClearColorNew(${i},'desc')" style="padding:1px 6px;font-size:10px;">✕</button>
+                    <textarea class="form-textarea" id="rtEditDesc" style="min-height:80px;caret-color:var(--accent);" oninput="rtUpdateTextClean(${i},'DESCRIPTION',this.value)" placeholder="Описание">${escapeHtml(cleanDesc)}</textarea>
+                    <div style="display:flex;gap:6px;align-items:center;margin:6px 0;">
+                        <button class="rt-color-btn" onclick="rtOpenColorPicker(${i},'desc')">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4" fill="${lastColor}" stroke="none"/></svg>
+                            Цвет текста
+                        </button>
+                        <button class="rt-color-btn" onclick="rtClearColorNew(${i},'desc')" style="color:var(--text-muted);">Сбросить</button>
                     </div>`;
             }
             c.innerHTML = h;
+        }
+
+        // Update text without color markup (clean text from user input)
+        function rtUpdateTextClean(slideIndex, varName, cleanValue) {
+            const slide = rtSlides[slideIndex];
+            if (!slide) return;
+            const el = (slide.elements||[]).find(e => (e.varName||'').toUpperCase() === varName.toUpperCase());
+            if (el) el.content = cleanValue; // Store clean text (no markup)
+            if (slideIndex < rtParsedData.length) rtParsedData[slideIndex][varName] = cleanValue;
+            rtRenderSinglePreview(slideIndex);
+        }
+
+        // Color picker popup
+        function rtOpenColorPicker(slideIndex, field) {
+            const el = field === 'title' ? document.getElementById('rtEditTitle') : document.getElementById('rtEditDesc');
+            if (!el) return;
+            const start = el.selectionStart;
+            const end = el.selectionEnd;
+            if (start === end) {
+                showToast('Сначала выделите текст для окрашивания', 'error');
+                return;
+            }
+            // Color palette
+            const defaultColors = ['#ff3b30','#ff9500','#ffcc00','#34c759','#007aff','#5856d6','#af52de','#ff2d55','#000000','#8e8e93','#ffffff','#c7c7cc'];
+            const allColors = [...new Set([...defaultColors, ...rtSavedColors])];
+            const lastColor = rtSavedColors.length > 0 ? rtSavedColors[rtSavedColors.length - 1] : '#ff3b30';
+
+            const overlay = document.createElement('div');
+            overlay.className = 'rt-color-popup-overlay';
+            overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+            overlay.innerHTML = `
+                <div class="rt-color-popup">
+                    <div class="rt-color-popup-header">
+                        <span class="rt-color-popup-title">Цвет выделенного текста</span>
+                        <button class="rt-color-popup-close" onclick="this.closest('.rt-color-popup-overlay').remove()">&times;</button>
+                    </div>
+                    <div class="rt-color-grid">
+                        ${allColors.map(c => `<div class="rt-color-swatch" style="background:${c};" onclick="rtApplyColorFromPicker(${slideIndex},'${field}','${c}',${start},${end})" title="${c}"></div>`).join('')}
+                    </div>
+                    <div class="rt-color-custom">
+                        <input type="color" value="${lastColor}" id="rtPopupColorInput">
+                        <input type="text" placeholder="#hex цвет" id="rtPopupColorHex" value="${lastColor}">
+                        <button class="btn" onclick="const c=document.getElementById('rtPopupColorHex').value;if(c.startsWith('#'))rtApplyColorFromPicker(${slideIndex},'${field}',c,${start},${end})" style="padding:8px 14px;">OK</button>
+                    </div>
+                </div>`;
+            document.body.appendChild(overlay);
+            // Sync color input with hex
+            const ci = overlay.querySelector('#rtPopupColorInput');
+            const ch = overlay.querySelector('#rtPopupColorHex');
+            ci.onchange = () => { ch.value = ci.value; };
+            ch.oninput = () => { if (ch.value.match(/^#[0-9a-fA-F]{6}$/)) ci.value = ch.value; };
+        }
+
+        function rtApplyColorFromPicker(slideIndex, field, color, start, end) {
+            // Close popup
+            document.querySelector('.rt-color-popup-overlay')?.remove();
+            if (!color.startsWith('#')) return;
+            rtSaveColor(color);
+            // Get the clean text, apply markup at original positions
+            const el = field === 'title' ? document.getElementById('rtEditTitle') : document.getElementById('rtEditDesc');
+            if (!el) return;
+            const text = el.value;
+            const selected = text.substring(start, end);
+            const colored = `{${color}:${selected}}`;
+            const newText = text.substring(0, start) + colored + text.substring(end);
+            // Update slide data with markup
+            const slide = rtSlides[slideIndex];
+            if (!slide) return;
+            const varName = field === 'title' ? 'TITLE' : 'DESCRIPTION';
+            const slideEl = (slide.elements||[]).find(e => (e.varName||'').toUpperCase() === varName);
+            if (slideEl) slideEl.content = newText;
+            if (slideIndex < rtParsedData.length) rtParsedData[slideIndex][varName] = newText;
+            // Re-render: show clean text in input, colored in preview
+            el.value = rtStripColorMarkup(newText);
+            rtRenderSinglePreview(slideIndex);
+            showToast(`Цвет ${color} применён`, 'success');
         }
 
         function rtUpdateText(slideIndex, varName, value) {
@@ -3565,10 +3796,15 @@
         }
 
         function rtClearColorNew(slideIndex, field) {
-            const el = field === 'title' ? document.getElementById('rtEditTitle') : document.getElementById('rtEditDesc');
-            if (!el) return;
-            el.value = el.value.replace(/\{#[0-9a-fA-F]{3,8}:([^}]+)\}/g, '$1');
-            rtUpdateText(slideIndex, field === 'title' ? 'TITLE' : 'DESCRIPTION', el.value);
+            const varName = field === 'title' ? 'TITLE' : 'DESCRIPTION';
+            const slide = rtSlides[slideIndex];
+            if (!slide) return;
+            const slideEl = (slide.elements||[]).find(e => (e.varName||'').toUpperCase() === varName);
+            if (slideEl) slideEl.content = rtStripColorMarkup(slideEl.content);
+            if (slideIndex < rtParsedData.length) rtParsedData[slideIndex][varName] = rtStripColorMarkup(rtParsedData[slideIndex][varName] || '');
+            rtRenderSinglePreview(slideIndex);
+            rtRenderTextPanel(); // Refresh text fields
+            showToast('Цвета сброшены', 'success');
         }
 
         function rtSaveColor(color) {
@@ -3680,6 +3916,9 @@
         function rtBackToInput() {
             document.getElementById('rtEditorPhase').style.display = 'none';
             document.getElementById('rtInputPhase').style.display = '';
+            // Hide Telegram BackButton when returning to input
+            const tg = window.Telegram && window.Telegram.WebApp;
+            if (tg && tg.BackButton) tg.BackButton.hide();
         }
 
         async function rtDownloadAll() {
@@ -3705,17 +3944,48 @@
                 if (r.ok) {
                     const data = await r.json();
                     const images = data.slides || [];
-                    images.forEach((img, i) => {
-                        setTimeout(() => {
-                            const a = document.createElement('a');
-                            a.href = img.base64;
-                            a.download = img.filename || `slide_${i+1}.png`;
-                            document.body.appendChild(a);
-                            a.click();
-                            document.body.removeChild(a);
-                        }, i * 300);
-                    });
-                    showToast(`Скачивание ${images.length} слайдов...`, 'success');
+                    const tg = window.Telegram && window.Telegram.WebApp;
+
+                    if (tg && tg.initData) {
+                        // Telegram Mini App: send images to user's chat via bot
+                        btn.innerHTML = '<span class="spinner"></span> Отправка в чат...';
+                        try {
+                            // Extract user chat_id from initData
+                            const initParams = new URLSearchParams(tg.initData);
+                            const userData = JSON.parse(initParams.get('user') || '{}');
+                            const chatId = userData.id;
+                            if (chatId) {
+                                const sr = await fetch(`${API_URL}/api/send-to-chat`, {
+                                    method: 'POST',
+                                    headers: {'Content-Type': 'application/json'},
+                                    body: JSON.stringify({chat_id: chatId, images: images})
+                                });
+                                if (sr.ok) {
+                                    const result = await sr.json();
+                                    showToast(`Отправлено ${result.sent} слайдов в чат бота`, 'success');
+                                } else {
+                                    showToast('Ошибка отправки в чат', 'error');
+                                }
+                            } else {
+                                showToast('Не удалось определить chat_id', 'error');
+                            }
+                        } catch(e) {
+                            showToast('Ошибка отправки в чат', 'error');
+                        }
+                    } else {
+                        // Desktop: download files directly
+                        images.forEach((img, i) => {
+                            setTimeout(() => {
+                                const a = document.createElement('a');
+                                a.href = img.base64;
+                                a.download = img.filename || `slide_${i+1}.png`;
+                                document.body.appendChild(a);
+                                a.click();
+                                document.body.removeChild(a);
+                            }, i * 300);
+                        });
+                        showToast(`Скачивание ${images.length} слайдов...`, 'success');
+                    }
                 } else {
                     const err = await r.json().catch(()=>({}));
                     showToast(err.detail || 'Ошибка генерации', 'error');
@@ -3723,15 +3993,6 @@
             } catch(e) { showToast('Ошибка подключения', 'error'); }
             btn.disabled = false;
             btn.textContent = 'Скачать все слайды';
-        }
-
-        function rtSaveColor(color) {
-            if (!color || !color.startsWith('#')) return;
-            if (!rtSavedColors.includes(color)) {
-                rtSavedColors.push(color);
-                if (rtSavedColors.length > 12) rtSavedColors.shift();
-                localStorage.setItem('craft_saved_colors', JSON.stringify(rtSavedColors));
-            }
         }
 
         async function generateFromReadyText() {
@@ -3797,6 +4058,14 @@
             // Switch to Phase 2 (Editor)
             document.getElementById('rtInputPhase').style.display = 'none';
             document.getElementById('rtEditorPhase').style.display = '';
+
+            // Show Telegram BackButton instead of in-app back button
+            const tg = window.Telegram && window.Telegram.WebApp;
+            if (tg && tg.BackButton) {
+                tg.BackButton.show();
+                tg.BackButton.offClick(rtBackToInput);
+                tg.BackButton.onClick(rtBackToInput);
+            }
 
             rtRenderAllPreviews();
             rtSwitchPanel('text');
@@ -4512,6 +4781,24 @@
                 // Telegram Mini App — auto-authenticate
                 tg.ready();
                 tg.expand();
+                document.body.classList.add('tg-miniapp');
+
+                // Safe area insets for Dynamic Island / notch
+                function tgUpdateInsets() {
+                    const root = document.documentElement.style;
+                    const sa = tg.safeAreaInset || {};
+                    const csa = tg.contentSafeAreaInset || {};
+                    root.setProperty('--tg-safe-top', (sa.top || 0) + 'px');
+                    root.setProperty('--tg-safe-bottom', (sa.bottom || 0) + 'px');
+                    root.setProperty('--tg-content-top', (csa.top || 0) + 'px');
+                }
+                tgUpdateInsets();
+                if (tg.onEvent) {
+                    tg.onEvent('safeAreaChanged', tgUpdateInsets);
+                    tg.onEvent('contentSafeAreaChanged', tgUpdateInsets);
+                }
+                // Prevent accidental close
+                if (tg.enableClosingConfirmation) tg.enableClosingConfirmation();
                 try {
                     const resp = await fetch(`${API_URL}/api/auth/miniapp`, {
                         method: 'POST',
@@ -4704,6 +4991,15 @@
                 else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.shiftKey && e.key === 'z'))) {
                     e.preventDefault();
                     redo();
+                }
+            });
+
+            // Mobile: auto-scroll to focused input/textarea
+            document.addEventListener('focusin', (e) => {
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                    setTimeout(() => {
+                        e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }, 300);
                 }
             });
         }
