@@ -4879,11 +4879,6 @@
                     tg.onEvent('contentSafeAreaChanged', tgUpdateInsets);
                 }
                 if (tg.enableClosingConfirmation) tg.enableClosingConfirmation();
-
-                // Hide widget loading text, show mini app auth status
-                const widgetLoading = document.getElementById('loginWidgetLoading');
-                if (widgetLoading) widgetLoading.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="animation:spin 1s linear infinite;vertical-align:middle;margin-right:6px;"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Авторизация...';
-
                 try {
                     const resp = await fetch(`${API_URL}/api/auth/miniapp`, {
                         method: 'POST',
@@ -4892,30 +4887,18 @@
                     });
                     if (resp.ok) {
                         const data = await resp.json();
-                        if (data.user.is_club_member || data.user.is_admin) {
-                            currentUser = data.user;
-                            localStorage.setItem('craft_user', JSON.stringify(data.user));
-                            hideLogin();
-                            updateUIForUser();
-                            return;
-                        } else {
-                            // Not a club member
-                            if (widgetLoading) widgetLoading.style.display = 'none';
-                            showLoginError('Доступ только для участников клуба');
-                            return;
-                        }
-                    } else {
-                        const errData = await resp.json().catch(() => ({}));
-                        console.error('Mini App auth error:', resp.status, errData);
-                        // Fall through to localStorage fallback
+                        currentUser = data.user;
+                        localStorage.setItem('craft_user', JSON.stringify(data.user));
+                        hideLogin();
+                        updateUIForUser();
+                        return;
                     }
                 } catch(e) {
-                    console.error('Mini App auth failed:', e);
-                    // Fall through to localStorage fallback
+                    console.log('Mini App auth failed, falling back', e);
                 }
             }
 
-            // Fallback: check localStorage (saved from previous web login)
+            // Regular auth: check localStorage or show login
             const saved = localStorage.getItem('craft_user');
             if (saved) {
                 try {
@@ -4962,21 +4945,10 @@
                 script.setAttribute('data-onauth', 'onTelegramAuth(user)');
                 script.setAttribute('data-request-access', 'write');
                 script.onload = () => {
+                    // Hide loading spinner when widget script loads
                     setTimeout(() => {
                         document.getElementById('loginWidgetLoading').style.display = 'none';
-                        // Check if widget actually rendered (iframe appeared)
-                        setTimeout(() => {
-                            if (!container.querySelector('iframe')) {
-                                document.getElementById('loginError').textContent = 'Кнопка входа не загрузилась. Домен ' + window.location.hostname + ' может быть не добавлен в BotFather.';
-                                document.getElementById('loginError').style.display = 'block';
-                            }
-                        }, 3000);
                     }, 500);
-                };
-                script.onerror = () => {
-                    document.getElementById('loginWidgetLoading').style.display = 'none';
-                    document.getElementById('loginError').textContent = 'Не удалось загрузить виджет Telegram';
-                    document.getElementById('loginError').style.display = 'block';
                 };
                 container.appendChild(script);
             }
@@ -5011,11 +4983,6 @@
                 }
 
                 const data = await resp.json();
-
-                if (!data.user.is_club_member && !data.user.is_admin) {
-                    showLoginError('Доступ только для участников клуба');
-                    return;
-                }
 
                 currentUser = data.user;
                 localStorage.setItem('craft_user', JSON.stringify(data.user));
@@ -5067,9 +5034,6 @@
         }
 
         async function init() {
-            // Auth FIRST — so login overlay hides before loading everything else
-            await initAuth();
-
             // NEW: Load MargulanGames template by default instead of empty template
             try {
                 const r = await fetch(`${API_URL}/templates/margulangames`);
@@ -5090,6 +5054,7 @@
             await loadTemplateSelectors();
             loadWebhookSettings();
             chatInitTab();
+            initAuth();
 
             // NEW v7.0: Keyboard shortcuts for Undo/Redo
             document.addEventListener('keydown', (e) => {
