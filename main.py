@@ -1173,6 +1173,7 @@ def check_club_membership(user_id: int) -> bool:
             status = data["result"].get("status", "")
             return status in ("member", "administrator", "creator")
     except Exception:
+        pass
     return False
 
 
