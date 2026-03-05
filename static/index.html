@@ -3538,22 +3538,16 @@
         .sc-messages {
             flex: 1;
             overflow-y: auto;
-            padding: 20px 20px 8px;
+            padding: 20px calc(max(20px, (100% - 680px) / 2)) 8px;
             display: flex;
             flex-direction: column;
             gap: 24px;
-            max-width: 680px;
-            margin: 0 auto;
-            width: 100%;
         }
 
         .sc-action-bar {
             display: flex;
             gap: 8px;
-            padding: 8px 16px;
-            max-width: 680px;
-            margin: 0 auto;
-            width: 100%;
+            padding: 8px calc(max(20px, (100% - 680px) / 2));
         }
 
         .sc-action-btn {
@@ -3583,11 +3577,7 @@
         }
 
         .sc-input-bar {
-            padding: 8px 16px 12px;
-            border-top: 1px solid var(--border);
-            max-width: 680px;
-            margin: 0 auto;
-            width: 100%;
+            padding: 8px calc(max(20px, (100% - 680px) / 2)) 12px;
         }
 
         .sc-input-container {
