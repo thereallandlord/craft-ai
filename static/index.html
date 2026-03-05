@@ -76,15 +76,7 @@
 
         /* Navigation Bar */
         .nav-bar {
-            width: 56px;
-            background: var(--bg-secondary);
-            border-right: 1px solid var(--border);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 16px 0;
-            gap: 4px;
-            flex-shrink: 0;
+            display: none !important;
         }
 
         .nav-brand {
@@ -1609,6 +1601,20 @@
             30% { opacity: 1; transform: translateY(-4px); }
         }
 
+        /* ChatGPT-style thinking dot */
+        .thinking-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-primary);
+            animation: thinkingPulse 1.2s ease-in-out infinite;
+        }
+
+        @keyframes thinkingPulse {
+            0%, 100% { opacity: 0.4; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.1); }
+        }
+
         /* === CHAT INTERFACE === */
         .chat-layout {
             display: flex;
@@ -2610,10 +2616,10 @@
         }
 
         /* === Project Sidebar (ChatGPT style) === */
+        /* === Project Sidebar (ChatGPT style) === */
         .project-sidebar {
             width: 260px;
             background: var(--sidebar-bg, var(--bg-secondary));
-            border-right: 1px solid var(--border);
             display: flex;
             flex-direction: column;
             flex-shrink: 0;
@@ -2627,56 +2633,60 @@
         }
 
         .ps-header {
-            padding: 12px;
+            padding: 12px 12px 4px;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
         }
 
         .ps-logo {
-            font-size: 16px;
-            font-weight: 700;
+            font-size: 15px;
+            font-weight: 600;
             color: var(--text-primary);
         }
 
         .ps-new-btn {
             margin-left: auto;
-            width: 36px;
-            height: 36px;
+            width: 32px;
+            height: 32px;
             background: transparent;
-            border: 1px solid var(--border);
-            color: var(--text-primary);
-            border-radius: 10px;
+            border: none;
+            color: var(--text-secondary);
+            border-radius: 8px;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 18px;
-            transition: background 0.15s ease;
+            transition: background 0.15s ease, color 0.15s ease;
         }
 
         .ps-new-btn:hover {
             background: var(--bg-hover);
+            color: var(--text-primary);
         }
 
         .ps-search {
-            padding: 4px 12px 8px;
+            padding: 8px 12px;
         }
 
         .ps-search input {
             width: 100%;
-            padding: 8px 12px;
-            background: var(--bg-tertiary);
+            padding: 8px 10px;
+            background: transparent;
             border: 1px solid var(--border);
-            border-radius: 8px;
+            border-radius: 20px;
             color: var(--text-primary);
             font-size: 13px;
             outline: none;
             transition: border-color 0.15s ease;
         }
 
+        .ps-search input::placeholder {
+            color: var(--text-muted);
+        }
+
         .ps-search input:focus {
-            border-color: var(--text-muted);
+            border-color: var(--text-secondary);
         }
 
         .ps-projects {
@@ -2686,11 +2696,11 @@
         }
 
         .ps-project-item {
-            padding: 10px 12px;
-            border-radius: 8px;
+            padding: 8px 12px;
+            border-radius: 16px;
             cursor: pointer;
             transition: background 0.15s ease;
-            margin-bottom: 2px;
+            margin-bottom: 1px;
         }
 
         .ps-project-item:hover {
@@ -2698,7 +2708,7 @@
         }
 
         .ps-project-item.active {
-            background: var(--accent-light);
+            background: var(--bg-hover);
         }
 
         .ps-project-title {
@@ -2708,17 +2718,15 @@
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            line-height: 1.4;
         }
 
         .ps-project-meta {
-            font-size: 12px;
-            color: var(--text-muted);
-            margin-top: 2px;
+            display: none;
         }
 
         .ps-footer {
-            border-top: 1px solid var(--border);
-            padding: 8px;
+            padding: 4px 8px 8px;
         }
 
         .ps-footer-item {
@@ -2726,7 +2734,7 @@
             align-items: center;
             gap: 10px;
             padding: 8px 12px;
-            border-radius: 8px;
+            border-radius: 16px;
             cursor: pointer;
             color: var(--text-secondary);
             font-size: 14px;
@@ -2743,11 +2751,18 @@
         }
 
         .ps-user-section {
-            border-top: 1px solid var(--border);
-            padding: 12px;
+            padding: 8px 12px 12px;
             display: flex;
             align-items: center;
             gap: 10px;
+            cursor: pointer;
+            border-radius: 16px;
+            margin: 0 8px 8px;
+            transition: background 0.15s ease;
+        }
+
+        .ps-user-section:hover {
+            background: var(--bg-hover);
         }
 
         .ps-user-avatar {
@@ -2766,14 +2781,52 @@
             white-space: nowrap;
         }
 
-        /* === Home View (поверх tab-create) === */
+        /* === Top bar for views === */
+        .view-top-bar {
+            display: flex;
+            align-items: center;
+            padding: 8px 12px;
+            gap: 4px;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 2;
+        }
+
+        .sidebar-toggle-btn {
+            width: 32px;
+            height: 32px;
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            transition: background 0.15s ease, color 0.15s ease;
+        }
+
+        .sidebar-toggle-btn:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .view-top-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        /* === Home View (ChatGPT style) === */
         .home-view {
             flex: 1;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            padding: 40px 20px;
+            justify-content: flex-end;
+            padding: 40px 20px 32px;
             text-align: center;
         }
 
@@ -2786,29 +2839,34 @@
 
         .home-input-wrap {
             width: 100%;
-            max-width: 640px;
+            max-width: 680px;
             position: relative;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            box-shadow: 0 2px 12px var(--shadow), 0 0 0 1px var(--shadow);
+            padding: 4px;
+            transition: box-shadow 0.2s ease, border-color 0.2s ease;
+        }
+
+        .home-input-wrap:focus-within {
+            border-color: var(--border);
+            box-shadow: 0 4px 20px var(--shadow-md), 0 0 0 1px var(--shadow);
         }
 
         .home-textarea {
             width: 100%;
-            min-height: 52px;
+            min-height: 48px;
             max-height: 160px;
-            padding: 14px 96px 14px 16px;
-            background: var(--bg-tertiary);
-            border: 1px solid var(--border);
-            border-radius: var(--input-radius);
+            padding: 10px 88px 10px 16px;
+            background: transparent;
+            border: none;
             color: var(--text-primary);
             font-size: 16px;
             font-family: inherit;
             resize: none;
             outline: none;
             line-height: 1.5;
-            transition: border-color 0.15s ease;
-        }
-
-        .home-textarea:focus {
-            border-color: var(--text-muted);
         }
 
         .home-textarea::placeholder {
@@ -2817,10 +2875,10 @@
 
         .home-send-btn {
             position: absolute;
-            right: 8px;
+            right: 12px;
             bottom: 8px;
-            width: 36px;
-            height: 36px;
+            width: 32px;
+            height: 32px;
             background: var(--accent);
             color: var(--bg-primary);
             border: none;
@@ -2833,15 +2891,15 @@
         }
 
         .home-send-btn:hover {
-            opacity: 0.8;
+            opacity: 0.85;
         }
 
         .home-mic-btn {
             position: absolute;
             right: 52px;
             bottom: 8px;
-            width: 36px;
-            height: 36px;
+            width: 32px;
+            height: 32px;
             background: transparent;
             border: none;
             color: var(--text-muted);
@@ -2867,11 +2925,10 @@
         }
 
         .pv-header {
-            padding: 12px 16px;
-            border-bottom: 1px solid var(--border);
+            padding: 10px 16px;
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 8px;
         }
 
         .pv-back-btn {
@@ -2915,21 +2972,18 @@
         .pv-messages {
             flex: 1;
             overflow-y: auto;
-            padding: 20px;
+            padding: 20px 20px 8px;
             display: flex;
             flex-direction: column;
-            gap: 16px;
-            max-width: 768px;
+            gap: 24px;
+            max-width: 680px;
             margin: 0 auto;
             width: 100%;
         }
 
         .pv-msg {
-            max-width: 85%;
-            padding: 12px 16px;
-            border-radius: 20px;
             font-size: 15px;
-            line-height: 1.6;
+            line-height: 1.7;
             animation: msgAppear 0.3s ease-out;
         }
 
@@ -2942,21 +2996,21 @@
             align-self: flex-end;
             background: var(--msg-user-bg);
             color: var(--text-primary);
-            border-bottom-right-radius: 6px;
+            padding: 10px 16px;
+            border-radius: 20px;
+            max-width: 85%;
         }
 
         .pv-msg.assistant {
             align-self: flex-start;
-            background: var(--msg-assistant-bg);
+            background: transparent;
             color: var(--text-primary);
-            border-bottom-left-radius: 6px;
+            padding: 0;
             max-width: 100%;
         }
 
         .pv-msg .msg-time {
-            font-size: 11px;
-            color: var(--text-muted);
-            margin-top: 4px;
+            display: none;
         }
 
         .pv-headlines-grid {
@@ -2989,40 +3043,53 @@
         }
 
         .pv-input-bar {
-            padding: 12px 16px calc(12px + var(--tg-safe-bottom));
-            border-top: 1px solid var(--border);
+            padding: 12px 16px calc(12px + var(--tg-safe-bottom, 0px));
             display: flex;
             align-items: flex-end;
-            gap: 8px;
-            max-width: 768px;
+            gap: 0;
+            max-width: 680px;
             margin: 0 auto;
             width: 100%;
+        }
+
+        .pv-input-container {
+            flex: 1;
+            display: flex;
+            align-items: flex-end;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            box-shadow: 0 2px 12px var(--shadow), 0 0 0 1px var(--shadow);
+            padding: 4px;
+            transition: box-shadow 0.2s ease, border-color 0.2s ease;
+        }
+
+        .pv-input-container:focus-within {
+            box-shadow: 0 4px 20px var(--shadow-md), 0 0 0 1px var(--shadow);
         }
 
         .pv-input-bar textarea {
             flex: 1;
             min-height: 40px;
             max-height: 120px;
-            padding: 10px 14px;
-            background: var(--bg-tertiary);
-            border: 1px solid var(--border);
-            border-radius: var(--input-radius);
+            padding: 8px 8px 8px 14px;
+            background: transparent;
+            border: none;
             color: var(--text-primary);
             font-size: 15px;
             font-family: inherit;
             resize: none;
             outline: none;
             line-height: 1.5;
-            transition: border-color 0.15s ease;
         }
 
-        .pv-input-bar textarea:focus {
-            border-color: var(--text-muted);
+        .pv-input-bar textarea::placeholder {
+            color: var(--text-muted);
         }
 
         .pv-send-btn, .pv-mic-btn {
-            width: 36px;
-            height: 36px;
+            width: 32px;
+            height: 32px;
             border-radius: 50%;
             border: none;
             cursor: pointer;
@@ -3039,7 +3106,7 @@
         }
 
         .pv-send-btn:hover {
-            opacity: 0.8;
+            opacity: 0.85;
         }
 
         .pv-mic-btn {
@@ -3141,12 +3208,12 @@
                 transition: transform 0.2s ease;
             }
 
-            .project-sidebar.mobile-open {
-                transform: translateX(0);
+            .project-sidebar:not(.hidden) {
+                display: flex;
             }
 
-            .mobile-hamburger {
-                display: flex;
+            .project-sidebar.mobile-open {
+                transform: translateX(0);
             }
 
             .home-title {
@@ -3185,7 +3252,7 @@
         }
     </style>
 </head>
-<body class="dark-theme">
+<body>
     <!-- Login Overlay -->
     <div class="login-overlay" id="loginOverlay">
         <div class="login-card">
@@ -3215,13 +3282,16 @@
         <!-- Project Sidebar -->
         <aside class="project-sidebar hidden" id="projectSidebar">
             <div class="ps-header">
-                <span class="ps-logo">Craft AI</span>
-                <button class="ps-new-btn" onclick="goHome()" title="Новая карусель">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+                <button class="ps-new-btn" onclick="toggleSidebar()" title="Свернуть">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+                </button>
+                <span class="ps-logo" style="flex:1"></span>
+                <button class="ps-new-btn" onclick="goHome()" title="Новый чат">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z"/></svg>
                 </button>
             </div>
             <div class="ps-search">
-                <input type="text" placeholder="Поиск проектов..." id="psSearchInput" oninput="filterProjects(this.value)">
+                <input type="text" placeholder="Поиск" id="psSearchInput" oninput="filterProjects(this.value)">
             </div>
             <div class="ps-projects" id="psProjectsList"></div>
             <div class="ps-footer">
@@ -3234,16 +3304,13 @@
                     Шаблоны
                 </button>
                 <button class="ps-footer-item" onclick="switchTab('settings');closeAllViews()">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
                     Настройки
                 </button>
             </div>
             <div class="ps-user-section" id="psUserSection" style="display:none">
                 <img class="ps-user-avatar" id="psUserAvatar" src="" alt="">
                 <span class="ps-user-name" id="psUserName"></span>
-                <button class="nav-logout" onclick="logout()" title="Выйти" style="margin-left:auto">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-                </button>
             </div>
         </aside>
 
@@ -3650,12 +3717,15 @@
         <!-- === HOME VIEW (overlay) === -->
         <div class="view-overlay active" id="view-home" style="position:absolute;inset:0;z-index:50;background:var(--bg-primary);display:flex;flex-direction:column;">
             <div class="home-view">
-                <button class="mobile-hamburger" onclick="toggleMobileSidebar()" style="position:absolute;top:12px;left:12px;">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-                </button>
-                <h1 class="home-title">Опишите идею карусели</h1>
+                <div class="view-top-bar">
+                    <button class="sidebar-toggle-btn" onclick="toggleSidebar()" title="Sidebar">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+                    </button>
+                    <span class="view-top-title">Craft AI</span>
+                </div>
+                <h1 class="home-title" style="font-size:24px;font-weight:600;margin-bottom:32px;color:var(--text-primary);">Чем могу помочь?</h1>
                 <div class="home-input-wrap">
-                    <textarea class="home-textarea" id="homeTextarea" placeholder="Например: карусель про 5 привычек успешных предпринимателей..." oninput="autoResizeTextarea(this)" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();homeSubmit()}"></textarea>
+                    <textarea class="home-textarea" id="homeTextarea" placeholder="Спросите Craft AI" oninput="autoResizeTextarea(this)" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();homeSubmit()}"></textarea>
                     <button class="home-mic-btn" id="homeMicBtn" onclick="toggleHomeVoice()">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
                     </button>
@@ -3670,14 +3740,12 @@
         <div class="view-overlay" id="view-project" style="position:absolute;inset:0;z-index:50;background:var(--bg-primary);display:none;flex-direction:column;">
             <div class="project-view">
                 <div class="pv-header">
-                    <button class="mobile-hamburger" onclick="toggleMobileSidebar()">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                    <button class="sidebar-toggle-btn" onclick="toggleSidebar()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
                     </button>
-                    <button class="pv-back-btn" onclick="goHome()">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
-                    </button>
-                    <input class="pv-title-input" id="pvTitleInput" value="Новая карусель" onchange="updateProjectTitle(this.value)">
-                    <span class="pv-status" id="pvStatus">Черновик</span>
+                    <span class="view-top-title">Craft AI</span>
+                    <span style="flex:1"></span>
+                    <span class="pv-status" id="pvStatus" style="display:none">Черновик</span>
                     <button class="pv-settings-toggle" onclick="togglePvSettings()">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
                     </button>
@@ -3715,13 +3783,15 @@
                     </div>
                 </div>
                 <div class="pv-input-bar">
-                    <button class="pv-mic-btn" id="pvMicBtn" onclick="togglePvVoice()">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
-                    </button>
-                    <textarea placeholder="Напишите сообщение..." id="pvInput" oninput="autoResizeTextarea(this)" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();pvSendMessage()}"></textarea>
-                    <button class="pv-send-btn" onclick="pvSendMessage()">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg>
-                    </button>
+                    <div class="pv-input-container">
+                        <button class="pv-mic-btn" id="pvMicBtn" onclick="togglePvVoice()">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+                        </button>
+                        <textarea placeholder="Спросите Craft AI" id="pvInput" oninput="autoResizeTextarea(this)" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();pvSendMessage()}"></textarea>
+                        <button class="pv-send-btn" onclick="pvSendMessage()">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -3793,6 +3863,16 @@
             const overlay = document.getElementById('sidebarOverlay');
             if (sidebar) sidebar.classList.remove('mobile-open');
             if (overlay) overlay.classList.remove('visible');
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('projectSidebar');
+            if (!sidebar) return;
+            if (window.innerWidth <= 768) {
+                toggleMobileSidebar();
+            } else {
+                sidebar.classList.toggle('hidden');
+            }
         }
 
         function autoResizeTextarea(el) {
@@ -3892,7 +3972,7 @@
             container.innerHTML += `<div class="pv-msg user"><div>${escapeHtml(text).replace(/\n/g, '<br>')}</div><div class="msg-time">${time}</div></div>`;
             container.scrollTop = container.scrollHeight;
 
-            container.innerHTML += `<div class="pv-msg assistant" id="pvTyping"><div style="display:flex;gap:4px;align-items:center;"><span class="typing-dot" style="width:6px;height:6px;border-radius:50%;background:var(--text-muted);animation:typingDot 1.4s infinite;"></span><span class="typing-dot" style="width:6px;height:6px;border-radius:50%;background:var(--text-muted);animation:typingDot 1.4s infinite;animation-delay:0.2s;"></span><span class="typing-dot" style="width:6px;height:6px;border-radius:50%;background:var(--text-muted);animation:typingDot 1.4s infinite;animation-delay:0.4s;"></span></div></div>`;
+            container.innerHTML += `<div class="pv-msg assistant" id="pvTyping"><div class="thinking-dot"></div></div>`;
             container.scrollTop = container.scrollHeight;
 
             try {
