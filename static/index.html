@@ -3094,6 +3094,71 @@
             display: none;
         }
 
+        /* ChatGPT-style action buttons under assistant messages */
+        .msg-actions {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 6px;
+            position: relative;
+        }
+
+        .msg-action-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: none;
+            border: none;
+            padding: 4px;
+            border-radius: 6px;
+            color: #9b9b9b;
+            cursor: pointer;
+            transition: color 0.15s ease, background 0.15s ease;
+            position: relative;
+        }
+
+        .msg-action-btn:hover {
+            color: #6b6b6b;
+            background: rgba(0,0,0,0.05);
+        }
+
+        .msg-action-btn.text-btn {
+            font-size: 12px;
+            padding: 4px 6px;
+            white-space: nowrap;
+        }
+
+        /* Tooltip */
+        .msg-action-btn .ma-tooltip {
+            position: absolute;
+            bottom: calc(100% + 6px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: #2f2f2f;
+            color: #fff;
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            white-space: nowrap;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.15s ease;
+        }
+
+        .msg-action-btn .ma-tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 4px solid transparent;
+            border-top-color: #2f2f2f;
+        }
+
+        .msg-action-btn:hover .ma-tooltip {
+            opacity: 1;
+        }
+
         .pv-headlines-grid {
             display: flex;
             flex-direction: column;
@@ -4889,9 +4954,12 @@
             } catch(e) { console.log('Failed to load sub-chat', e); }
         }
 
+        let _currentSubChatMessages = [];
+
         function renderSubChatMessages(messages, chatType) {
             const container = document.getElementById('scMessages');
             if (!container) return;
+            _currentSubChatMessages = messages;
             if (messages.length === 0) {
                 container.innerHTML = '<div style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:14px;">Нет сообщений</div>';
                 return;
@@ -4906,7 +4974,21 @@
                     });
                     content += '</div>';
                 }
-                return `<div class="pv-msg ${msg.role}"><div>${content.replace(/\n/g, '<br>')}</div><div class="msg-time">${time}</div></div>`;
+                // Action buttons under assistant messages (ChatGPT style)
+                let actions = '';
+                if (msg.role === 'assistant' && chatType === 'text') {
+                    actions = `<div class="msg-actions">
+                        <button class="msg-action-btn" onclick="copyMessageText('${msg.id}')">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                            <span class="ma-tooltip">Копировать</span>
+                        </button>
+                        <button class="msg-action-btn text-btn" onclick="createCarouselFromMessage('${msg.id}')">
+                            Превратить в карусель
+                            <span class="ma-tooltip">Создать дизайн карусели из этого текста</span>
+                        </button>
+                    </div>`;
+                }
+                return `<div class="pv-msg ${msg.role}"><div>${content.replace(/\n/g, '<br>')}</div>${actions}<div class="msg-time">${time}</div></div>`;
             }).join('');
             container.scrollTop = container.scrollHeight;
         }
@@ -4919,13 +5001,6 @@
             if (subChat.chat_type === 'headlines' && subChat.selected_headline) {
                 bar.style.display = 'flex';
                 bar.innerHTML = `<button class="sc-action-btn primary" onclick="createTextSubChat('${escapeHtml(subChat.selected_headline)}')">Написать текст</button>`;
-            } else if (subChat.chat_type === 'text') {
-                // Show "Create carousel" if slides_data exists OR if there's a slides message
-                const hasSlides = subChat.slides_data || (messages && messages.some(m => m.message_type === 'slides'));
-                if (hasSlides) {
-                    bar.style.display = 'flex';
-                    bar.innerHTML = `<button class="sc-action-btn primary" onclick="createCarouselSubChat()">Создать карусель</button>`;
-                }
             }
         }
 
@@ -4968,6 +5043,35 @@
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({user_id: currentUser.id, chat_type: 'carousel', parent_subchat_id: currentSubChatId})
+                });
+                if (resp.ok) {
+                    const data = await resp.json();
+                    openSubChat(data.sub_chat.id);
+                }
+            } catch(e) { showToast('Ошибка', 'error'); }
+        }
+
+        function copyMessageText(messageId) {
+            const msg = _currentSubChatMessages.find(m => m.id === messageId);
+            if (!msg) return;
+            navigator.clipboard.writeText(msg.content).then(() => {
+                showToast('Скопировано', 'info');
+            });
+        }
+
+        async function createCarouselFromMessage(messageId) {
+            const msg = _currentSubChatMessages.find(m => m.id === messageId);
+            if (!msg || !currentTopicId || !currentUser) return;
+            showToast('Создание карусели...', 'info');
+            try {
+                const resp = await fetch(`${API_URL}/api/topics/${currentTopicId}/sub-chats`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        user_id: currentUser.id,
+                        chat_type: 'carousel',
+                        source_message_id: messageId
+                    })
                 });
                 if (resp.ok) {
                     const data = await resp.json();

@@ -1636,19 +1636,25 @@ async def create_sub_chat(topic_id: str, request: Request):
                 "message_type": "slides",
             }).execute()
 
-            # Save slides_data so "Create carousel" button appears
-            sb.table("sub_chats").update({"slides_data": {"text": ai_text}}).eq("id", sub_chat_id).execute()
-            sub_chat_data["slides_data"] = {"text": ai_text}
-
             ai_response = {"content": ai_text, "message_type": "slides", "message_data": None}
         except Exception as e:
             ai_response = {"content": str(e), "message_type": "text", "message_data": None}
 
-    # For carousel sub-chat: pull slides text from parent text sub-chat
-    if chat_type == 'carousel' and parent_subchat_id:
-        parent_msgs = sb.table("project_messages").select("content").eq("sub_chat_id", parent_subchat_id).eq("message_type", "slides").order("created_at", desc=True).limit(1).execute()
-        if parent_msgs.data:
-            slides_text = parent_msgs.data[0]["content"]
+    # For carousel sub-chat: pull slides text from source message or parent sub-chat
+    if chat_type == 'carousel':
+        source_message_id = body.get("source_message_id")
+        slides_text = None
+        if source_message_id:
+            # Get text from specific message
+            msg = sb.table("project_messages").select("content").eq("id", source_message_id).limit(1).execute()
+            if msg.data:
+                slides_text = msg.data[0]["content"]
+        elif parent_subchat_id:
+            # Fallback: get last slides message from parent
+            parent_msgs = sb.table("project_messages").select("content").eq("sub_chat_id", parent_subchat_id).eq("message_type", "slides").order("created_at", desc=True).limit(1).execute()
+            if parent_msgs.data:
+                slides_text = parent_msgs.data[0]["content"]
+        if slides_text:
             sb.table("sub_chats").update({"slides_data": {"text": slides_text}}).eq("id", sub_chat_id).execute()
             sub_chat_data["slides_data"] = {"text": slides_text}
 
