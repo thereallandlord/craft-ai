@@ -2723,9 +2723,6 @@
             transition: background 0.15s ease;
             margin-bottom: 1px;
             position: relative;
-            display: flex;
-            align-items: center;
-            gap: 4px;
         }
 
         .ps-project-item:hover {
@@ -2737,22 +2734,24 @@
         }
 
         .ps-project-item .ps-item-content {
-            flex: 1;
             min-width: 0;
         }
 
         .ps-item-menu-btn {
             display: none;
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
             width: 24px;
             height: 24px;
-            background: transparent;
+            background: var(--bg-hover);
             border: none;
             border-radius: 6px;
             color: var(--text-muted);
             cursor: pointer;
             align-items: center;
             justify-content: center;
-            flex-shrink: 0;
         }
 
         .ps-project-item:hover .ps-item-menu-btn {
@@ -4689,8 +4688,8 @@
                 const date = new Date(p.updated_at || p.created_at);
                 const timeStr = date.toLocaleDateString('ru-RU', {day:'numeric', month:'short'});
                 const isActive = currentTopicId === p.id ? ' active' : '';
-                return `<div class="ps-project-item${isActive}">
-                    <div class="ps-item-content" onclick="openTopic('${p.id}')">
+                return `<div class="ps-project-item${isActive}" onclick="openTopic('${p.id}')">
+                    <div class="ps-item-content">
                         <div class="ps-project-title">${escapeHtml(p.title || 'Без названия')}</div>
                         <div class="ps-project-meta">${p.sub_chat_count ? p.sub_chat_count + ' чатов' : ''} · ${timeStr}</div>
                     </div>
