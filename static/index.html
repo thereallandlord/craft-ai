@@ -20,34 +20,41 @@
             --tg-safe-bottom: 0px;
             --tg-content-top: 0px;
             --bg-primary: #ffffff;
-            --bg-secondary: #f9fafb;
-            --bg-tertiary: #f3f4f6;
-            --bg-hover: #e5e7eb;
-            --border: #e5e7eb;
-            --border-light: #f3f4f6;
-            --text-primary: #111827;
-            --text-secondary: #6b7280;
-            --text-muted: #9ca3af;
-            --accent: #3b82f6;
-            --accent-light: #dbeafe;
-            --shadow: rgba(0, 0, 0, 0.05);
-            --shadow-md: rgba(0, 0, 0, 0.1);
+            --bg-secondary: #f9f9f9;
+            --bg-tertiary: #f4f4f4;
+            --bg-hover: #ececec;
+            --border: #e5e5e5;
+            --border-light: #f0f0f0;
+            --text-primary: #0d0d0d;
+            --text-secondary: #6e6e6e;
+            --text-muted: #9a9a9a;
+            --accent: #0d0d0d;
+            --accent-light: #f4f4f4;
+            --shadow: rgba(0, 0, 0, 0.04);
+            --shadow-md: rgba(0, 0, 0, 0.08);
+            --sidebar-bg: #f9f9f9;
+            --input-radius: 24px;
+            --msg-user-bg: #f4f4f4;
+            --msg-assistant-bg: transparent;
         }
 
         body.dark-theme {
-            --bg-primary: #0f0f0f;
-            --bg-secondary: #1a1a1a;
-            --bg-tertiary: #262626;
+            --bg-primary: #212121;
+            --bg-secondary: #171717;
+            --bg-tertiary: #2a2a2a;
             --bg-hover: #333333;
-            --border: #333333;
-            --border-light: #262626;
-            --text-primary: #ffffff;
-            --text-secondary: #a3a3a3;
-            --text-muted: #737373;
-            --accent: #3b82f6;
-            --accent-light: #1e3a8a;
+            --border: rgba(255,255,255,0.1);
+            --border-light: rgba(255,255,255,0.05);
+            --text-primary: #ececf1;
+            --text-secondary: #9a9a9a;
+            --text-muted: #6c6c6c;
+            --accent: #ffffff;
+            --accent-light: rgba(255,255,255,0.1);
             --shadow: rgba(0, 0, 0, 0.2);
             --shadow-md: rgba(0, 0, 0, 0.3);
+            --sidebar-bg: #171717;
+            --msg-user-bg: #2a2a2a;
+            --msg-assistant-bg: transparent;
         }
 
         body {
@@ -62,6 +69,7 @@
         .app {
             display: flex;
             height: 100vh;
+            position: relative;
         }
 
         /* Theme toggle in nav-bar */
@@ -1596,6 +1604,11 @@
             to { transform: rotate(360deg); }
         }
 
+        @keyframes typingDot {
+            0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
+            30% { opacity: 1; transform: translateY(-4px); }
+        }
+
         /* === CHAT INTERFACE === */
         .chat-layout {
             display: flex;
@@ -2208,22 +2221,29 @@
         body.tg-miniapp {
             padding-top: calc(var(--tg-safe-top) + var(--tg-content-top));
         }
-        body.tg-miniapp .project-sidebar {
+        body.tg-miniapp .nav-bar {
+            bottom: 0;
             padding-bottom: var(--tg-safe-bottom);
+            height: calc(56px + var(--tg-safe-bottom));
+        }
+        body.tg-miniapp .view-overlay {
+            padding-top: calc(var(--tg-safe-top, 0px) + var(--tg-content-top, 0px));
+            padding-bottom: var(--tg-safe-bottom, 0px);
         }
 
         /* === MOBILE ADAPTATION === */
         @media (max-width: 768px) {
             .app {
-                flex-direction: row;
-                height: 100vh;
+                flex-direction: column;
+                height: auto;
+                min-height: 100vh;
             }
 
             body {
-                overflow: hidden;
+                overflow: auto;
             }
 
-            /* Nav bar — hidden (replaced by sidebar) */
+            /* Nav bar becomes bottom tab bar */
             .nav-bar {
                 position: fixed;
                 bottom: 0;
@@ -2589,61 +2609,58 @@
             color: #dc2626;
         }
 
-        /* === Project Sidebar === */
+        /* === Project Sidebar (ChatGPT style) === */
         .project-sidebar {
-            width: 280px;
-            background: var(--bg-secondary);
+            width: 260px;
+            background: var(--sidebar-bg, var(--bg-secondary));
             border-right: 1px solid var(--border);
             display: flex;
             flex-direction: column;
             flex-shrink: 0;
-            transition: width 0.3s, opacity 0.3s;
+            transition: transform 0.2s ease, width 0.2s ease;
             overflow: hidden;
+            z-index: 100;
         }
 
-        .project-sidebar.collapsed {
-            width: 0;
-            opacity: 0;
-            border: none;
+        .project-sidebar.hidden {
+            display: none;
         }
 
         .ps-header {
-            padding: 16px;
-            border-bottom: 1px solid var(--border);
+            padding: 12px;
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
         }
 
         .ps-logo {
-            font-size: 18px;
-            font-weight: 800;
-            color: var(--accent);
-            letter-spacing: 0.5px;
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text-primary);
         }
 
         .ps-new-btn {
             margin-left: auto;
             width: 36px;
             height: 36px;
-            background: var(--accent);
-            color: #fff;
-            border: none;
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-primary);
             border-radius: 10px;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 20px;
-            transition: opacity 0.2s;
+            font-size: 18px;
+            transition: background 0.15s ease;
         }
 
         .ps-new-btn:hover {
-            opacity: 0.85;
+            background: var(--bg-hover);
         }
 
         .ps-search {
-            padding: 8px 16px;
+            padding: 4px 12px 8px;
         }
 
         .ps-search input {
@@ -2655,10 +2672,11 @@
             color: var(--text-primary);
             font-size: 13px;
             outline: none;
+            transition: border-color 0.15s ease;
         }
 
         .ps-search input:focus {
-            border-color: var(--accent);
+            border-color: var(--text-muted);
         }
 
         .ps-projects {
@@ -2671,7 +2689,7 @@
             padding: 10px 12px;
             border-radius: 8px;
             cursor: pointer;
-            transition: background 0.15s;
+            transition: background 0.15s ease;
             margin-bottom: 2px;
         }
 
@@ -2684,8 +2702,8 @@
         }
 
         .ps-project-title {
-            font-size: 13px;
-            font-weight: 500;
+            font-size: 14px;
+            font-weight: 400;
             color: var(--text-primary);
             white-space: nowrap;
             overflow: hidden;
@@ -2693,7 +2711,7 @@
         }
 
         .ps-project-meta {
-            font-size: 11px;
+            font-size: 12px;
             color: var(--text-muted);
             margin-top: 2px;
         }
@@ -2701,9 +2719,6 @@
         .ps-footer {
             border-top: 1px solid var(--border);
             padding: 8px;
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
         }
 
         .ps-footer-item {
@@ -2714,12 +2729,12 @@
             border-radius: 8px;
             cursor: pointer;
             color: var(--text-secondary);
-            font-size: 13px;
+            font-size: 14px;
             border: none;
             background: none;
             width: 100%;
             text-align: left;
-            transition: background 0.15s;
+            transition: background 0.15s ease;
         }
 
         .ps-footer-item:hover {
@@ -2727,28 +2742,23 @@
             color: var(--text-primary);
         }
 
-        .ps-footer-item.active {
-            background: var(--accent-light);
-            color: var(--accent);
-        }
-
         .ps-user-section {
             border-top: 1px solid var(--border);
-            padding: 12px 16px;
+            padding: 12px;
             display: flex;
             align-items: center;
             gap: 10px;
         }
 
         .ps-user-avatar {
-            width: 32px;
-            height: 32px;
+            width: 28px;
+            height: 28px;
             border-radius: 50%;
             object-fit: cover;
         }
 
         .ps-user-name {
-            font-size: 13px;
+            font-size: 14px;
             color: var(--text-primary);
             flex: 1;
             overflow: hidden;
@@ -2756,68 +2766,49 @@
             white-space: nowrap;
         }
 
-        .ps-user-plan {
-            font-size: 10px;
-            color: var(--text-muted);
-        }
-
-        /* === Home View === */
+        /* === Home View (поверх tab-create) === */
         .home-view {
             flex: 1;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: 40px;
+            padding: 40px 20px;
             text-align: center;
-            position: relative;
-        }
-
-        .home-view > .mobile-hamburger {
-            position: absolute;
-            top: 12px;
-            left: 12px;
         }
 
         .home-title {
-            font-size: 28px;
-            font-weight: 700;
+            font-size: 24px;
+            font-weight: 600;
             color: var(--text-primary);
-            margin-bottom: 8px;
-        }
-
-        .home-subtitle {
-            font-size: 15px;
-            color: var(--text-secondary);
             margin-bottom: 32px;
-            max-width: 400px;
-            line-height: 1.5;
         }
 
         .home-input-wrap {
             width: 100%;
-            max-width: 600px;
+            max-width: 640px;
             position: relative;
         }
 
         .home-textarea {
             width: 100%;
-            min-height: 56px;
+            min-height: 52px;
             max-height: 160px;
-            padding: 16px 52px 16px 16px;
+            padding: 14px 96px 14px 16px;
             background: var(--bg-tertiary);
             border: 1px solid var(--border);
-            border-radius: 16px;
+            border-radius: var(--input-radius);
             color: var(--text-primary);
-            font-size: 15px;
+            font-size: 16px;
             font-family: inherit;
             resize: none;
             outline: none;
             line-height: 1.5;
+            transition: border-color 0.15s ease;
         }
 
         .home-textarea:focus {
-            border-color: var(--accent);
+            border-color: var(--text-muted);
         }
 
         .home-textarea::placeholder {
@@ -2828,81 +2819,46 @@
             position: absolute;
             right: 8px;
             bottom: 8px;
-            width: 40px;
-            height: 40px;
+            width: 36px;
+            height: 36px;
             background: var(--accent);
-            color: #fff;
+            color: var(--bg-primary);
             border: none;
-            border-radius: 12px;
+            border-radius: 50%;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: opacity 0.2s;
+            transition: opacity 0.15s ease;
         }
 
         .home-send-btn:hover {
-            opacity: 0.85;
+            opacity: 0.8;
         }
 
         .home-mic-btn {
             position: absolute;
-            right: 56px;
+            right: 52px;
             bottom: 8px;
-            width: 40px;
-            height: 40px;
+            width: 36px;
+            height: 36px;
             background: transparent;
-            color: var(--text-muted);
             border: none;
-            border-radius: 12px;
+            color: var(--text-muted);
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: color 0.2s;
+            border-radius: 50%;
+            transition: background 0.15s ease, color 0.15s ease;
         }
 
         .home-mic-btn:hover {
-            color: var(--text-primary);
-        }
-
-        .home-mic-btn.recording {
-            color: #ef4444;
-            animation: pulse 1.5s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-
-        .home-suggestions {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-top: 20px;
-            justify-content: center;
-            max-width: 600px;
-        }
-
-        .home-suggestion {
-            padding: 8px 16px;
-            background: var(--bg-tertiary);
-            border: 1px solid var(--border);
-            border-radius: 20px;
-            color: var(--text-secondary);
-            font-size: 13px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .home-suggestion:hover {
             background: var(--bg-hover);
             color: var(--text-primary);
-            border-color: var(--accent);
         }
 
-        /* === Project View (chat within project) === */
+        /* === Project View (чат внутри проекта) === */
         .project-view {
             flex: 1;
             display: flex;
@@ -2911,7 +2867,7 @@
         }
 
         .pv-header {
-            padding: 12px 20px;
+            padding: 12px 16px;
             border-bottom: 1px solid var(--border);
             display: flex;
             align-items: center;
@@ -2929,39 +2885,31 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            transition: background 0.15s ease;
         }
 
         .pv-back-btn:hover {
             background: var(--bg-hover);
         }
 
-        .pv-title {
-            font-size: 15px;
-            font-weight: 600;
-            color: var(--text-primary);
-            flex: 1;
-        }
-
         .pv-title-input {
-            font-size: 15px;
+            font-size: 16px;
             font-weight: 600;
             color: var(--text-primary);
             background: transparent;
             border: none;
             outline: none;
             flex: 1;
-        }
-
-        .pv-title-input:focus {
-            border-bottom: 1px solid var(--accent);
+            min-width: 0;
         }
 
         .pv-status {
-            font-size: 11px;
-            padding: 3px 8px;
-            border-radius: 12px;
+            font-size: 12px;
+            padding: 3px 10px;
+            border-radius: 99px;
             background: var(--bg-tertiary);
             color: var(--text-muted);
+            white-space: nowrap;
         }
 
         .pv-messages {
@@ -2971,58 +2919,68 @@
             display: flex;
             flex-direction: column;
             gap: 16px;
+            max-width: 768px;
+            margin: 0 auto;
+            width: 100%;
         }
 
         .pv-msg {
-            max-width: 80%;
+            max-width: 85%;
             padding: 12px 16px;
-            border-radius: 16px;
-            font-size: 14px;
-            line-height: 1.5;
+            border-radius: 20px;
+            font-size: 15px;
+            line-height: 1.6;
+            animation: msgAppear 0.3s ease-out;
+        }
+
+        @keyframes msgAppear {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .pv-msg.user {
             align-self: flex-end;
-            background: var(--accent);
-            color: #fff;
-            border-bottom-right-radius: 4px;
+            background: var(--msg-user-bg);
+            color: var(--text-primary);
+            border-bottom-right-radius: 6px;
         }
 
         .pv-msg.assistant {
             align-self: flex-start;
-            background: var(--bg-tertiary);
+            background: var(--msg-assistant-bg);
             color: var(--text-primary);
-            border-bottom-left-radius: 4px;
+            border-bottom-left-radius: 6px;
+            max-width: 100%;
         }
 
         .pv-msg .msg-time {
-            font-size: 10px;
-            opacity: 0.6;
+            font-size: 11px;
+            color: var(--text-muted);
             margin-top: 4px;
         }
 
         .pv-headlines-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 8px;
-            margin-top: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-top: 10px;
         }
 
         .pv-headline-btn {
             padding: 10px 14px;
             background: var(--bg-primary);
             border: 1px solid var(--border);
-            border-radius: 10px;
+            border-radius: 12px;
             color: var(--text-primary);
-            font-size: 13px;
+            font-size: 14px;
             cursor: pointer;
             text-align: left;
-            transition: all 0.2s;
+            transition: all 0.15s ease;
         }
 
         .pv-headline-btn:hover {
-            border-color: var(--accent);
-            background: var(--accent-light);
+            border-color: var(--text-muted);
+            background: var(--bg-hover);
         }
 
         .pv-headline-btn.selected {
@@ -3031,11 +2989,14 @@
         }
 
         .pv-input-bar {
-            padding: 12px 20px;
+            padding: 12px 16px calc(12px + var(--tg-safe-bottom));
             border-top: 1px solid var(--border);
             display: flex;
             align-items: flex-end;
             gap: 8px;
+            max-width: 768px;
+            margin: 0 auto;
+            width: 100%;
         }
 
         .pv-input-bar textarea {
@@ -3045,32 +3006,40 @@
             padding: 10px 14px;
             background: var(--bg-tertiary);
             border: 1px solid var(--border);
-            border-radius: 12px;
+            border-radius: var(--input-radius);
             color: var(--text-primary);
-            font-size: 14px;
+            font-size: 15px;
             font-family: inherit;
             resize: none;
             outline: none;
+            line-height: 1.5;
+            transition: border-color 0.15s ease;
         }
 
         .pv-input-bar textarea:focus {
-            border-color: var(--accent);
+            border-color: var(--text-muted);
         }
 
         .pv-send-btn, .pv-mic-btn {
-            width: 40px;
-            height: 40px;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
             border: none;
-            border-radius: 10px;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
+            flex-shrink: 0;
+            transition: all 0.15s ease;
         }
 
         .pv-send-btn {
             background: var(--accent);
-            color: #fff;
+            color: var(--bg-primary);
+        }
+
+        .pv-send-btn:hover {
+            opacity: 0.8;
         }
 
         .pv-mic-btn {
@@ -3079,6 +3048,7 @@
         }
 
         .pv-mic-btn:hover {
+            background: var(--bg-hover);
             color: var(--text-primary);
         }
 
@@ -3093,15 +3063,21 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            transition: background 0.15s ease;
+        }
+
+        .pv-settings-toggle:hover {
+            background: var(--bg-hover);
         }
 
         .pv-settings-panel {
-            width: 300px;
+            width: 260px;
             border-left: 1px solid var(--border);
-            padding: 20px;
+            background: var(--bg-secondary);
+            padding: 16px;
             overflow-y: auto;
             flex-shrink: 0;
-            transition: width 0.3s, padding 0.3s, opacity 0.3s;
+            transition: width 0.2s ease, opacity 0.2s ease;
         }
 
         .pv-settings-panel.collapsed {
@@ -3109,41 +3085,37 @@
             padding: 0;
             opacity: 0;
             overflow: hidden;
+            border: none;
         }
 
-        /* === View container === */
-        .view-container {
-            flex: 1;
-            display: flex;
-            overflow: hidden;
-            min-width: 0;
-        }
-
-        .view-page {
+        /* === View system — overlay on top of tabs === */
+        .view-overlay {
             display: none;
-            flex: 1;
-            overflow: hidden;
+            position: absolute;
+            inset: 0;
+            z-index: 50;
+            background: var(--bg-primary);
         }
 
-        .view-page.active {
+        .view-overlay.active {
             display: flex;
         }
 
-        /* Editor view needs special handling — its children ARE the flex items */
-        #view-editor.active {
-            display: flex;
-            flex-direction: row;
+        /* === Mobile hamburger === */
+        .mobile-hamburger {
+            display: none;
+            width: 40px;
+            height: 40px;
+            background: transparent;
+            border: none;
+            color: var(--text-primary);
+            cursor: pointer;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
         }
 
-        /* Ready-text and settings views — single column scroll */
-        #view-ready-text.active,
-        #view-settings.active {
-            display: flex;
-            flex-direction: column;
-            overflow-y: auto;
-        }
-
-        /* Mobile sidebar overlay */
+        /* === Sidebar overlay for mobile === */
         .sidebar-overlay {
             display: none;
             position: fixed;
@@ -3156,18 +3128,7 @@
             display: block;
         }
 
-        .mobile-hamburger {
-            display: none;
-            width: 40px;
-            height: 40px;
-            background: transparent;
-            border: none;
-            color: var(--text-primary);
-            cursor: pointer;
-            align-items: center;
-            justify-content: center;
-        }
-
+        /* === Mobile-specific overrides for new sidebar === */
         @media (max-width: 768px) {
             .project-sidebar {
                 position: fixed;
@@ -3177,121 +3138,50 @@
                 z-index: 1000;
                 width: 280px;
                 transform: translateX(-100%);
-                transition: transform 0.3s;
+                transition: transform 0.2s ease;
             }
 
             .project-sidebar.mobile-open {
                 transform: translateX(0);
             }
 
-            .project-sidebar.collapsed {
-                transform: translateX(-100%);
-            }
-
             .mobile-hamburger {
                 display: flex;
             }
 
+            .home-title {
+                font-size: 20px;
+            }
+
+            .home-input-wrap {
+                max-width: 100%;
+            }
+
             .home-view {
                 padding: 20px 16px;
+                justify-content: flex-start;
+                padding-top: 60px;
             }
 
-            .home-title {
-                font-size: 22px;
-            }
-
-            .home-subtitle {
-                font-size: 13px;
-                margin-bottom: 20px;
-            }
-
-            .home-suggestions {
-                flex-wrap: wrap;
-                gap: 6px;
-            }
-
+            /* Project view settings panel — slide over on mobile */
             .pv-settings-panel {
                 position: fixed;
                 top: 0;
                 right: 0;
                 bottom: 0;
                 z-index: 1000;
-                background: var(--bg-secondary);
                 width: 280px;
                 transform: translateX(100%);
-                transition: transform 0.3s;
+                transition: transform 0.2s ease;
             }
 
             .pv-settings-panel.mobile-open {
                 transform: translateX(0);
             }
 
-            /* Hide old nav-bar on mobile */
-            .nav-bar {
-                display: none !important;
+            .pv-settings-panel.collapsed {
+                transform: translateX(100%);
             }
-
-            /* Editor on mobile: stack vertically */
-            #view-editor.active {
-                flex-direction: column;
-                overflow-y: auto;
-            }
-
-            #view-editor .sidebar-left {
-                width: 100%;
-                max-height: 120px;
-                border-right: none;
-                border-bottom: 1px solid var(--border);
-            }
-
-            #view-editor .sidebar-right {
-                width: 100%;
-                border-left: none;
-                border-top: 1px solid var(--border);
-            }
-
-            /* Project view full height */
-            .project-view {
-                height: 100%;
-            }
-
-            .pv-header {
-                padding: 8px 12px;
-            }
-
-            .pv-title-input {
-                font-size: 14px;
-            }
-
-            /* Settings/ready-text on mobile */
-            #view-settings.active,
-            #view-ready-text.active {
-                overflow-y: auto;
-            }
-
-            .tab-page-content {
-                padding: 20px 16px;
-                padding-bottom: 24px;
-            }
-
-            /* Mobile back button for views */
-            .view-back-btn {
-                display: flex;
-            }
-        }
-
-        /* View back button — hidden on desktop, shown on mobile */
-        .view-back-btn {
-            display: none;
-            width: 40px;
-            height: 40px;
-            background: transparent;
-            border: none;
-            color: var(--text-primary);
-            cursor: pointer;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
         }
     </style>
 </head>
@@ -3319,148 +3209,90 @@
 
 
     <div class="app">
-        <!-- Sidebar Overlay (mobile) -->
-        <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMobileSidebar()"></div>
+        <!-- Sidebar overlay (mobile) -->
+        <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeMobileSidebar()"></div>
 
         <!-- Project Sidebar -->
-        <aside class="project-sidebar" id="projectSidebar">
+        <aside class="project-sidebar hidden" id="projectSidebar">
             <div class="ps-header">
                 <span class="ps-logo">Craft AI</span>
-                <button class="ps-new-btn" onclick="goHome()" title="Новая карусель">+</button>
+                <button class="ps-new-btn" onclick="goHome()" title="Новая карусель">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+                </button>
             </div>
             <div class="ps-search">
                 <input type="text" placeholder="Поиск проектов..." id="psSearchInput" oninput="filterProjects(this.value)">
             </div>
-            <div class="ps-projects" id="psProjectsList">
-                <!-- Projects loaded dynamically -->
-            </div>
+            <div class="ps-projects" id="psProjectsList"></div>
             <div class="ps-footer">
-                <button class="ps-footer-item" onclick="switchView('ready-text')">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 13H8"/><path d="M16 17H8"/><path d="M16 13h-2"/></svg>
+                <button class="ps-footer-item" onclick="switchTab('ready-text');closeAllViews()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>
                     Готовый текст
                 </button>
-                <button class="ps-footer-item" onclick="switchView('editor')">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/></svg>
+                <button class="ps-footer-item" onclick="switchTab('editor');closeAllViews()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/></svg>
                     Шаблоны
                 </button>
-                <button class="ps-footer-item" onclick="switchView('settings')">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                <button class="ps-footer-item" onclick="switchTab('settings');closeAllViews()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
                     Настройки
-                </button>
-                <button class="ps-footer-item" onclick="toggleTheme()">
-                    <span id="themeIcon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg></span>
-                    Тема
                 </button>
             </div>
             <div class="ps-user-section" id="psUserSection" style="display:none">
                 <img class="ps-user-avatar" id="psUserAvatar" src="" alt="">
-                <div>
-                    <div class="ps-user-name" id="psUserName"></div>
-                    <div class="ps-user-plan" id="psUserPlan">Free</div>
-                </div>
+                <span class="ps-user-name" id="psUserName"></span>
                 <button class="nav-logout" onclick="logout()" title="Выйти" style="margin-left:auto">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
                 </button>
             </div>
         </aside>
 
-        <!-- Main Content Area -->
-        <div class="view-container">
-
-            <!-- HOME VIEW -->
-            <div class="view-page active" id="view-home">
-                <div class="home-view">
-                    <button class="mobile-hamburger" onclick="toggleMobileSidebar()">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-                    </button>
-                    <h1 class="home-title">Опишите идею карусели</h1>
-                    <p class="home-subtitle">Напишите тему или надиктуйте голосом. Я запоминаю ваш стиль и использую в следующих каруселях.</p>
-                    <div class="home-input-wrap">
-                        <textarea class="home-textarea" id="homeTextarea" placeholder="Например: карусель про 5 привычек успешных предпринимателей..." oninput="autoResizeTextarea(this)"></textarea>
-                        <button class="home-mic-btn" id="homeMicBtn" onclick="toggleHomeVoice()">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
-                        </button>
-                        <button class="home-send-btn" onclick="homeSubmit()">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" x2="11" y1="2" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-                        </button>
-                    </div>
-                    <div class="home-suggestions">
-                        <button class="home-suggestion" onclick="homeSuggestion('5 привычек успешных предпринимателей')">5 привычек успешных</button>
-                        <button class="home-suggestion" onclick="homeSuggestion('Как начать свой бизнес с нуля')">Бизнес с нуля</button>
-                        <button class="home-suggestion" onclick="homeSuggestion('Мифы о продуктивности')">Мифы о продуктивности</button>
-                        <button class="home-suggestion" onclick="homeSuggestion('Ошибки начинающих в Instagram')">Ошибки в Instagram</button>
-                    </div>
-                </div>
+        <!-- Navigation Bar -->
+        <nav class="nav-bar">
+            <div class="nav-brand">CRAFT</div>
+            <button class="nav-item" data-tab="editor" onclick="switchTab('editor')">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/></svg>
+                <span class="nav-tooltip">Редактор</span>
+            </button>
+            <button class="nav-item" data-tab="ready-text" onclick="switchTab('ready-text')">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 13H8"/><path d="M16 17H8"/><path d="M16 13h-2"/></svg>
+                <span class="nav-tooltip">Готовый текст</span>
+            </button>
+            <button class="nav-item active" data-tab="create" onclick="switchTab('create')">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg>
+                <span class="nav-tooltip">Создать с нуля</span>
+            </button>
+            <div class="nav-divider"></div>
+            <button class="nav-item" data-tab="rewrite" onclick="switchTab('rewrite')">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                <span class="nav-tooltip">Конкуренты</span>
+            </button>
+            <div class="nav-spacer"></div>
+            <div class="nav-divider"></div>
+            <button class="nav-item" data-tab="history" onclick="switchTab('history')">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <span class="nav-tooltip">История</span>
+            </button>
+            <button class="nav-item" data-tab="settings" onclick="switchTab('settings')">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                <span class="nav-tooltip">Настройки</span>
+            </button>
+            <button class="nav-item" onclick="toggleTheme()" title="Сменить тему">
+                <span id="themeIcon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg></span>
+                <span class="nav-tooltip">Тема</span>
+            </button>
+            <div class="nav-user" id="navUser" style="display:none">
+                <img class="nav-user-avatar" id="navUserAvatar" src="" alt="">
+                <span class="nav-user-name" id="navUserName"></span>
+                <button class="nav-logout" onclick="logout()" title="Выйти">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                </button>
             </div>
+        </nav>
 
-            <!-- PROJECT VIEW -->
-            <div class="view-page" id="view-project">
-                <div class="project-view">
-                    <div class="pv-header">
-                        <button class="mobile-hamburger" onclick="toggleMobileSidebar()">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-                        </button>
-                        <button class="pv-back-btn" onclick="goHome()">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
-                        </button>
-                        <input class="pv-title-input" id="pvTitleInput" value="Новая карусель" onchange="updateProjectTitle(this.value)">
-                        <span class="pv-status" id="pvStatus">Черновик</span>
-                        <button class="pv-settings-toggle" onclick="togglePvSettings()">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
-                        </button>
-                    </div>
-                    <div style="display:flex;flex:1;overflow:hidden;">
-                        <div class="pv-messages" id="pvMessages">
-                            <!-- Messages loaded dynamically -->
-                        </div>
-                        <div class="pv-settings-panel" id="pvSettingsPanel">
-                            <div style="margin-bottom:16px;">
-                                <label style="font-size:11px;text-transform:uppercase;color:var(--text-muted);font-weight:600;">Шаблон</label>
-                                <button class="btn" id="pvTemplateBtn" onclick="pvOpenTemplateModal()" style="width:100%;padding:10px;margin-top:6px;display:flex;align-items:center;gap:8px;justify-content:center;">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
-                                    <span id="pvTemplateBtnText">Выбрать шаблон</span>
-                                </button>
-                            </div>
-                            <div style="margin-bottom:16px;">
-                                <label style="font-size:11px;text-transform:uppercase;color:var(--text-muted);font-weight:600;">Instagram @username</label>
-                                <input type="text" id="pvUsername" placeholder="@username" style="width:100%;padding:8px 12px;margin-top:6px;background:var(--bg-tertiary);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:13px;outline:none;">
-                            </div>
-                            <div style="margin-bottom:16px;">
-                                <label style="font-size:11px;text-transform:uppercase;color:var(--text-muted);font-weight:600;">Кол-во слайдов: <span id="pvSlidesCount">7</span></label>
-                                <input type="range" id="pvSlidesRange" min="3" max="15" value="7" oninput="document.getElementById('pvSlidesCount').textContent=this.value" style="width:100%;margin-top:6px;">
-                            </div>
-                            <button class="btn btn-primary" id="pvGenerateBtn" onclick="pvGenerateCarousel()" style="width:100%;padding:12px;margin-top:8px;">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
-                                Сгенерировать карусель
-                            </button>
-                            <div style="margin-top:16px;">
-                                <label style="font-size:11px;text-transform:uppercase;color:var(--text-muted);font-weight:600;">Перевод</label>
-                                <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;">
-                                    <button class="btn" onclick="pvTranslate('en')" style="flex:1;padding:8px;font-size:12px;">EN</button>
-                                    <button class="btn" onclick="pvTranslate('ar')" style="flex:1;padding:8px;font-size:12px;">AR</button>
-                                    <button class="btn" onclick="pvTranslate('tr')" style="flex:1;padding:8px;font-size:12px;">TR</button>
-                                    <button class="btn" onclick="pvTranslate('es')" style="flex:1;padding:8px;font-size:12px;">ES</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="pv-input-bar">
-                        <button class="pv-mic-btn" id="pvMicBtn" onclick="togglePvVoice()">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
-                        </button>
-                        <textarea placeholder="Напишите сообщение..." id="pvInput" oninput="autoResizeTextarea(this)" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();pvSendMessage()}"></textarea>
-                        <button class="pv-send-btn" onclick="pvSendMessage()">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" x2="11" y1="2" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- OLD TABS wrapped in view-page containers -->
-
-            <!-- === VIEW: Editor === -->
-            <div class="view-page" id="view-editor">
-        <div class="sidebar-left" id="sidebar-editor">
+        <!-- === TAB: Editor (existing) === -->
+        <!-- Left Sidebar (editor only) -->
+        <div class="sidebar-left" id="sidebar-editor" style="display:none">
             <div class="sidebar-header">
                 <div class="brand-container">
                     <div class="brand">
@@ -3477,9 +3309,6 @@
             <!-- Top Bar -->
             <div class="top-bar">
                 <div class="template-info">
-                    <button class="view-back-btn" onclick="goHome()">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
-                    </button>
                     <input type="text" class="template-name" id="templateName" value="Новый шаблон" placeholder="Название шаблона">
                     <input type="text" class="template-id" id="templateId" value="" placeholder="template_id (для API)">
                 </div>
@@ -3511,21 +3340,10 @@
 
         <!-- Right Sidebar (editor only) -->
         <div class="sidebar-right" id="propsPanel" style="display:none"></div>
-            </div><!-- /view-editor -->
 
-        <!-- === VIEW: Ready Text === -->
-        <div class="view-page" id="view-ready-text">
-        <div class="tab-page" id="tab-ready-text" style="display:block;">
+        <!-- === TAB: Ready Text === -->
+        <div class="tab-page" id="tab-ready-text">
             <div class="tab-page-content">
-                <!-- Mobile header -->
-                <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
-                    <button class="view-back-btn" onclick="goHome()">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
-                    </button>
-                    <button class="mobile-hamburger" onclick="toggleMobileSidebar()">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-                    </button>
-                </div>
 
                 <!-- Phase 1: Input -->
                 <div id="rtInputPhase">
@@ -3609,10 +3427,9 @@
 
             </div>
         </div>
-        </div><!-- /view-ready-text -->
 
-        <!-- === TAB: Create from Scratch (Chat) — hidden, replaced by Project View === -->
-        <div class="tab-page" id="tab-create" style="display:none;">
+        <!-- === TAB: Create from Scratch (Chat) === -->
+        <div class="tab-page active" id="tab-create">
             <div class="chat-layout">
                 <!-- Chat Area -->
                 <div class="chat-area">
@@ -3731,8 +3548,8 @@
             </div>
         </div>
 
-        <!-- === TAB: Rewrite (placeholder, hidden for now) === -->
-        <div class="tab-page" id="tab-rewrite" style="display:none;">
+        <!-- === TAB: Rewrite (placeholder) === -->
+        <div class="tab-page" id="tab-rewrite">
             <div class="tab-page-content">
                 <div class="tab-page-title">Конкуренты</div>
                 <div class="tab-page-subtitle">Отслеживайте конкурентов и анализируйте их контент</div>
@@ -3764,8 +3581,8 @@
         </div>
 
 
-        <!-- History replaced by sidebar projects, hidden -->
-        <div class="tab-page" id="tab-history" style="display:none;">
+        <!-- === TAB: History === -->
+        <div class="tab-page" id="tab-history">
             <div class="tab-page-content">
                 <div class="tab-page-title">История</div>
                 <div class="tab-page-subtitle">Все ваши созданные карусели и чаты</div>
@@ -3773,114 +3590,142 @@
             </div>
         </div>
 
-        <!-- === VIEW: Settings === -->
-        <div class="view-page" id="view-settings">
-        <div class="tab-page" id="tab-settings" style="display:block;">
+        <!-- === TAB: Settings === -->
+        <div class="tab-page" id="tab-settings">
             <div class="tab-page-content">
-                <!-- Mobile header -->
-                <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
-                    <button class="view-back-btn" onclick="goHome()">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
-                    </button>
-                    <button class="mobile-hamburger" onclick="toggleMobileSidebar()">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-                    </button>
-                </div>
                 <div class="tab-page-title">Настройки</div>
-                <div class="tab-page-subtitle">Профиль, AI память и настройки приложения</div>
+                <div class="tab-page-subtitle">Подключение n8n вебхуков и настройки приложения</div>
 
-                <!-- Profile -->
                 <div style="background:var(--bg-tertiary);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:24px;">
-                    <div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:12px;">Мой профиль</div>
+                    <div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:12px;">n8n Webhooks</div>
                     <div style="font-size:12px;color:var(--text-secondary);margin-bottom:16px;">
-                        AI использует эту информацию для персонализации контента
+                        Укажите URL вебхуков из n8n для работы AI-функций. Без них будет использоваться демо-режим.
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">Описание бренда / ниша</label>
-                        <textarea class="form-input" id="settingsProfileSummary" rows="3" placeholder="Например: бизнес-коуч для мусульман-предпринимателей, пишу на ты, ЦА 25-35 лет..." style="resize:vertical;min-height:60px;"></textarea>
-                    </div>
-                    <button class="btn btn-primary" onclick="saveProfileSettings()" style="width:100%;justify-content:center;">
-                        Сохранить профиль
-                    </button>
-                </div>
 
-                <!-- AI Memory -->
-                <div style="background:var(--bg-tertiary);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:24px;">
-                    <div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:12px;">AI Память</div>
-                    <div style="font-size:12px;color:var(--text-secondary);margin-bottom:16px;">
-                        Что AI запомнил о ваших предпочтениях. Вы можете удалять отдельные записи.
-                    </div>
-                    <div id="settingsMemoryList" style="margin-bottom:12px;"></div>
-                    <div style="display:flex;gap:8px;">
-                        <input type="text" class="form-input" id="settingsNewMemory" placeholder="Добавить предпочтение... (напр: не используй точки в конце)" style="flex:1;">
-                        <button class="btn" onclick="addMemoryFromSettings()">Добавить</button>
-                    </div>
-                </div>
-
-                <!-- Custom AI Prompts -->
-                <div style="background:var(--bg-tertiary);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:24px;">
-                    <div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:12px;">AI Промпты</div>
-                    <div style="font-size:12px;color:var(--text-secondary);margin-bottom:16px;">
-                        Настройте системные промпты для AI агента. Оставьте пустым для промптов по умолчанию.
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Промпт для генерации заголовков (этап 1)</label>
-                        <textarea class="form-input" id="settingsPromptDraft" rows="4" placeholder="Промпт для этапа генерации заголовков..." style="resize:vertical;min-height:80px;font-size:12px;font-family:monospace;"></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Промпт для написания текста слайдов (этап 2)</label>
-                        <textarea class="form-input" id="settingsPromptHeadlines" rows="4" placeholder="Промпт для этапа написания текста слайдов..." style="resize:vertical;min-height:80px;font-size:12px;font-family:monospace;"></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Промпт для редактирования (этап 3)</label>
-                        <textarea class="form-input" id="settingsPromptTextReady" rows="3" placeholder="Промпт для этапа редактирования текста..." style="resize:vertical;min-height:60px;font-size:12px;font-family:monospace;"></textarea>
-                    </div>
-                    <button class="btn btn-primary" onclick="saveCustomPrompts()" style="width:100%;justify-content:center;">
-                        Сохранить промпты
-                    </button>
-                </div>
-
-                <!-- n8n Webhooks (legacy, collapsible) -->
-                <details style="background:var(--bg-tertiary);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:24px;">
-                    <summary style="font-size:14px;font-weight:600;color:var(--text-primary);cursor:pointer;">n8n Webhooks (расширенные)</summary>
-                    <div style="margin-top:16px;">
                     <div class="form-group">
                         <label class="form-label">Генератор заголовков (АГЕНТ 2)</label>
                         <input type="text" class="form-input" id="settingsWebhookHeadlines" placeholder="https://your-n8n.com/webhook/headlines" value="">
                     </div>
+
                     <div class="form-group">
                         <label class="form-label">Генератор текста (КОПИРАЙТЕР)</label>
                         <input type="text" class="form-input" id="settingsWebhookCopywriter" placeholder="https://your-n8n.com/webhook/copywriter" value="">
                     </div>
+
                     <div class="form-group">
                         <label class="form-label">Форматирование текста (FORMAT CAROUSEL TEXT)</label>
                         <input type="text" class="form-input" id="settingsWebhookFormat" placeholder="https://your-n8n.com/webhook/format-text" value="">
                     </div>
+
                     <div class="form-group">
                         <label class="form-label">AI Чат (Chat Webhook)</label>
                         <input type="text" class="form-input" id="settingsWebhookChat" placeholder="https://your-n8n.com/webhook/carousel-chat" value="">
                     </div>
-                    <button class="btn btn-primary" onclick="saveWebhookSettings()" style="width:100%;justify-content:center;">
-                        Сохранить вебхуки
-                    </button>
-                    </div>
-                </details>
 
-                <!-- Info -->
+                    <button class="btn btn-primary" onclick="saveWebhookSettings()" style="width:100%;justify-content:center;">
+                        Сохранить настройки
+                    </button>
+                </div>
+
                 <div style="background:var(--bg-tertiary);border:1px solid var(--border);border-radius:10px;padding:20px;">
-                    <div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:12px;">О приложении</div>
+                    <div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:12px;">Инструкция по настройке n8n</div>
                     <div style="font-size:13px;color:var(--text-secondary);line-height:1.6;">
-                        <p style="margin-bottom:8px;">Craft AI v2.0 — AI контент-менеджер для Instagram-каруселей.</p>
-                        <p>AI работает через OpenRouter (Gemini / Claude). Голос — OpenAI Whisper. Память — Supabase + pgvector.</p>
+                        <p style="margin-bottom:8px;">Для каждого workflow в n8n нужно добавить <b>Webhook</b> ноду:</p>
+                        <ol style="padding-left:20px;">
+                            <li style="margin-bottom:6px;">Откройте workflow в n8n</li>
+                            <li style="margin-bottom:6px;">Добавьте ноду "Webhook" (HTTP Method: POST)</li>
+                            <li style="margin-bottom:6px;">Подключите её параллельно к существующему executeWorkflowTrigger</li>
+                            <li style="margin-bottom:6px;">Скопируйте Production URL вебхука и вставьте выше</li>
+                        </ol>
+                        <p style="margin-top:12px;padding:10px;background:var(--bg-primary);border-radius:6px;font-family:monospace;font-size:11px;">
+                            Генератор заголовков: входные поля — user_text<br>
+                            Генератор текста: входные поля — user_text, selected_headline, slides_count<br>
+                            FORMAT TEXT: входные поля — user_text
                         </p>
                     </div>
                 </div>
             </div>
         </div>
-        </div><!-- /view-settings -->
 
-        </div><!-- /view-container -->
-    </div><!-- /app -->
+        <!-- === HOME VIEW (overlay) === -->
+        <div class="view-overlay active" id="view-home" style="position:absolute;inset:0;z-index:50;background:var(--bg-primary);display:flex;flex-direction:column;">
+            <div class="home-view">
+                <button class="mobile-hamburger" onclick="toggleMobileSidebar()" style="position:absolute;top:12px;left:12px;">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                </button>
+                <h1 class="home-title">Опишите идею карусели</h1>
+                <div class="home-input-wrap">
+                    <textarea class="home-textarea" id="homeTextarea" placeholder="Например: карусель про 5 привычек успешных предпринимателей..." oninput="autoResizeTextarea(this)" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();homeSubmit()}"></textarea>
+                    <button class="home-mic-btn" id="homeMicBtn" onclick="toggleHomeVoice()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+                    </button>
+                    <button class="home-send-btn" onclick="homeSubmit()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- === PROJECT VIEW (overlay) === -->
+        <div class="view-overlay" id="view-project" style="position:absolute;inset:0;z-index:50;background:var(--bg-primary);display:none;flex-direction:column;">
+            <div class="project-view">
+                <div class="pv-header">
+                    <button class="mobile-hamburger" onclick="toggleMobileSidebar()">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                    </button>
+                    <button class="pv-back-btn" onclick="goHome()">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+                    </button>
+                    <input class="pv-title-input" id="pvTitleInput" value="Новая карусель" onchange="updateProjectTitle(this.value)">
+                    <span class="pv-status" id="pvStatus">Черновик</span>
+                    <button class="pv-settings-toggle" onclick="togglePvSettings()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                    </button>
+                </div>
+                <div style="display:flex;flex:1;overflow:hidden;">
+                    <div class="pv-messages" id="pvMessages">
+                        <div style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:14px;">Начните диалог — опишите идею карусели</div>
+                    </div>
+                    <div class="pv-settings-panel collapsed" id="pvSettingsPanel">
+                        <div style="margin-bottom:16px;">
+                            <label style="font-size:12px;text-transform:uppercase;color:var(--text-muted);font-weight:600;">Шаблон</label>
+                            <button class="btn" id="pvTemplateBtn" onclick="pvOpenTemplateModal()" style="width:100%;padding:10px;margin-top:6px;display:flex;align-items:center;gap:8px;justify-content:center;">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+                                <span id="pvTemplateBtnText">Выбрать шаблон</span>
+                            </button>
+                        </div>
+                        <div style="margin-bottom:16px;">
+                            <label style="font-size:12px;text-transform:uppercase;color:var(--text-muted);font-weight:600;">Instagram @username</label>
+                            <input type="text" id="pvUsername" placeholder="@username" style="width:100%;padding:8px 12px;margin-top:6px;background:var(--bg-tertiary);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:13px;outline:none;">
+                        </div>
+                        <div style="margin-bottom:16px;">
+                            <label style="font-size:12px;text-transform:uppercase;color:var(--text-muted);font-weight:600;">Кол-во слайдов: <span id="pvSlidesCount">7</span></label>
+                            <input type="range" id="pvSlidesRange" min="3" max="15" value="7" oninput="document.getElementById('pvSlidesCount').textContent=this.value" style="width:100%;margin-top:6px;">
+                        </div>
+                        <button class="btn btn-primary" onclick="pvGenerateCarousel()" style="width:100%;padding:12px;margin-top:8px;">Сгенерировать карусель</button>
+                        <div style="margin-top:16px;">
+                            <label style="font-size:12px;text-transform:uppercase;color:var(--text-muted);font-weight:600;">Перевод</label>
+                            <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;">
+                                <button class="btn" onclick="pvTranslate('en')" style="flex:1;padding:8px;font-size:12px;">EN</button>
+                                <button class="btn" onclick="pvTranslate('ar')" style="flex:1;padding:8px;font-size:12px;">AR</button>
+                                <button class="btn" onclick="pvTranslate('tr')" style="flex:1;padding:8px;font-size:12px;">TR</button>
+                                <button class="btn" onclick="pvTranslate('es')" style="flex:1;padding:8px;font-size:12px;">ES</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="pv-input-bar">
+                    <button class="pv-mic-btn" id="pvMicBtn" onclick="togglePvVoice()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+                    </button>
+                    <textarea placeholder="Напишите сообщение..." id="pvInput" oninput="autoResizeTextarea(this)" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();pvSendMessage()}"></textarea>
+                    <button class="pv-send-btn" onclick="pvSendMessage()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Templates Modal -->
     <div class="modal-overlay" id="templatesModal">
@@ -3904,58 +3749,36 @@
     <div class="toast" id="toast"></div>
 
     <script>
-        // === View Navigation (v2.0) ===
-        let currentView = 'home';
+        // === View System (v2.0) — overlays on top of tabs ===
         let currentProjectId = null;
         let projectsCache = [];
 
-        function switchView(viewId) {
-            currentView = viewId;
-            // Hide all view-pages using CSS classes only (no inline styles)
-            document.querySelectorAll('.view-page').forEach(el => {
+        function showView(viewId) {
+            document.querySelectorAll('.view-overlay').forEach(el => {
+                el.style.display = 'none';
                 el.classList.remove('active');
             });
-            // Show selected view
-            const viewEl = document.getElementById(`view-${viewId}`);
-            if (viewEl) {
-                viewEl.classList.add('active');
+            const el = document.getElementById(`view-${viewId}`);
+            if (el) {
+                el.style.display = 'flex';
+                el.classList.add('active');
             }
+            closeMobileSidebar();
+        }
 
-            // Update sidebar footer active state
-            document.querySelectorAll('.ps-footer-item').forEach(el => el.classList.remove('active'));
-
-            // View-specific init
-            if (viewId === 'ready-text') {
-                loadTemplateSelectors();
-                rtLoadUsernames();
-                rtRenderPhotoLibrary();
-            }
-            if (viewId === 'settings') {
-                loadMemories();
-                loadCustomPrompts();
-                // Load profile summary
-                if (currentUser) {
-                    const profileField = document.getElementById('settingsProfileSummary');
-                    if (profileField && currentUser.profile_summary) {
-                        profileField.value = currentUser.profile_summary;
-                    }
-                }
-            }
-
-            // Close mobile sidebar
+        function closeAllViews() {
+            document.querySelectorAll('.view-overlay').forEach(el => {
+                el.style.display = 'none';
+                el.classList.remove('active');
+            });
             closeMobileSidebar();
         }
 
         function goHome() {
             currentProjectId = null;
-            // Deselect all projects in sidebar
             document.querySelectorAll('.ps-project-item').forEach(el => el.classList.remove('active'));
-            switchView('home');
-            // Focus textarea
-            setTimeout(() => {
-                const ta = document.getElementById('homeTextarea');
-                if (ta) ta.focus();
-            }, 100);
+            showView('home');
+            setTimeout(() => { const ta = document.getElementById('homeTextarea'); if (ta) ta.focus(); }, 100);
         }
 
         function toggleMobileSidebar() {
@@ -3986,114 +3809,71 @@
                     projectsCache = await resp.json();
                     renderProjectsList();
                 }
-            } catch(e) {
-                console.log('Failed to load projects', e);
-            }
+            } catch(e) { console.log('Failed to load projects', e); }
         }
 
         function renderProjectsList(filter = '') {
             const container = document.getElementById('psProjectsList');
             if (!container) return;
-            const filtered = filter
-                ? projectsCache.filter(p => p.title.toLowerCase().includes(filter.toLowerCase()))
-                : projectsCache;
-
+            const filtered = filter ? projectsCache.filter(p => p.title.toLowerCase().includes(filter.toLowerCase())) : projectsCache;
             if (filtered.length === 0) {
-                container.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px;">' +
-                    (filter ? 'Ничего не найдено' : 'Нет проектов') + '</div>';
+                container.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px;">' + (filter ? 'Ничего не найдено' : 'Нет проектов') + '</div>';
                 return;
             }
-
             container.innerHTML = filtered.map(p => {
                 const date = new Date(p.updated_at || p.created_at);
                 const timeStr = date.toLocaleDateString('ru-RU', {day:'numeric', month:'short'});
                 const statusMap = {draft:'Черновик', headlines:'Заголовки', text_ready:'Текст готов', carousel_ready:'Карусель готова'};
-                const statusText = statusMap[p.status] || p.status;
                 const isActive = currentProjectId === p.id ? ' active' : '';
                 return `<div class="ps-project-item${isActive}" onclick="openProject('${p.id}')">
                     <div class="ps-project-title">${escapeHtml(p.title)}</div>
-                    <div class="ps-project-meta">${statusText} &middot; ${timeStr}</div>
+                    <div class="ps-project-meta">${statusMap[p.status] || p.status} · ${timeStr}</div>
                 </div>`;
             }).join('');
         }
 
-        function filterProjects(query) {
-            renderProjectsList(query);
-        }
+        function filterProjects(query) { renderProjectsList(query); }
 
         async function openProject(projectId) {
             currentProjectId = projectId;
-            // Highlight in sidebar
-            document.querySelectorAll('.ps-project-item').forEach(el => el.classList.remove('active'));
-            const items = document.querySelectorAll('.ps-project-item');
-            items.forEach(el => {
-                if (el.onclick && el.onclick.toString().includes(projectId)) {
-                    el.classList.add('active');
-                }
-            });
-            renderProjectsList(); // re-render to update active state
-
-            switchView('project');
-
-            // Load project data
+            renderProjectsList();
+            showView('project');
             try {
                 const resp = await fetch(`${API_URL}/api/projects/${projectId}`);
                 if (resp.ok) {
                     const data = await resp.json();
                     const project = data.project;
                     const messages = data.messages || [];
-
-                    // Update header
                     document.getElementById('pvTitleInput').value = project.title || 'Новая карусель';
                     const statusMap = {draft:'Черновик', headlines:'Заголовки', text_ready:'Текст готов', carousel_ready:'Карусель готова'};
                     document.getElementById('pvStatus').textContent = statusMap[project.status] || project.status;
-
-                    // Update settings
-                    if (project.instagram_username) {
-                        document.getElementById('pvUsername').value = project.instagram_username;
-                    }
-                    if (project.template_id) {
-                        document.getElementById('pvTemplateBtnText').textContent = project.template_id;
-                    }
-
-                    // Render messages
+                    if (project.instagram_username) document.getElementById('pvUsername').value = project.instagram_username;
+                    if (project.template_id) document.getElementById('pvTemplateBtnText').textContent = project.template_id;
                     renderProjectMessages(messages);
                 }
-            } catch(e) {
-                console.log('Failed to load project', e);
-            }
+            } catch(e) { console.log('Failed to load project', e); }
         }
 
         function renderProjectMessages(messages) {
             const container = document.getElementById('pvMessages');
             if (!container) return;
-
             if (messages.length === 0) {
                 container.innerHTML = '<div style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:14px;">Начните диалог — опишите идею карусели</div>';
                 return;
             }
-
             container.innerHTML = messages.map(msg => {
                 const time = new Date(msg.created_at).toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'});
                 let content = escapeHtml(msg.content);
-
-                // If message contains headlines, render buttons
                 if (msg.message_type === 'headlines' && msg.message_data) {
                     const headlines = msg.message_data.headlines || [];
                     content += '<div class="pv-headlines-grid">';
                     headlines.forEach((h, i) => {
-                        content += `<button class="pv-headline-btn" onclick="pvSelectHeadline(this, '${escapeHtml(h)}')">${i+1}. ${escapeHtml(h)}</button>`;
+                        content += `<button class="pv-headline-btn" onclick="pvSelectHeadline(this, \`${h.replace(/`/g, '')}\`)">${i+1}. ${escapeHtml(h)}</button>`;
                     });
                     content += '</div>';
                 }
-
-                return `<div class="pv-msg ${msg.role}">
-                    <div>${content.replace(/\n/g, '<br>')}</div>
-                    <div class="msg-time">${time}</div>
-                </div>`;
+                return `<div class="pv-msg ${msg.role}"><div>${content.replace(/\n/g, '<br>')}</div><div class="msg-time">${time}</div></div>`;
             }).join('');
-
-            // Scroll to bottom
             container.scrollTop = container.scrollHeight;
         }
 
@@ -4101,11 +3881,9 @@
             const input = document.getElementById('pvInput');
             const text = input.value.trim();
             if (!text || !currentProjectId || !currentUser) return;
-
             input.value = '';
             autoResizeTextarea(input);
 
-            // Add user message to UI immediately
             const container = document.getElementById('pvMessages');
             const welcomeMsg = container.querySelector('div[style*="flex:1"]');
             if (welcomeMsg) welcomeMsg.remove();
@@ -4114,35 +3892,23 @@
             container.innerHTML += `<div class="pv-msg user"><div>${escapeHtml(text).replace(/\n/g, '<br>')}</div><div class="msg-time">${time}</div></div>`;
             container.scrollTop = container.scrollHeight;
 
-            // Send to AI (the AI endpoint saves both user and assistant messages)
-            container.innerHTML += `<div class="pv-msg assistant" id="pvTyping"><div><span class="spinner" style="display:inline-block;width:16px;height:16px;border:2px solid var(--text-muted);border-top-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite;vertical-align:middle;margin-right:8px;"></span>Думаю...</div></div>`;
+            container.innerHTML += `<div class="pv-msg assistant" id="pvTyping"><div style="display:flex;gap:4px;align-items:center;"><span class="typing-dot" style="width:6px;height:6px;border-radius:50%;background:var(--text-muted);animation:typingDot 1.4s infinite;"></span><span class="typing-dot" style="width:6px;height:6px;border-radius:50%;background:var(--text-muted);animation:typingDot 1.4s infinite;animation-delay:0.2s;"></span><span class="typing-dot" style="width:6px;height:6px;border-radius:50%;background:var(--text-muted);animation:typingDot 1.4s infinite;animation-delay:0.4s;"></span></div></div>`;
             container.scrollTop = container.scrollHeight;
 
             try {
                 const slidesCount = parseInt(document.getElementById('pvSlidesRange')?.value || '7');
-                const customPrompts = getCustomPrompts();
+                const customPrompts = JSON.parse(localStorage.getItem('craft_custom_prompts') || '{}');
                 const aiResp = await fetch(`${API_URL}/api/ai/chat`, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        project_id: currentProjectId,
-                        user_id: currentUser.id,
-                        message: text,
-                        slides_count: slidesCount,
-                        custom_prompts: customPrompts
-                    })
+                    body: JSON.stringify({ project_id: currentProjectId, user_id: currentUser.id, message: text, slides_count: slidesCount, custom_prompts: customPrompts })
                 });
-
-                // Remove typing indicator
                 const typing = document.getElementById('pvTyping');
                 if (typing) typing.remove();
-
                 if (aiResp.ok) {
                     const aiData = await aiResp.json();
-                    const aiTime2 = new Date().toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'});
+                    const aiTime = new Date().toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'});
                     let aiContent = escapeHtml(aiData.content).replace(/\n/g, '<br>');
-
-                    // If headlines, add clickable buttons
                     if (aiData.message_type === 'headlines' && aiData.message_data?.headlines) {
                         aiContent += '<div class="pv-headlines-grid">';
                         aiData.message_data.headlines.forEach((h, i) => {
@@ -4150,33 +3916,25 @@
                         });
                         aiContent += '</div>';
                     }
-
-                    container.innerHTML += `<div class="pv-msg assistant"><div>${aiContent}</div><div class="msg-time">${aiTime2}</div></div>`;
+                    container.innerHTML += `<div class="pv-msg assistant"><div>${aiContent}</div><div class="msg-time">${aiTime}</div></div>`;
                     container.scrollTop = container.scrollHeight;
-
-                    // Update status badge
                     const statusMap = {draft:'Черновик', headlines:'Заголовки', text_ready:'Текст готов', carousel_ready:'Карусель готова'};
                     document.getElementById('pvStatus').textContent = statusMap[aiData.status] || aiData.status;
                 } else {
-                    const aiTime2 = new Date().toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'});
-                    container.innerHTML += `<div class="pv-msg assistant"><div style="color:#ef4444;">Ошибка AI. Проверьте настройки OpenRouter.</div><div class="msg-time">${aiTime2}</div></div>`;
-                    container.scrollTop = container.scrollHeight;
+                    container.innerHTML += `<div class="pv-msg assistant"><div style="color:#ef4444;">Ошибка AI. Попробуйте позже.</div></div>`;
                 }
             } catch(e) {
                 const typing = document.getElementById('pvTyping');
                 if (typing) typing.remove();
-                const aiTime2 = new Date().toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'});
-                container.innerHTML += `<div class="pv-msg assistant"><div style="color:#ef4444;">Ошибка соединения</div><div class="msg-time">${aiTime2}</div></div>`;
-                container.scrollTop = container.scrollHeight;
+                container.innerHTML += `<div class="pv-msg assistant"><div style="color:#ef4444;">Ошибка соединения</div></div>`;
             }
+            container.scrollTop = container.scrollHeight;
         }
 
         async function homeSubmit() {
             const textarea = document.getElementById('homeTextarea');
             const text = textarea.value.trim();
             if (!text || !currentUser) return;
-
-            // Create project
             try {
                 const resp = await fetch(`${API_URL}/api/projects`, {
                     method: 'POST',
@@ -4187,19 +3945,12 @@
                     const project = await resp.json();
                     textarea.value = '';
                     autoResizeTextarea(textarea);
-                    // Reload projects and open
                     await loadProjects();
                     await openProject(project.id);
-                    // Set the input to the text and send to AI (which will save + generate)
-                    const pvInput = document.getElementById('pvInput');
-                    if (pvInput) {
-                        pvInput.value = text;
-                        pvSendMessage();
-                    }
+                    document.getElementById('pvInput').value = text;
+                    pvSendMessage();
                 }
-            } catch(e) {
-                showToast('Ошибка создания проекта', 'error');
-            }
+            } catch(e) { showToast('Ошибка создания проекта', 'error'); }
         }
 
         function homeSuggestion(text) {
@@ -4213,11 +3964,9 @@
             if (!currentProjectId) return;
             try {
                 await fetch(`${API_URL}/api/projects/${currentProjectId}`, {
-                    method: 'PUT',
-                    headers: {'Content-Type': 'application/json'},
+                    method: 'PUT', headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({title: newTitle})
                 });
-                // Update in cache
                 const proj = projectsCache.find(p => p.id === currentProjectId);
                 if (proj) proj.title = newTitle;
                 renderProjectsList();
@@ -4227,116 +3976,37 @@
         async function pvSelectHeadline(btn, headline) {
             document.querySelectorAll('.pv-headline-btn').forEach(b => b.classList.remove('selected'));
             btn.classList.add('selected');
-
             if (!currentProjectId || !currentUser) return;
-
-            // Save selection
             try {
                 await fetch(`${API_URL}/api/ai/select-headline`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({project_id: currentProjectId, headline: headline})
                 });
             } catch(e) {}
-
-            // Update project title to headline
             document.getElementById('pvTitleInput').value = headline;
             await updateProjectTitle(headline);
-
-            // Send headline to AI to generate slide text
-            const container = document.getElementById('pvMessages');
-            const time = new Date().toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'});
-            container.innerHTML += `<div class="pv-msg user"><div>Выбран заголовок: "${escapeHtml(headline)}"</div><div class="msg-time">${time}</div></div>`;
-
-            // Trigger AI text generation
-            container.innerHTML += `<div class="pv-msg assistant" id="pvTyping"><div><span class="spinner" style="display:inline-block;width:16px;height:16px;border:2px solid var(--text-muted);border-top-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite;vertical-align:middle;margin-right:8px;"></span>Пишу текст для слайдов...</div></div>`;
-            container.scrollTop = container.scrollHeight;
-
-            try {
-                const slidesCount = parseInt(document.getElementById('pvSlidesRange')?.value || '7');
-                const customPrompts2 = getCustomPrompts();
-                const aiResp = await fetch(`${API_URL}/api/ai/chat`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        project_id: currentProjectId,
-                        user_id: currentUser.id,
-                        message: `Выбранный заголовок: "${headline}". Напиши текст для ${slidesCount} слайдов карусели.`,
-                        slides_count: slidesCount,
-                        custom_prompts: customPrompts2
-                    })
-                });
-
-                const typing = document.getElementById('pvTyping');
-                if (typing) typing.remove();
-
-                if (aiResp.ok) {
-                    const aiData = await aiResp.json();
-                    const aiTime = new Date().toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'});
-                    let content = escapeHtml(aiData.content).replace(/\n/g, '<br>');
-                    container.innerHTML += `<div class="pv-msg assistant"><div>${content}</div><div class="msg-time">${aiTime}</div></div>`;
-                    container.scrollTop = container.scrollHeight;
-
-                    // Update status
-                    document.getElementById('pvStatus').textContent = 'Текст готов';
-                }
-            } catch(e) {
-                const typing = document.getElementById('pvTyping');
-                if (typing) typing.remove();
-            }
+            // Отправить запрос на генерацию текста
+            document.getElementById('pvInput').value = `Выбранный заголовок: "${headline}". Напиши текст для слайдов.`;
+            pvSendMessage();
         }
 
         function togglePvSettings() {
             const panel = document.getElementById('pvSettingsPanel');
-            if (panel) panel.classList.toggle('collapsed');
+            if (!panel) return;
+            if (window.innerWidth <= 768) {
+                panel.classList.toggle('mobile-open');
+                panel.classList.remove('collapsed');
+            } else {
+                panel.classList.toggle('collapsed');
+            }
         }
+
+        function pvOpenTemplateModal() { if (typeof showTemplatesModal === 'function') showTemplatesModal(); }
 
         async function pvGenerateCarousel() {
             if (!currentProjectId || !currentUser) return;
-
-            // Get project data
-            try {
-                const resp = await fetch(`${API_URL}/api/projects/${currentProjectId}`);
-                if (!resp.ok) return;
-                const data = await resp.json();
-                const project = data.project;
-
-                // Find slides text in messages
-                const slidesMsg = (data.messages || []).reverse().find(m => m.message_type === 'slides');
-                if (!slidesMsg) {
-                    showToast('Сначала сгенерируйте текст для слайдов', 'error');
-                    return;
-                }
-
-                // Parse slides text and switch to ready-text view for rendering
-                const parsedSlides = parseCarouselText(slidesMsg.content);
-                if (parsedSlides.length === 0) {
-                    showToast('Не удалось распарсить текст', 'error');
-                    return;
-                }
-
-                // Fill ready-text with parsed data
-                const rtTextarea = document.getElementById('rtTextarea');
-                if (rtTextarea) rtTextarea.value = slidesMsg.content;
-
-                // Set template and username from project
-                if (project.template_id) {
-                    document.getElementById('rtTemplateSelect').value = project.template_id;
-                }
-                if (project.instagram_username) {
-                    const usernameInput = document.getElementById('rtUsername');
-                    if (usernameInput) usernameInput.value = project.instagram_username;
-                }
-
-                // Switch to ready-text view and trigger generation
-                switchView('ready-text');
-                // Auto-trigger if parseCarouselText works
-                if (typeof generateFromReadyText === 'function') {
-                    setTimeout(() => generateFromReadyText(), 300);
-                }
-            } catch(e) {
-                showToast('Ошибка загрузки проекта', 'error');
-            }
+            showToast('Генерация карусели...', 'info');
+            // TODO: реализовать позже
         }
 
         async function pvTranslate(targetLang) {
@@ -4344,158 +4014,71 @@
             showToast('Переводим...', 'info');
             try {
                 const resp = await fetch(`${API_URL}/api/ai/translate`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        project_id: currentProjectId,
-                        user_id: currentUser.id,
-                        target_language: targetLang
-                    })
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ project_id: currentProjectId, user_id: currentUser.id, target_language: targetLang })
                 });
                 if (resp.ok) {
                     const data = await resp.json();
                     showToast('Перевод готов!', 'success');
                     await loadProjects();
-                    if (data.new_project_id) {
-                        openProject(data.new_project_id);
-                    }
-                } else {
-                    showToast('Ошибка перевода', 'error');
-                }
-            } catch(e) {
-                showToast('Ошибка перевода', 'error');
-            }
+                    if (data.new_project_id) openProject(data.new_project_id);
+                } else { showToast('Ошибка перевода', 'error'); }
+            } catch(e) { showToast('Ошибка перевода', 'error'); }
         }
 
         function toggleHomeVoice() {
-            // Reuse existing voice input
-            if (typeof toggleVoiceInput === 'function') {
-                toggleVoiceInput('homeTextarea');
-            }
+            if (typeof toggleVoiceInput === 'function') toggleVoiceInput('homeTextarea', 'homeMicBtn');
         }
 
         function togglePvVoice() {
-            if (typeof toggleVoiceInput === 'function') {
-                toggleVoiceInput('pvInput');
-            }
+            if (typeof toggleVoiceInput === 'function') toggleVoiceInput('pvInput', 'pvMicBtn');
         }
 
-        function pvOpenTemplateModal() {
-            if (typeof showTemplatesModal === 'function') {
-                showTemplatesModal();
-            }
-        }
+        // Tab Navigation
+        let currentTab = 'create';
 
-        // === Settings: Profile & Memory ===
-        async function saveProfileSettings() {
-            if (!currentUser) return;
-            const summary = document.getElementById('settingsProfileSummary')?.value || '';
-            try {
-                // Use require_supabase endpoint approach — update via projects API pattern
-                const resp = await fetch(`${API_URL}/api/user/profile`, {
-                    method: 'PUT',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({user_id: currentUser.id, profile_summary: summary})
-                });
-                if (resp.ok) {
-                    showToast('Профиль сохранён', 'success');
-                } else {
-                    showToast('Ошибка сохранения', 'error');
-                }
-            } catch(e) {
-                showToast('Ошибка сохранения', 'error');
-            }
-        }
-
-        async function loadMemories() {
-            if (!currentUser) return;
-            try {
-                const resp = await fetch(`${API_URL}/api/user/memories?user_id=${currentUser.id}`);
-                if (resp.ok) {
-                    const memories = await resp.json();
-                    const list = document.getElementById('settingsMemoryList');
-                    if (!list) return;
-                    if (memories.length === 0) {
-                        list.innerHTML = '<div style="color:var(--text-muted);font-size:12px;padding:8px 0;">AI пока ничего не запомнил</div>';
-                        return;
-                    }
-                    list.innerHTML = memories.map(m => `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);">
-                        <span style="flex:1;font-size:13px;color:var(--text-primary);">${escapeHtml(m.content)}</span>
-                        <button onclick="deleteMemory('${m.id}')" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:16px;" title="Удалить">&times;</button>
-                    </div>`).join('');
-                }
-            } catch(e) {}
-        }
-
-        async function addMemoryFromSettings() {
-            if (!currentUser) return;
-            const input = document.getElementById('settingsNewMemory');
-            const content = input?.value.trim();
-            if (!content) return;
-
-            try {
-                const resp = await fetch(`${API_URL}/api/ai/save-memory`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({user_id: currentUser.id, content: content})
-                });
-                if (resp.ok) {
-                    input.value = '';
-                    showToast('Запомнил!', 'success');
-                    loadMemories();
-                }
-            } catch(e) {
-                showToast('Ошибка', 'error');
-            }
-        }
-
-        async function deleteMemory(memoryId) {
-            try {
-                const resp = await fetch(`${API_URL}/api/user/memories/${memoryId}`, {method: 'DELETE'});
-                if (resp.ok) {
-                    loadMemories();
-                }
-            } catch(e) {}
-        }
-
-        // === Custom AI Prompts ===
-        function loadCustomPrompts() {
-            const prompts = JSON.parse(localStorage.getItem('craft_custom_prompts') || '{}');
-            const d = document.getElementById('settingsPromptDraft');
-            const h = document.getElementById('settingsPromptHeadlines');
-            const t = document.getElementById('settingsPromptTextReady');
-            if (d && prompts.draft) d.value = prompts.draft;
-            if (h && prompts.headlines) h.value = prompts.headlines;
-            if (t && prompts.text_ready) t.value = prompts.text_ready;
-        }
-
-        function saveCustomPrompts() {
-            const prompts = {
-                draft: document.getElementById('settingsPromptDraft')?.value || '',
-                headlines: document.getElementById('settingsPromptHeadlines')?.value || '',
-                text_ready: document.getElementById('settingsPromptTextReady')?.value || ''
-            };
-            localStorage.setItem('craft_custom_prompts', JSON.stringify(prompts));
-            showToast('Промпты сохранены', 'success');
-        }
-
-        function getCustomPrompts() {
-            return JSON.parse(localStorage.getItem('craft_custom_prompts') || '{}');
-        }
-
-        // Legacy switchTab — redirect to switchView for backward compatibility
-        let currentTab = 'home';
         function switchTab(tabId) {
             currentTab = tabId;
-            if (tabId === 'create') {
-                goHome();
-                return;
+
+            // Close overlay views when switching to a tab
+            if (typeof closeAllViews === 'function') closeAllViews();
+
+            // Hide all tab pages
+            document.querySelectorAll('.tab-page').forEach(el => el.classList.remove('active'));
+            // Show selected tab
+            const tabEl = document.getElementById(`tab-${tabId}`);
+            if (tabEl) tabEl.classList.add('active');
+
+            // Update nav items
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            const navItem = document.querySelector(`.nav-item[data-tab="${tabId}"]`);
+            if (navItem) navItem.classList.add('active');
+
+            // Show/hide editor sidebar and props panel
+            const sidebarEditor = document.getElementById('sidebar-editor');
+            const propsPanel = document.getElementById('propsPanel');
+            if (tabId === 'editor') {
+                sidebarEditor.style.display = '';
+                propsPanel.style.display = '';
+            } else {
+                sidebarEditor.style.display = 'none';
+                propsPanel.style.display = 'none';
             }
-            switchView(tabId);
+
+            // Load template selectors when switching to tabs that need them
             if (tabId === 'ready-text') {
                 loadTemplateSelectors();
                 rtLoadUsernames();
                 rtRenderPhotoLibrary();
+            }
+            if (tabId === 'create') {
+                chatInitTab();
+            }
+            if (tabId === 'rewrite') {
+                competitorsLoad();
+            }
+            if (tabId === 'history') {
+                historyRender();
             }
         }
 
@@ -4719,16 +4302,16 @@
         let voiceTargetStatus = null;
 
         function toggleVoiceInput(inputId, btnId, statusId) {
-            const btn = document.getElementById(btnId);
-            const statusEl = document.getElementById(statusId);
+            const btn = btnId ? document.getElementById(btnId) : null;
+            const statusEl = statusId ? document.getElementById(statusId) : null;
             const input = document.getElementById(inputId);
+            if (!input) return;
 
             if (voiceMediaRecorder && voiceMediaRecorder.state === 'recording') {
                 // Stop recording
                 voiceMediaRecorder.stop();
-                btn.classList.remove('recording');
-                statusEl.textContent = 'Распознавание...';
-                statusEl.classList.remove('active');
+                if (btn) btn.classList.remove('recording');
+                if (statusEl) { statusEl.textContent = 'Распознавание...'; statusEl.classList.remove('active'); }
                 return;
             }
 
@@ -4752,13 +4335,13 @@
                         await transcribeAudio(audioBlob);
                     };
                     voiceMediaRecorder.start();
-                    btn.classList.add('recording');
-                    statusEl.textContent = 'Запись... нажмите ещё раз для остановки';
-                    statusEl.classList.add('active');
+                    if (btn) btn.classList.add('recording');
+                    if (statusEl) { statusEl.textContent = 'Запись... нажмите ещё раз для остановки'; statusEl.classList.add('active'); }
+                    showToast('Запись... нажмите ещё раз для остановки', 'info');
                 })
                 .catch(err => {
                     console.error('Microphone error:', err);
-                    showToast('Не удалось получить доступ к микрофону', 'error');
+                    showToast('Не удалось получить доступ к микрофону. Разрешите доступ в настройках браузера.', 'error');
                 });
         }
 
@@ -5752,11 +5335,6 @@
                         <div style="font-size:13px;color:var(--text-secondary);max-width:400px;">
                             Опишите тему карусели, и AI поможет создать заголовки и тексты для слайдов
                         </div>
-                        <div class="chat-welcome-suggestions">
-                            <div class="chat-suggestion-chip" onclick="chatUseSuggestion('5 ошибок начинающих предпринимателей')">5 ошибок предпринимателей</div>
-                            <div class="chat-suggestion-chip" onclick="chatUseSuggestion('Как увеличить продажи в Instagram')">Продажи в Instagram</div>
-                            <div class="chat-suggestion-chip" onclick="chatUseSuggestion('Утренние привычки успешных людей')">Утренние привычки</div>
-                        </div>
                     </div>
                 `;
                 return;
@@ -6489,34 +6067,41 @@
         function updateUIForUser() {
             if (!currentUser) return;
 
-            // Update project sidebar user section
-            const psUser = document.getElementById('psUserSection');
-            const psAvatar = document.getElementById('psUserAvatar');
-            const psName = document.getElementById('psUserName');
-            const psPlan = document.getElementById('psUserPlan');
-
-            if (psUser) psUser.style.display = 'flex';
-            if (psName) psName.textContent = currentUser.first_name || currentUser.username || '';
-            if (psPlan) psPlan.textContent = (currentUser.plan || 'free').charAt(0).toUpperCase() + (currentUser.plan || 'free').slice(1);
-
-            if (psAvatar && currentUser.photo_url) {
-                psAvatar.src = currentUser.photo_url;
-                psAvatar.style.display = 'block';
-            } else if (psAvatar) {
-                psAvatar.style.display = 'none';
-            }
-
-            // Legacy nav user (keep for compatibility)
+            // Show user info in nav
             const navUser = document.getElementById('navUser');
             const navAvatar = document.getElementById('navUserAvatar');
             const navName = document.getElementById('navUserName');
+
             if (navUser) navUser.style.display = 'flex';
             if (navName) navName.textContent = currentUser.first_name || currentUser.username || '';
+
             if (navAvatar && currentUser.photo_url) {
                 navAvatar.src = currentUser.photo_url;
                 navAvatar.style.display = 'block';
             } else if (navAvatar) {
                 navAvatar.style.display = 'none';
+            }
+
+            // Hide/show settings tab based on admin status
+            const settingsBtn = document.querySelector('.nav-item[data-tab="settings"]');
+            if (settingsBtn) {
+                settingsBtn.style.display = currentUser.is_admin ? '' : 'none';
+            }
+
+            // Show project sidebar and update user section
+            const ps = document.getElementById('projectSidebar');
+            if (ps) ps.classList.remove('hidden');
+
+            const psUser = document.getElementById('psUserSection');
+            const psAvatar = document.getElementById('psUserAvatar');
+            const psName = document.getElementById('psUserName');
+            if (psUser) psUser.style.display = 'flex';
+            if (psName) psName.textContent = currentUser.first_name || currentUser.username || '';
+            if (psAvatar && currentUser.photo_url) {
+                psAvatar.src = currentUser.photo_url;
+                psAvatar.style.display = 'block';
+            } else if (psAvatar) {
+                psAvatar.style.display = 'none';
             }
 
             // Load projects
@@ -6526,12 +6111,18 @@
         function logout() {
             currentUser = null;
             localStorage.removeItem('craft_user');
-            // Hide user sections
-            const psUser = document.getElementById('psUserSection');
-            if (psUser) psUser.style.display = 'none';
+            // Hide user info
             const navUser = document.getElementById('navUser');
             if (navUser) navUser.style.display = 'none';
-            // Go to home and show login
+            // Hide sidebar
+            const ps = document.getElementById('projectSidebar');
+            if (ps) ps.classList.add('hidden');
+            const psUser = document.getElementById('psUserSection');
+            if (psUser) psUser.style.display = 'none';
+            // Show settings back (reset)
+            const settingsBtn = document.querySelector('.nav-item[data-tab="settings"]');
+            if (settingsBtn) settingsBtn.style.display = '';
+            // Go home
             goHome();
             showLogin();
         }
@@ -6540,10 +6131,7 @@
             // Start auth immediately (don't await — runs in parallel)
             initAuth();
 
-            // Start on Home view
-            switchView('home');
-
-            // Load editor template in background
+            // NEW: Load MargulanGames template by default instead of empty template
             try {
                 const r = await fetch(`${API_URL}/templates/margulangames`);
                 if (r.ok) {
@@ -6553,6 +6141,7 @@
                     throw new Error('Template not found');
                 }
             } catch (e) {
+                // Fallback: Create minimal default template (1 white slide with title and description)
                 console.log('Could not load MargulanGames, using default template');
                 state.slides.push(createSlide('intro'));
             }
@@ -6561,6 +6150,7 @@
             loadTemplatesList();
             await loadTemplateSelectors();
             loadWebhookSettings();
+            chatInitTab();
 
             // NEW v7.0: Keyboard shortcuts for Undo/Redo
             document.addEventListener('keydown', (e) => {
