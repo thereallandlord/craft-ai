@@ -2208,25 +2208,22 @@
         body.tg-miniapp {
             padding-top: calc(var(--tg-safe-top) + var(--tg-content-top));
         }
-        body.tg-miniapp .nav-bar {
-            bottom: 0;
+        body.tg-miniapp .project-sidebar {
             padding-bottom: var(--tg-safe-bottom);
-            height: calc(56px + var(--tg-safe-bottom));
         }
 
         /* === MOBILE ADAPTATION === */
         @media (max-width: 768px) {
             .app {
-                flex-direction: column;
-                height: auto;
-                min-height: 100vh;
+                flex-direction: row;
+                height: 100vh;
             }
 
             body {
-                overflow: auto;
+                overflow: hidden;
             }
 
-            /* Nav bar becomes bottom tab bar */
+            /* Nav bar — hidden (replaced by sidebar) */
             .nav-bar {
                 position: fixed;
                 bottom: 0;
@@ -2773,6 +2770,13 @@
             justify-content: center;
             padding: 40px;
             text-align: center;
+            position: relative;
+        }
+
+        .home-view > .mobile-hamburger {
+            position: absolute;
+            top: 12px;
+            left: 12px;
         }
 
         .home-title {
@@ -3112,15 +3116,31 @@
             flex: 1;
             display: flex;
             overflow: hidden;
+            min-width: 0;
         }
 
         .view-page {
             display: none;
             flex: 1;
+            overflow: hidden;
         }
 
         .view-page.active {
             display: flex;
+        }
+
+        /* Editor view needs special handling — its children ARE the flex items */
+        #view-editor.active {
+            display: flex;
+            flex-direction: row;
+        }
+
+        /* Ready-text and settings views — single column scroll */
+        #view-ready-text.active,
+        #view-settings.active {
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
         }
 
         /* Mobile sidebar overlay */
@@ -3172,12 +3192,22 @@
                 display: flex;
             }
 
+            .home-view {
+                padding: 20px 16px;
+            }
+
             .home-title {
                 font-size: 22px;
             }
 
             .home-subtitle {
                 font-size: 13px;
+                margin-bottom: 20px;
+            }
+
+            .home-suggestions {
+                flex-wrap: wrap;
+                gap: 6px;
             }
 
             .pv-settings-panel {
@@ -3196,10 +3226,72 @@
                 transform: translateX(0);
             }
 
-            /* Hide old nav-bar on mobile when new sidebar is used */
+            /* Hide old nav-bar on mobile */
             .nav-bar {
                 display: none !important;
             }
+
+            /* Editor on mobile: stack vertically */
+            #view-editor.active {
+                flex-direction: column;
+                overflow-y: auto;
+            }
+
+            #view-editor .sidebar-left {
+                width: 100%;
+                max-height: 120px;
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+            }
+
+            #view-editor .sidebar-right {
+                width: 100%;
+                border-left: none;
+                border-top: 1px solid var(--border);
+            }
+
+            /* Project view full height */
+            .project-view {
+                height: 100%;
+            }
+
+            .pv-header {
+                padding: 8px 12px;
+            }
+
+            .pv-title-input {
+                font-size: 14px;
+            }
+
+            /* Settings/ready-text on mobile */
+            #view-settings.active,
+            #view-ready-text.active {
+                overflow-y: auto;
+            }
+
+            .tab-page-content {
+                padding: 20px 16px;
+                padding-bottom: 24px;
+            }
+
+            /* Mobile back button for views */
+            .view-back-btn {
+                display: flex;
+            }
+        }
+
+        /* View back button — hidden on desktop, shown on mobile */
+        .view-back-btn {
+            display: none;
+            width: 40px;
+            height: 40px;
+            background: transparent;
+            border: none;
+            color: var(--text-primary);
+            cursor: pointer;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
         }
     </style>
 </head>
@@ -3367,7 +3459,7 @@
             <!-- OLD TABS wrapped in view-page containers -->
 
             <!-- === VIEW: Editor === -->
-            <div class="view-page" id="view-editor" style="display:none;">
+            <div class="view-page" id="view-editor">
         <div class="sidebar-left" id="sidebar-editor">
             <div class="sidebar-header">
                 <div class="brand-container">
@@ -3385,6 +3477,9 @@
             <!-- Top Bar -->
             <div class="top-bar">
                 <div class="template-info">
+                    <button class="view-back-btn" onclick="goHome()">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+                    </button>
                     <input type="text" class="template-name" id="templateName" value="Новый шаблон" placeholder="Название шаблона">
                     <input type="text" class="template-id" id="templateId" value="" placeholder="template_id (для API)">
                 </div>
@@ -3419,9 +3514,18 @@
             </div><!-- /view-editor -->
 
         <!-- === VIEW: Ready Text === -->
-        <div class="view-page" id="view-ready-text" style="display:none;">
+        <div class="view-page" id="view-ready-text">
         <div class="tab-page" id="tab-ready-text" style="display:block;">
             <div class="tab-page-content">
+                <!-- Mobile header -->
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
+                    <button class="view-back-btn" onclick="goHome()">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+                    </button>
+                    <button class="mobile-hamburger" onclick="toggleMobileSidebar()">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                    </button>
+                </div>
 
                 <!-- Phase 1: Input -->
                 <div id="rtInputPhase">
@@ -3627,8 +3731,6 @@
             </div>
         </div>
 
-        <!-- === VIEW: Settings === -->
-        <div class="view-page" id="view-settings" style="display:none;">
         <!-- === TAB: Rewrite (placeholder, hidden for now) === -->
         <div class="tab-page" id="tab-rewrite" style="display:none;">
             <div class="tab-page-content">
@@ -3671,9 +3773,19 @@
             </div>
         </div>
 
-        <!-- === TAB: Settings === -->
+        <!-- === VIEW: Settings === -->
+        <div class="view-page" id="view-settings">
         <div class="tab-page" id="tab-settings" style="display:block;">
             <div class="tab-page-content">
+                <!-- Mobile header -->
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
+                    <button class="view-back-btn" onclick="goHome()">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+                    </button>
+                    <button class="mobile-hamburger" onclick="toggleMobileSidebar()">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                    </button>
+                </div>
                 <div class="tab-page-title">Настройки</div>
                 <div class="tab-page-subtitle">Профиль, AI память и настройки приложения</div>
 
@@ -3703,6 +3815,29 @@
                         <input type="text" class="form-input" id="settingsNewMemory" placeholder="Добавить предпочтение... (напр: не используй точки в конце)" style="flex:1;">
                         <button class="btn" onclick="addMemoryFromSettings()">Добавить</button>
                     </div>
+                </div>
+
+                <!-- Custom AI Prompts -->
+                <div style="background:var(--bg-tertiary);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:24px;">
+                    <div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:12px;">AI Промпты</div>
+                    <div style="font-size:12px;color:var(--text-secondary);margin-bottom:16px;">
+                        Настройте системные промпты для AI агента. Оставьте пустым для промптов по умолчанию.
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Промпт для генерации заголовков (этап 1)</label>
+                        <textarea class="form-input" id="settingsPromptDraft" rows="4" placeholder="Промпт для этапа генерации заголовков..." style="resize:vertical;min-height:80px;font-size:12px;font-family:monospace;"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Промпт для написания текста слайдов (этап 2)</label>
+                        <textarea class="form-input" id="settingsPromptHeadlines" rows="4" placeholder="Промпт для этапа написания текста слайдов..." style="resize:vertical;min-height:80px;font-size:12px;font-family:monospace;"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Промпт для редактирования (этап 3)</label>
+                        <textarea class="form-input" id="settingsPromptTextReady" rows="3" placeholder="Промпт для этапа редактирования текста..." style="resize:vertical;min-height:60px;font-size:12px;font-family:monospace;"></textarea>
+                    </div>
+                    <button class="btn btn-primary" onclick="saveCustomPrompts()" style="width:100%;justify-content:center;">
+                        Сохранить промпты
+                    </button>
                 </div>
 
                 <!-- n8n Webhooks (legacy, collapsible) -->
@@ -3776,31 +3911,18 @@
 
         function switchView(viewId) {
             currentView = viewId;
-            // Hide all view-pages
+            // Hide all view-pages using CSS classes only (no inline styles)
             document.querySelectorAll('.view-page').forEach(el => {
-                el.style.display = 'none';
                 el.classList.remove('active');
             });
             // Show selected view
             const viewEl = document.getElementById(`view-${viewId}`);
             if (viewEl) {
-                viewEl.style.display = 'flex';
                 viewEl.classList.add('active');
             }
 
             // Update sidebar footer active state
             document.querySelectorAll('.ps-footer-item').forEach(el => el.classList.remove('active'));
-
-            // Show/hide editor sidebars
-            const sidebarEditor = document.getElementById('sidebar-editor');
-            const propsPanel = document.getElementById('propsPanel');
-            if (viewId === 'editor') {
-                if (sidebarEditor) sidebarEditor.style.display = '';
-                if (propsPanel) propsPanel.style.display = '';
-            } else {
-                if (sidebarEditor) sidebarEditor.style.display = 'none';
-                if (propsPanel) propsPanel.style.display = 'none';
-            }
 
             // View-specific init
             if (viewId === 'ready-text') {
@@ -3810,6 +3932,7 @@
             }
             if (viewId === 'settings') {
                 loadMemories();
+                loadCustomPrompts();
                 // Load profile summary
                 if (currentUser) {
                     const profileField = document.getElementById('settingsProfileSummary');
@@ -3991,23 +4114,13 @@
             container.innerHTML += `<div class="pv-msg user"><div>${escapeHtml(text).replace(/\n/g, '<br>')}</div><div class="msg-time">${time}</div></div>`;
             container.scrollTop = container.scrollHeight;
 
-            // Save message to Supabase
-            try {
-                await fetch(`${API_URL}/api/projects/${currentProjectId}/messages`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({user_id: currentUser.id, role: 'user', content: text})
-                });
-            } catch(e) {
-                console.log('Failed to save message', e);
-            }
-
-            // Send to AI via OpenRouter
+            // Send to AI (the AI endpoint saves both user and assistant messages)
             container.innerHTML += `<div class="pv-msg assistant" id="pvTyping"><div><span class="spinner" style="display:inline-block;width:16px;height:16px;border:2px solid var(--text-muted);border-top-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite;vertical-align:middle;margin-right:8px;"></span>Думаю...</div></div>`;
             container.scrollTop = container.scrollHeight;
 
             try {
                 const slidesCount = parseInt(document.getElementById('pvSlidesRange')?.value || '7');
+                const customPrompts = getCustomPrompts();
                 const aiResp = await fetch(`${API_URL}/api/ai/chat`, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
@@ -4015,7 +4128,8 @@
                         project_id: currentProjectId,
                         user_id: currentUser.id,
                         message: text,
-                        slides_count: slidesCount
+                        slides_count: slidesCount,
+                        custom_prompts: customPrompts
                     })
                 });
 
@@ -4076,17 +4190,11 @@
                     // Reload projects and open
                     await loadProjects();
                     await openProject(project.id);
-                    // Send first message
-                    await fetch(`${API_URL}/api/projects/${project.id}/messages`, {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({user_id: currentUser.id, role: 'user', content: text})
-                    });
-                    // Re-render messages
-                    const projResp = await fetch(`${API_URL}/api/projects/${project.id}`);
-                    if (projResp.ok) {
-                        const data = await projResp.json();
-                        renderProjectMessages(data.messages || []);
+                    // Set the input to the text and send to AI (which will save + generate)
+                    const pvInput = document.getElementById('pvInput');
+                    if (pvInput) {
+                        pvInput.value = text;
+                        pvSendMessage();
                     }
                 }
             } catch(e) {
@@ -4146,6 +4254,7 @@
 
             try {
                 const slidesCount = parseInt(document.getElementById('pvSlidesRange')?.value || '7');
+                const customPrompts2 = getCustomPrompts();
                 const aiResp = await fetch(`${API_URL}/api/ai/chat`, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
@@ -4153,7 +4262,8 @@
                         project_id: currentProjectId,
                         user_id: currentUser.id,
                         message: `Выбранный заголовок: "${headline}". Напиши текст для ${slidesCount} слайдов карусели.`,
-                        slides_count: slidesCount
+                        slides_count: slidesCount,
+                        custom_prompts: customPrompts2
                     })
                 });
 
@@ -4346,6 +4456,31 @@
                     loadMemories();
                 }
             } catch(e) {}
+        }
+
+        // === Custom AI Prompts ===
+        function loadCustomPrompts() {
+            const prompts = JSON.parse(localStorage.getItem('craft_custom_prompts') || '{}');
+            const d = document.getElementById('settingsPromptDraft');
+            const h = document.getElementById('settingsPromptHeadlines');
+            const t = document.getElementById('settingsPromptTextReady');
+            if (d && prompts.draft) d.value = prompts.draft;
+            if (h && prompts.headlines) h.value = prompts.headlines;
+            if (t && prompts.text_ready) t.value = prompts.text_ready;
+        }
+
+        function saveCustomPrompts() {
+            const prompts = {
+                draft: document.getElementById('settingsPromptDraft')?.value || '',
+                headlines: document.getElementById('settingsPromptHeadlines')?.value || '',
+                text_ready: document.getElementById('settingsPromptTextReady')?.value || ''
+            };
+            localStorage.setItem('craft_custom_prompts', JSON.stringify(prompts));
+            showToast('Промпты сохранены', 'success');
+        }
+
+        function getCustomPrompts() {
+            return JSON.parse(localStorage.getItem('craft_custom_prompts') || '{}');
         }
 
         // Legacy switchTab — redirect to switchView for backward compatibility

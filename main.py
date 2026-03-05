@@ -1177,14 +1177,18 @@ SYSTEM_PROMPT_TEXT_READY = """Ты — AI контент-менеджер. Те�
 Если пользователь просит что-то изменить — перепиши соответствующие слайды в том же формате."""
 
 
-def get_system_prompt(status: str, slides_count: int = 7) -> str:
+def get_system_prompt(status: str, slides_count: int = 7, custom_prompts: dict = None) -> str:
+    cp = custom_prompts or {}
     if status == 'draft':
-        return SYSTEM_PROMPT_DRAFT
+        return cp.get('draft') or SYSTEM_PROMPT_DRAFT
     elif status == 'headlines':
+        custom = cp.get('headlines')
+        if custom:
+            return custom.replace('{slides_count}', str(slides_count))
         return SYSTEM_PROMPT_HEADLINES.replace('{slides_count}', str(slides_count))
     elif status == 'text_ready':
-        return SYSTEM_PROMPT_TEXT_READY
-    return SYSTEM_PROMPT_DRAFT
+        return cp.get('text_ready') or SYSTEM_PROMPT_TEXT_READY
+    return cp.get('draft') or SYSTEM_PROMPT_DRAFT
 
 
 def get_user_context(user_id: int) -> str:
@@ -1213,8 +1217,9 @@ async def ai_chat(request: Request):
     project_id = body.get("project_id")
     user_id = body.get("user_id")
     user_message = body.get("message", "")
-    model = body.get("model", "google/gemini-2.5-pro-preview")
+    model = body.get("model", "openai/gpt-4o")
     slides_count = body.get("slides_count", 7)
+    custom_prompts = body.get("custom_prompts", {})
 
     if not project_id or not user_id:
         raise HTTPException(status_code=400, detail="project_id and user_id required")
@@ -1230,8 +1235,8 @@ async def ai_chat(request: Request):
     messages_result = sb.table("project_messages").select("role,content").eq("project_id", project_id).order("created_at").execute()
     history = messages_result.data or []
 
-    # Build system prompt with user context
-    system_prompt = get_system_prompt(status, slides_count)
+    # Build system prompt with user context (use custom prompts if provided)
+    system_prompt = get_system_prompt(status, slides_count, custom_prompts)
     user_context = get_user_context(int(user_id))
     if user_context:
         system_prompt += f"\n\nКонтекст о пользователе:\n{user_context}"
@@ -1391,7 +1396,7 @@ async def ai_translate(request: Request):
                 "Content-Type": "application/json",
             },
             json={
-                "model": "google/gemini-2.5-pro-preview",
+                "model": "openai/gpt-4o",
                 "messages": [
                     {"role": "system", "content": f"Translate the following carousel slides to {lang_name}. Keep the exact same format (Slide N, Title, Description). Only translate, don't change meaning or structure."},
                     {"role": "user", "content": slides_text}
