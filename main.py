@@ -1211,57 +1211,440 @@ def get_user_context(user_id: int) -> str:
     return "\n".join(context_parts)
 
 
+# === v3: Prompt loading from DB with cache ===
+_prompt_cache = {}
+_prompt_cache_time = 0
+PROMPT_CACHE_TTL = 60  # seconds
+
+
+def get_system_prompt_v3(chat_type: str, has_slides: bool = False, variables: dict = None) -> str:
+    """Load prompt from system_prompts table with caching."""
+    global _prompt_cache, _prompt_cache_time
+
+    if chat_type == 'headlines':
+        prompt_key = 'headlines'
+    elif chat_type == 'text':
+        prompt_key = 'editing' if has_slides else 'text'
+    elif chat_type == 'carousel':
+        prompt_key = 'carousel'
+    else:
+        prompt_key = 'headlines'
+
+    now = time.time()
+    if now - _prompt_cache_time > PROMPT_CACHE_TTL:
+        try:
+            sb = require_supabase()
+            result = sb.table("system_prompts").select("prompt_key,content").eq("is_active", True).execute()
+            _prompt_cache = {row["prompt_key"]: row["content"] for row in (result.data or [])}
+            _prompt_cache_time = now
+        except Exception:
+            pass
+
+    # Fallback to hardcoded prompts
+    fallbacks = {
+        'headlines': SYSTEM_PROMPT_DRAFT,
+        'text': SYSTEM_PROMPT_HEADLINES,
+        'editing': SYSTEM_PROMPT_TEXT_READY,
+        'carousel': "Ты — AI помощник по дизайну каруселей. Помоги пользователю выбрать визуальное оформление."
+    }
+    template = _prompt_cache.get(prompt_key, fallbacks.get(prompt_key, SYSTEM_PROMPT_DRAFT))
+
+    if variables:
+        for key, value in variables.items():
+            template = template.replace(f'{{{key}}}', str(value))
+
+    return template
+
+
+def _call_openrouter(messages: list, model: str = "openai/gpt-4o", temperature: float = 0.7) -> str:
+    """Call OpenRouter API and return AI text response."""
+    resp = requests.post(
+        "https://openrouter.ai/api/v1/chat/completions",
+        headers={
+            "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://app.craftopen.space",
+            "X-Title": "Craft AI"
+        },
+        json={"model": model, "messages": messages, "temperature": temperature, "max_tokens": 4096},
+        timeout=120
+    )
+    if resp.status_code != 200:
+        raise HTTPException(status_code=resp.status_code, detail=f"OpenRouter error: {resp.text}")
+    return resp.json()["choices"][0]["message"]["content"]
+
+
+def _parse_headlines(text: str) -> list:
+    """Parse numbered headlines from AI response."""
+    headlines = []
+    for line in text.split('\n'):
+        line = line.strip()
+        match = re.match(r'^\d+[\.\)]\s*(.+)', line)
+        if match:
+            headlines.append(match.group(1).strip())
+    return headlines
+
+
+# === v3: Topics API ===
+
+@app.get("/api/topics")
+async def list_topics(user_id: int):
+    """List all topics for a user with sub-chat counts."""
+    sb = require_supabase()
+    topics = sb.table("projects").select("*").eq("user_id", user_id).order("updated_at", desc=True).execute()
+    result = []
+    for t in (topics.data or []):
+        sub_chats = sb.table("sub_chats").select("id,chat_type").eq("topic_id", t["id"]).execute()
+        t["sub_chat_count"] = len(sub_chats.data or [])
+        result.append(t)
+    return result
+
+
+@app.post("/api/topics")
+async def create_topic(request: Request):
+    """Create topic + headlines sub-chat + AI response in one call."""
+    if not OPENROUTER_API_KEY:
+        raise HTTPException(status_code=500, detail="OPENROUTER_API_KEY not configured")
+    sb = require_supabase()
+    body = await request.json()
+    user_id = body.get("user_id")
+    message = body.get("message", "")
+    model = body.get("model", "openai/gpt-4o")
+
+    if not user_id or not message:
+        raise HTTPException(status_code=400, detail="user_id and message required")
+
+    # 1. Create topic (project)
+    topic = sb.table("projects").insert({
+        "user_id": int(user_id),
+        "title": message[:50],
+        "status": "draft",
+        "idea_text": message,
+    }).execute()
+    topic_data = topic.data[0]
+    topic_id = topic_data["id"]
+
+    # 2. Create headlines sub-chat
+    sub_chat = sb.table("sub_chats").insert({
+        "topic_id": topic_id,
+        "user_id": int(user_id),
+        "chat_type": "headlines",
+        "title": "Заголовки",
+    }).execute()
+    sub_chat_data = sub_chat.data[0]
+    sub_chat_id = sub_chat_data["id"]
+
+    # 3. Save user message
+    sb.table("project_messages").insert({
+        "project_id": topic_id,
+        "sub_chat_id": sub_chat_id,
+        "user_id": int(user_id),
+        "role": "user",
+        "content": message,
+        "message_type": "text"
+    }).execute()
+
+    # 4. Call AI
+    system_prompt = get_system_prompt_v3("headlines")
+    user_context = get_user_context(int(user_id))
+    if user_context:
+        system_prompt += f"\n\nКонтекст о пользователе:\n{user_context}"
+
+    ai_messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": message}
+    ]
+
+    try:
+        ai_text = _call_openrouter(ai_messages, model)
+    except Exception as e:
+        return {"topic": topic_data, "sub_chat": sub_chat_data, "ai_response": {"content": str(e), "message_type": "text", "message_data": None}}
+
+    # Parse headlines
+    headlines = _parse_headlines(ai_text)
+    message_type = "headlines" if headlines else "text"
+    message_data = {"headlines": headlines} if headlines else None
+
+    # 5. Save AI response
+    sb.table("project_messages").insert({
+        "project_id": topic_id,
+        "sub_chat_id": sub_chat_id,
+        "user_id": int(user_id),
+        "role": "assistant",
+        "content": ai_text,
+        "message_type": message_type,
+        "message_data": message_data
+    }).execute()
+
+    # Update topic
+    sb.table("projects").update({"active_subchat_id": sub_chat_id}).eq("id", topic_id).execute()
+
+    return {
+        "topic": topic_data,
+        "sub_chat": sub_chat_data,
+        "ai_response": {"content": ai_text, "message_type": message_type, "message_data": message_data}
+    }
+
+
+@app.get("/api/topics/{topic_id}")
+async def get_topic(topic_id: str):
+    """Get topic with all its sub-chats."""
+    sb = require_supabase()
+    topic = sb.table("projects").select("*").eq("id", topic_id).single().execute()
+    if not topic.data:
+        raise HTTPException(status_code=404, detail="Topic not found")
+    sub_chats = sb.table("sub_chats").select("*").eq("topic_id", topic_id).order("created_at").execute()
+    return {"topic": topic.data, "sub_chats": sub_chats.data or []}
+
+
+@app.delete("/api/topics/{topic_id}")
+async def delete_topic(topic_id: str):
+    """Delete a topic (cascades sub-chats and messages)."""
+    sb = require_supabase()
+    sb.table("projects").delete().eq("id", topic_id).execute()
+    return {"ok": True}
+
+
+# === v3: Sub-chats API ===
+
+@app.get("/api/topics/{topic_id}/sub-chats")
+async def list_sub_chats(topic_id: str):
+    """List all sub-chats in a topic."""
+    sb = require_supabase()
+    result = sb.table("sub_chats").select("*").eq("topic_id", topic_id).order("created_at").execute()
+    # Add last message preview for each sub-chat
+    sub_chats = []
+    for sc in (result.data or []):
+        last_msg = sb.table("project_messages").select("content,created_at").eq("sub_chat_id", sc["id"]).order("created_at", desc=True).limit(1).execute()
+        sc["last_message"] = last_msg.data[0]["content"][:100] if last_msg.data else ""
+        sc["last_message_at"] = last_msg.data[0]["created_at"] if last_msg.data else sc["created_at"]
+        sub_chats.append(sc)
+    return sub_chats
+
+
+@app.post("/api/topics/{topic_id}/sub-chats")
+async def create_sub_chat(topic_id: str, request: Request):
+    """Create a new sub-chat. For text type, auto-generates slide text."""
+    sb = require_supabase()
+    body = await request.json()
+    user_id = body.get("user_id")
+    chat_type = body.get("chat_type")
+    selected_headline = body.get("selected_headline")
+    parent_subchat_id = body.get("parent_subchat_id")
+    model = body.get("model", "openai/gpt-4o")
+    slides_count = body.get("slides_count", 7)
+
+    if not user_id or not chat_type:
+        raise HTTPException(status_code=400, detail="user_id and chat_type required")
+
+    title = selected_headline or f"{'Текст' if chat_type == 'text' else 'Карусель'}"
+
+    sub_chat = sb.table("sub_chats").insert({
+        "topic_id": topic_id,
+        "user_id": int(user_id),
+        "chat_type": chat_type,
+        "title": title,
+        "selected_headline": selected_headline,
+        "parent_subchat_id": parent_subchat_id,
+    }).execute()
+    sub_chat_data = sub_chat.data[0]
+    sub_chat_id = sub_chat_data["id"]
+
+    ai_response = None
+
+    # For text sub-chat: auto-generate slide text
+    if chat_type == 'text' and selected_headline and OPENROUTER_API_KEY:
+        system_prompt = get_system_prompt_v3("text", variables={
+            "slides_count": str(slides_count),
+            "selected_headline": selected_headline,
+        })
+        user_context = get_user_context(int(user_id))
+        if user_context:
+            system_prompt += f"\n\nКонтекст о пользователе:\n{user_context}"
+
+        try:
+            ai_text = _call_openrouter([
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": f"Напиши текст карусели на тему: {selected_headline}"}
+            ], model)
+
+            sb.table("project_messages").insert({
+                "project_id": topic_id,
+                "sub_chat_id": sub_chat_id,
+                "user_id": int(user_id),
+                "role": "assistant",
+                "content": ai_text,
+                "message_type": "slides",
+            }).execute()
+
+            ai_response = {"content": ai_text, "message_type": "slides", "message_data": None}
+        except Exception as e:
+            ai_response = {"content": str(e), "message_type": "text", "message_data": None}
+
+    # Update topic's active sub-chat
+    sb.table("projects").update({"active_subchat_id": sub_chat_id}).eq("id", topic_id).execute()
+
+    return {"sub_chat": sub_chat_data, "ai_response": ai_response}
+
+
+@app.get("/api/sub-chats/{sub_chat_id}")
+async def get_sub_chat(sub_chat_id: str):
+    """Get a sub-chat with its messages."""
+    sb = require_supabase()
+    sub_chat = sb.table("sub_chats").select("*").eq("id", sub_chat_id).single().execute()
+    if not sub_chat.data:
+        raise HTTPException(status_code=404, detail="Sub-chat not found")
+    messages = sb.table("project_messages").select("*").eq("sub_chat_id", sub_chat_id).order("created_at").execute()
+    return {"sub_chat": sub_chat.data, "messages": messages.data or []}
+
+
+# === v3: Refactored AI Chat ===
+
 @app.post("/api/ai/chat")
 async def ai_chat(request: Request):
-    """AI chat within a project. Uses OpenRouter for Gemini/Claude."""
+    """AI chat — supports both v2 (project_id) and v3 (sub_chat_id) modes."""
     if not OPENROUTER_API_KEY:
         raise HTTPException(status_code=500, detail="OPENROUTER_API_KEY not configured")
 
     sb = require_supabase()
     body = await request.json()
     project_id = body.get("project_id")
+    sub_chat_id = body.get("sub_chat_id")
     user_id = body.get("user_id")
     user_message = body.get("message", "")
     model = body.get("model", "openai/gpt-4o")
     slides_count = body.get("slides_count", 7)
     custom_prompts = body.get("custom_prompts", {})
 
-    if not project_id or not user_id:
-        raise HTTPException(status_code=400, detail="project_id and user_id required")
+    if not user_id:
+        raise HTTPException(status_code=400, detail="user_id required")
+    if not project_id and not sub_chat_id:
+        raise HTTPException(status_code=400, detail="project_id or sub_chat_id required")
 
-    # Get project
+    # === v3 mode: sub_chat_id ===
+    if sub_chat_id:
+        sub_chat = sb.table("sub_chats").select("*").eq("id", sub_chat_id).single().execute()
+        if not sub_chat.data:
+            raise HTTPException(status_code=404, detail="Sub-chat not found")
+        sc = sub_chat.data
+        topic_id = sc["topic_id"]
+        chat_type = sc["chat_type"]
+
+        # Determine prompt key
+        if chat_type == "text" and sc.get("slides_data"):
+            prompt_key = "editing"
+        else:
+            prompt_key = chat_type  # headlines, text, carousel
+
+        # Build system prompt from DB
+        variables = {
+            "slides_count": str(slides_count),
+            "selected_headline": sc.get("selected_headline") or "",
+        }
+        system_prompt = get_system_prompt_v3(prompt_key, variables=variables)
+        user_context = get_user_context(int(user_id))
+        if user_context:
+            system_prompt += f"\n\nКонтекст о пользователе:\n{user_context}"
+
+        # Get message history for this sub-chat
+        messages_result = sb.table("project_messages").select("role,content").eq("sub_chat_id", sub_chat_id).order("created_at").execute()
+        history = messages_result.data or []
+
+        ai_messages = [{"role": "system", "content": system_prompt}]
+        for msg in history[-20:]:
+            ai_messages.append({"role": msg["role"], "content": msg["content"]})
+        if user_message:
+            ai_messages.append({"role": "user", "content": user_message})
+
+        # Save user message
+        if user_message:
+            sb.table("project_messages").insert({
+                "project_id": topic_id,
+                "sub_chat_id": sub_chat_id,
+                "user_id": int(user_id),
+                "role": "user",
+                "content": user_message,
+                "message_type": "text"
+            }).execute()
+
+        # Call AI
+        try:
+            ai_text = _call_openrouter(ai_messages, model)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+        # Determine message type
+        message_type = "text"
+        message_data = None
+
+        if chat_type == "headlines":
+            headlines = _parse_headlines(ai_text)
+            if headlines:
+                message_type = "headlines"
+                message_data = {"headlines": headlines}
+        elif chat_type == "text":
+            message_type = "slides"
+
+        # Save AI response
+        sb.table("project_messages").insert({
+            "project_id": topic_id,
+            "sub_chat_id": sub_chat_id,
+            "user_id": int(user_id),
+            "role": "assistant",
+            "content": ai_text,
+            "message_type": message_type,
+            "message_data": message_data
+        }).execute()
+
+        return {
+            "content": ai_text,
+            "message_type": message_type,
+            "message_data": message_data,
+            "sub_chat_id": sub_chat_id,
+            "chat_type": chat_type
+        }
+
+    # === v2 legacy mode: project_id ===
+    if not project_id:
+        raise HTTPException(status_code=400, detail="project_id required")
+
     project = sb.table("projects").select("*").eq("id", project_id).single().execute()
     if not project.data:
         raise HTTPException(status_code=404, detail="Project not found")
 
     status = project.data.get("status", "draft")
 
+    # Try to find default sub-chat for backward compat
+    default_sc = sb.table("sub_chats").select("id").eq("topic_id", project_id).order("created_at").limit(1).execute()
+    legacy_sub_chat_id = default_sc.data[0]["id"] if default_sc.data else None
+
     # Get message history
     messages_result = sb.table("project_messages").select("role,content").eq("project_id", project_id).order("created_at").execute()
     history = messages_result.data or []
 
-    # Build system prompt with user context (use custom prompts if provided)
     system_prompt = get_system_prompt(status, slides_count, custom_prompts)
     user_context = get_user_context(int(user_id))
     if user_context:
         system_prompt += f"\n\nКонтекст о пользователе:\n{user_context}"
 
-    # Build messages for OpenRouter
     ai_messages = [{"role": "system", "content": system_prompt}]
-    for msg in history[-20:]:  # Last 20 messages for context window
+    for msg in history[-20:]:
         ai_messages.append({"role": msg["role"], "content": msg["content"]})
     if user_message:
         ai_messages.append({"role": "user", "content": user_message})
 
     # Save user message
     if user_message:
-        sb.table("project_messages").insert({
+        msg_insert = {
             "project_id": project_id,
             "user_id": int(user_id),
             "role": "user",
             "content": user_message,
             "message_type": "text"
-        }).execute()
+        }
+        if legacy_sub_chat_id:
+            msg_insert["sub_chat_id"] = legacy_sub_chat_id
+        sb.table("project_messages").insert(msg_insert).execute()
 
     # Call OpenRouter
     try:
@@ -1288,13 +1671,11 @@ async def ai_chat(request: Request):
         ai_response = resp.json()
         ai_text = ai_response["choices"][0]["message"]["content"]
 
-        # Determine message type and parse data
         message_type = "text"
         message_data = None
         new_status = status
 
         if status == 'draft':
-            # Parse headlines from numbered list
             headlines = []
             for line in ai_text.split('\n'):
                 line = line.strip()
@@ -1307,24 +1688,25 @@ async def ai_chat(request: Request):
                 new_status = "headlines"
 
         elif status == 'headlines':
-            # Parse slides text
             message_type = "slides"
             new_status = "text_ready"
 
         # Save AI response
-        sb.table("project_messages").insert({
+        msg_insert = {
             "project_id": project_id,
             "user_id": int(user_id),
             "role": "assistant",
             "content": ai_text,
             "message_type": message_type,
             "message_data": message_data
-        }).execute()
+        }
+        if legacy_sub_chat_id:
+            msg_insert["sub_chat_id"] = legacy_sub_chat_id
+        sb.table("project_messages").insert(msg_insert).execute()
 
-        # Update project status
         update_data = {"status": new_status}
         if status == 'headlines' and project.data.get("selected_headline"):
-            update_data["slides_data"] = ai_text  # Raw text for now, parsed on frontend
+            update_data["slides_data"] = ai_text
         sb.table("projects").update(update_data).eq("id", project_id).execute()
 
         return {
@@ -1500,6 +1882,77 @@ def require_supabase():
         raise HTTPException(status_code=500, detail="Supabase not configured")
     return supabase
 
+
+# === v3: Admin Prompts CRUD ===
+
+@app.get("/api/admin/prompts")
+async def list_prompts(user_id: int):
+    """List all system prompts. Admin only."""
+    if str(user_id) not in ADMIN_TELEGRAM_IDS:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    sb = require_supabase()
+    result = sb.table("system_prompts").select("*").order("prompt_key").execute()
+    return result.data or []
+
+
+@app.put("/api/admin/prompts/{prompt_key}")
+async def update_prompt(prompt_key: str, request: Request):
+    """Update a system prompt. Admin only."""
+    global _prompt_cache, _prompt_cache_time
+    sb = require_supabase()
+    body = await request.json()
+    user_id = body.get("user_id")
+    if not user_id or str(user_id) not in ADMIN_TELEGRAM_IDS:
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    allowed_fields = {"title", "description", "content", "variables", "is_active"}
+    update_data = {k: v for k, v in body.items() if k in allowed_fields}
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No valid fields to update")
+
+    update_data["updated_by"] = int(user_id)
+    result = sb.table("system_prompts").update(update_data).eq("prompt_key", prompt_key).execute()
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Prompt not found")
+
+    # Invalidate cache
+    _prompt_cache.clear()
+    _prompt_cache_time = 0
+
+    return result.data[0]
+
+
+@app.post("/api/admin/prompts")
+async def create_prompt(request: Request):
+    """Create a new system prompt. Admin only."""
+    global _prompt_cache, _prompt_cache_time
+    sb = require_supabase()
+    body = await request.json()
+    user_id = body.get("user_id")
+    if not user_id or str(user_id) not in ADMIN_TELEGRAM_IDS:
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    prompt_key = body.get("prompt_key")
+    title = body.get("title")
+    content = body.get("content")
+    if not prompt_key or not title or not content:
+        raise HTTPException(status_code=400, detail="prompt_key, title, and content required")
+
+    result = sb.table("system_prompts").insert({
+        "prompt_key": prompt_key,
+        "title": title,
+        "description": body.get("description", ""),
+        "content": content,
+        "variables": body.get("variables", []),
+        "updated_by": int(user_id),
+    }).execute()
+
+    _prompt_cache.clear()
+    _prompt_cache_time = 0
+    return result.data[0] if result.data else {}
+
+
+# === Legacy: Projects API ===
 
 @app.get("/api/projects")
 async def list_projects(user_id: int):

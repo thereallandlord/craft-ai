@@ -3186,6 +3186,378 @@
             flex-direction: column;
         }
 
+        /* === Topic View (страница топика с подчатами) === */
+        .topic-view {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .tv-header {
+            padding: 10px 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .tv-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .tv-tabs {
+            display: flex;
+            gap: 4px;
+            padding: 0 16px 12px;
+            border-bottom: 1px solid var(--border);
+            overflow-x: auto;
+        }
+
+        .tv-tab {
+            padding: 6px 14px;
+            border-radius: 99px;
+            font-size: 13px;
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.15s ease;
+        }
+
+        .tv-tab:hover {
+            background: var(--bg-hover);
+        }
+
+        .tv-tab.active {
+            background: var(--text-primary);
+            color: var(--bg-primary);
+            border-color: var(--text-primary);
+        }
+
+        .tv-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px 16px;
+        }
+
+        .tv-cards {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-width: 680px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .tv-card {
+            padding: 14px 16px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .tv-card:hover {
+            background: var(--bg-hover);
+            border-color: var(--text-muted);
+        }
+
+        .tv-card-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+
+        .tv-card-type {
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 99px;
+            background: var(--bg-tertiary);
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .tv-card-date {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-left: auto;
+        }
+
+        .tv-card-title {
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .tv-card-preview {
+            font-size: 13px;
+            color: var(--text-secondary);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .tv-input-bar {
+            padding: 8px 16px 12px;
+            border-top: 1px solid var(--border);
+            max-width: 680px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .tv-input-container {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 4px 8px;
+        }
+
+        .tv-input-container textarea {
+            flex: 1;
+            border: none;
+            background: transparent;
+            color: var(--text-primary);
+            font-size: 14px;
+            resize: none;
+            outline: none;
+            padding: 6px 4px;
+            height: 32px;
+            min-height: 32px;
+            max-height: 160px;
+            line-height: 20px;
+            box-sizing: border-box;
+        }
+
+        .tv-empty {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        /* === Sub-chat View (чат внутри подчата) === */
+        .subchat-view {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .sc-header {
+            padding: 10px 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .sc-back-btn {
+            width: 32px;
+            height: 32px;
+            background: transparent;
+            border: none;
+            border-radius: 8px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.15s ease;
+        }
+
+        .sc-back-btn:hover {
+            background: var(--bg-hover);
+        }
+
+        .sc-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .sc-type-badge {
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 99px;
+            background: var(--bg-tertiary);
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .sc-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px 20px 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            max-width: 680px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .sc-action-bar {
+            display: flex;
+            gap: 8px;
+            padding: 8px 16px;
+            max-width: 680px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .sc-action-btn {
+            padding: 10px 20px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 500;
+            border: 1px solid var(--accent);
+            background: transparent;
+            color: var(--accent);
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .sc-action-btn:hover {
+            background: var(--accent);
+            color: white;
+        }
+
+        .sc-action-btn.primary {
+            background: var(--accent);
+            color: white;
+        }
+
+        .sc-action-btn.primary:hover {
+            opacity: 0.9;
+        }
+
+        .sc-input-bar {
+            padding: 8px 16px 12px;
+            border-top: 1px solid var(--border);
+            max-width: 680px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .sc-input-container {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 4px 8px;
+        }
+
+        .sc-input-container textarea {
+            flex: 1;
+            border: none;
+            background: transparent;
+            color: var(--text-primary);
+            font-size: 14px;
+            resize: none;
+            outline: none;
+            padding: 6px 4px;
+            height: 32px;
+            min-height: 32px;
+            max-height: 160px;
+            line-height: 20px;
+            box-sizing: border-box;
+        }
+
+        /* === Admin Prompts View === */
+        .admin-view {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .admin-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            max-width: 680px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .admin-prompt-card {
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .admin-prompt-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .admin-prompt-key {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+        }
+
+        .admin-prompt-textarea {
+            width: 100%;
+            min-height: 120px;
+            padding: 12px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 13px;
+            font-family: monospace;
+            resize: vertical;
+            outline: none;
+            box-sizing: border-box;
+        }
+
+        .admin-prompt-textarea:focus {
+            border-color: var(--accent);
+        }
+
+        .admin-save-btn {
+            margin-top: 8px;
+            padding: 8px 16px;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .admin-save-btn:hover {
+            opacity: 0.9;
+        }
+
         /* === Mobile hamburger === */
         .mobile-hamburger {
             display: none;
@@ -3320,6 +3692,10 @@
                 <button class="ps-nav-item" onclick="switchTab('editor');closeAllViews()">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/></svg>
                     Шаблоны
+                </button>
+                <button class="ps-nav-item" id="psAdminBtn" style="display:none" onclick="openAdminPrompts()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                    Промпты
                 </button>
             </div>
             <div class="ps-section-title">Ваши чаты</div>
@@ -3816,6 +4192,76 @@
                 </div>
             </div>
         </div>
+        <!-- === TOPIC VIEW (overlay) === -->
+        <div class="view-overlay" id="view-topic">
+            <div class="topic-view">
+                <div class="tv-header">
+                    <button class="sidebar-toggle-btn" onclick="toggleSidebar()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+                    </button>
+                    <span class="tv-title" id="tvTitle">Топик</span>
+                    <button class="pv-back-btn" onclick="deleteTopic()" title="Удалить">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                    </button>
+                </div>
+                <div class="tv-tabs" id="tvTabs">
+                    <button class="tv-tab active" onclick="filterSubChats('all')">Все</button>
+                    <button class="tv-tab" onclick="filterSubChats('headlines')">Заголовки</button>
+                    <button class="tv-tab" onclick="filterSubChats('text')">Текст</button>
+                    <button class="tv-tab" onclick="filterSubChats('carousel')">Карусели</button>
+                </div>
+                <div class="tv-content">
+                    <div class="tv-cards" id="tvCards"></div>
+                </div>
+                <div class="tv-input-bar">
+                    <div class="tv-input-container">
+                        <textarea placeholder="Новый чат в топике" id="tvInput" oninput="autoResizeTextarea(this)" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();topicNewChat()}"></textarea>
+                        <button class="home-send-btn" onclick="topicNewChat()" style="width:32px;height:32px;">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- === SUB-CHAT VIEW (overlay) === -->
+        <div class="view-overlay" id="view-subchat">
+            <div class="subchat-view">
+                <div class="sc-header">
+                    <button class="sc-back-btn" onclick="backToTopic()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+                    </button>
+                    <span class="sc-title" id="scTitle">Чат</span>
+                    <span class="sc-type-badge" id="scTypeBadge">headlines</span>
+                </div>
+                <div class="sc-messages" id="scMessages">
+                    <div style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:14px;">Загрузка...</div>
+                </div>
+                <div class="sc-action-bar" id="scActionBar" style="display:none;"></div>
+                <div class="sc-input-bar">
+                    <div class="sc-input-container">
+                        <textarea placeholder="Сообщение" id="scInput" oninput="autoResizeTextarea(this)" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();scSendMessage()}"></textarea>
+                        <button class="home-send-btn" onclick="scSendMessage()" style="width:32px;height:32px;">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- === ADMIN VIEW (overlay) === -->
+        <div class="view-overlay" id="view-admin">
+            <div class="admin-view">
+                <div class="tv-header">
+                    <button class="sc-back-btn" onclick="goHome()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+                    </button>
+                    <span class="tv-title">Промпты AI</span>
+                </div>
+                <div class="admin-content" id="adminPromptsList"></div>
+            </div>
+        </div>
+
         </div><!-- /content-area -->
     </div>
 
@@ -3865,6 +4311,8 @@
 
         function goHome() {
             currentProjectId = null;
+            currentTopicId = null;
+            currentSubChatId = null;
             document.querySelectorAll('.ps-project-item').forEach(el => el.classList.remove('active'));
             showView('home');
             setTimeout(() => { const ta = document.getElementById('homeTextarea'); if (ta) ta.focus(); }, 100);
@@ -3899,16 +4347,10 @@
             el.style.height = Math.min(el.scrollHeight, 160) + 'px';
         }
 
-        // === Projects Management ===
+        // === Projects Management (legacy v2, sidebar now uses loadTopics) ===
         async function loadProjects() {
-            if (!currentUser) return;
-            try {
-                const resp = await fetch(`${API_URL}/api/projects?user_id=${currentUser.id}`);
-                if (resp.ok) {
-                    projectsCache = await resp.json();
-                    renderProjectsList();
-                }
-            } catch(e) { console.log('Failed to load projects', e); }
+            // Sidebar is now managed by loadTopics()/renderTopicsList()
+            // This is kept for backward compat with old project views
         }
 
         function renderProjectsList(filter = '') {
@@ -4032,25 +4474,8 @@
         }
 
         async function homeSubmit() {
-            const textarea = document.getElementById('homeTextarea');
-            const text = textarea.value.trim();
-            if (!text || !currentUser) return;
-            try {
-                const resp = await fetch(`${API_URL}/api/projects`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({user_id: currentUser.id, title: text.substring(0, 50), idea_text: text})
-                });
-                if (resp.ok) {
-                    const project = await resp.json();
-                    textarea.value = '';
-                    autoResizeTextarea(textarea);
-                    await loadProjects();
-                    await openProject(project.id);
-                    document.getElementById('pvInput').value = text;
-                    pvSendMessage();
-                }
-            } catch(e) { showToast('Ошибка создания проекта', 'error'); }
+            // Use v3 topics API
+            return homeSubmitV3();
         }
 
         function homeSuggestion(text) {
@@ -4133,6 +4558,351 @@
 
         function togglePvVoice() {
             if (typeof toggleVoiceInput === 'function') toggleVoiceInput('pvInput', 'pvMicBtn');
+        }
+
+        // === v3: Topics & Sub-chats ===
+        let currentTopicId = null;
+        let currentSubChatId = null;
+        let topicSubChats = [];
+        let currentSubChatFilter = 'all';
+
+        // --- Modify homeSubmit to use v3 topics API ---
+        async function homeSubmitV3() {
+            const textarea = document.getElementById('homeTextarea');
+            const text = textarea.value.trim();
+            if (!text || !currentUser) return;
+            textarea.value = '';
+            autoResizeTextarea(textarea);
+            try {
+                const resp = await fetch(`${API_URL}/api/topics`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({user_id: currentUser.id, message: text})
+                });
+                if (resp.ok) {
+                    const data = await resp.json();
+                    await loadTopics();
+                    // Open the sub-chat directly (headlines chat)
+                    currentTopicId = data.topic.id;
+                    openSubChat(data.sub_chat.id);
+                }
+            } catch(e) { showToast('Ошибка создания топика', 'error'); }
+        }
+
+        // --- Topics loading (replaces loadProjects for sidebar) ---
+        async function loadTopics() {
+            if (!currentUser) return;
+            try {
+                const resp = await fetch(`${API_URL}/api/topics?user_id=${currentUser.id}`);
+                if (resp.ok) {
+                    projectsCache = await resp.json();
+                    renderTopicsList();
+                }
+            } catch(e) { console.log('Failed to load topics', e); }
+        }
+
+        function renderTopicsList(filter = '') {
+            const container = document.getElementById('psProjectsList');
+            if (!container) return;
+            const filtered = filter ? projectsCache.filter(p => (p.title||'').toLowerCase().includes(filter.toLowerCase())) : projectsCache;
+            if (filtered.length === 0) {
+                container.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px;">' + (filter ? 'Ничего не найдено' : 'Нет чатов') + '</div>';
+                return;
+            }
+            container.innerHTML = filtered.map(p => {
+                const date = new Date(p.updated_at || p.created_at);
+                const timeStr = date.toLocaleDateString('ru-RU', {day:'numeric', month:'short'});
+                const isActive = currentTopicId === p.id ? ' active' : '';
+                return `<div class="ps-project-item${isActive}" onclick="openTopic('${p.id}')">
+                    <div class="ps-project-title">${escapeHtml(p.title || 'Без названия')}</div>
+                    <div class="ps-project-meta">${p.sub_chat_count ? p.sub_chat_count + ' чатов' : ''} · ${timeStr}</div>
+                </div>`;
+            }).join('');
+        }
+
+        // --- Open Topic (view-topic) ---
+        async function openTopic(topicId) {
+            currentTopicId = topicId;
+            currentSubChatId = null;
+            renderTopicsList();
+            showView('topic');
+            try {
+                const resp = await fetch(`${API_URL}/api/topics/${topicId}`);
+                if (resp.ok) {
+                    const data = await resp.json();
+                    document.getElementById('tvTitle').textContent = data.topic.title || 'Топик';
+                    topicSubChats = data.sub_chats || [];
+                    renderSubChatCards();
+                }
+            } catch(e) { console.log('Failed to load topic', e); }
+        }
+
+        function renderSubChatCards() {
+            const container = document.getElementById('tvCards');
+            if (!container) return;
+            const typeLabels = {headlines: 'Заголовки', text: 'Текст', carousel: 'Карусель'};
+            const filtered = currentSubChatFilter === 'all' ? topicSubChats : topicSubChats.filter(sc => sc.chat_type === currentSubChatFilter);
+            if (filtered.length === 0) {
+                container.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-muted);font-size:14px;">Нет подчатов</div>';
+                return;
+            }
+            container.innerHTML = filtered.map(sc => {
+                const date = new Date(sc.updated_at || sc.created_at);
+                const timeStr = date.toLocaleDateString('ru-RU', {day:'numeric', month:'short'});
+                return `<div class="tv-card" onclick="openSubChat('${sc.id}')">
+                    <div class="tv-card-header">
+                        <span class="tv-card-type">${typeLabels[sc.chat_type] || sc.chat_type}</span>
+                        <span class="tv-card-date">${timeStr}</span>
+                    </div>
+                    <div class="tv-card-title">${escapeHtml(sc.title || typeLabels[sc.chat_type] || 'Чат')}</div>
+                </div>`;
+            }).join('');
+        }
+
+        function filterSubChats(type) {
+            currentSubChatFilter = type;
+            document.querySelectorAll('.tv-tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            renderSubChatCards();
+        }
+
+        // --- Open Sub-chat (view-subchat) ---
+        async function openSubChat(subChatId) {
+            currentSubChatId = subChatId;
+            showView('subchat');
+            const msgContainer = document.getElementById('scMessages');
+            msgContainer.innerHTML = '<div style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--text-muted);">Загрузка...</div>';
+            try {
+                const resp = await fetch(`${API_URL}/api/sub-chats/${subChatId}`);
+                if (resp.ok) {
+                    const data = await resp.json();
+                    const sc = data.sub_chat;
+                    currentTopicId = sc.topic_id;
+                    const typeLabels = {headlines: 'Заголовки', text: 'Текст', carousel: 'Карусель'};
+                    document.getElementById('scTitle').textContent = sc.title || typeLabels[sc.chat_type] || 'Чат';
+                    document.getElementById('scTypeBadge').textContent = typeLabels[sc.chat_type] || sc.chat_type;
+                    renderSubChatMessages(data.messages || [], sc.chat_type);
+                    updateActionBar(sc);
+                }
+            } catch(e) { console.log('Failed to load sub-chat', e); }
+        }
+
+        function renderSubChatMessages(messages, chatType) {
+            const container = document.getElementById('scMessages');
+            if (!container) return;
+            if (messages.length === 0) {
+                container.innerHTML = '<div style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:14px;">Нет сообщений</div>';
+                return;
+            }
+            container.innerHTML = messages.map(msg => {
+                const time = new Date(msg.created_at).toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'});
+                let content = escapeHtml(msg.content);
+                if (msg.message_type === 'headlines' && msg.message_data?.headlines) {
+                    content += '<div class="pv-headlines-grid">';
+                    msg.message_data.headlines.forEach((h, i) => {
+                        content += `<button class="pv-headline-btn" onclick="scSelectHeadline(this, \`${h.replace(/`/g, '')}\`)">${i+1}. ${escapeHtml(h)}</button>`;
+                    });
+                    content += '</div>';
+                }
+                return `<div class="pv-msg ${msg.role}"><div>${content.replace(/\n/g, '<br>')}</div><div class="msg-time">${time}</div></div>`;
+            }).join('');
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function updateActionBar(subChat) {
+            const bar = document.getElementById('scActionBar');
+            if (!bar) return;
+            bar.innerHTML = '';
+            bar.style.display = 'none';
+            if (subChat.chat_type === 'headlines' && subChat.selected_headline) {
+                bar.style.display = 'flex';
+                bar.innerHTML = `<button class="sc-action-btn primary" onclick="createTextSubChat('${escapeHtml(subChat.selected_headline)}')">Написать текст</button>`;
+            } else if (subChat.chat_type === 'text' && subChat.slides_data) {
+                bar.style.display = 'flex';
+                bar.innerHTML = `<button class="sc-action-btn primary" onclick="createCarouselSubChat()">Создать карусель</button>`;
+            }
+        }
+
+        async function scSelectHeadline(btn, headline) {
+            document.querySelectorAll('.pv-headline-btn').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            // Show action bar for creating text
+            const bar = document.getElementById('scActionBar');
+            bar.style.display = 'flex';
+            bar.innerHTML = `<button class="sc-action-btn primary" onclick="createTextSubChat('${headline.replace(/'/g, "\\'")}')">Написать текст для: "${escapeHtml(headline.substring(0, 40))}"</button>`;
+            // Update sub-chat record
+            if (currentSubChatId) {
+                try {
+                    // We don't have a dedicated endpoint for this, so use the headline in the action bar
+                } catch(e) {}
+            }
+        }
+
+        async function createTextSubChat(headline) {
+            if (!currentTopicId || !currentUser) return;
+            showToast('Генерация текста...', 'info');
+            try {
+                const resp = await fetch(`${API_URL}/api/topics/${currentTopicId}/sub-chats`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({user_id: currentUser.id, chat_type: 'text', selected_headline: headline, parent_subchat_id: currentSubChatId})
+                });
+                if (resp.ok) {
+                    const data = await resp.json();
+                    openSubChat(data.sub_chat.id);
+                }
+            } catch(e) { showToast('Ошибка', 'error'); }
+        }
+
+        async function createCarouselSubChat() {
+            if (!currentTopicId || !currentUser) return;
+            showToast('Создание карусели...', 'info');
+            try {
+                const resp = await fetch(`${API_URL}/api/topics/${currentTopicId}/sub-chats`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({user_id: currentUser.id, chat_type: 'carousel', parent_subchat_id: currentSubChatId})
+                });
+                if (resp.ok) {
+                    const data = await resp.json();
+                    openSubChat(data.sub_chat.id);
+                }
+            } catch(e) { showToast('Ошибка', 'error'); }
+        }
+
+        async function scSendMessage() {
+            const input = document.getElementById('scInput');
+            const text = input.value.trim();
+            if (!text || !currentSubChatId || !currentUser) return;
+            input.value = '';
+            autoResizeTextarea(input);
+
+            const container = document.getElementById('scMessages');
+            const welcomeMsg = container.querySelector('div[style*="flex:1"]');
+            if (welcomeMsg) welcomeMsg.remove();
+
+            const time = new Date().toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'});
+            container.innerHTML += `<div class="pv-msg user"><div>${escapeHtml(text).replace(/\n/g, '<br>')}</div><div class="msg-time">${time}</div></div>`;
+            container.scrollTop = container.scrollHeight;
+            container.innerHTML += `<div class="pv-msg assistant" id="scTyping"><div class="thinking-dot"></div></div>`;
+            container.scrollTop = container.scrollHeight;
+
+            try {
+                const resp = await fetch(`${API_URL}/api/ai/chat`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({sub_chat_id: currentSubChatId, user_id: currentUser.id, message: text})
+                });
+                const typing = document.getElementById('scTyping');
+                if (typing) typing.remove();
+                if (resp.ok) {
+                    const data = await resp.json();
+                    const aiTime = new Date().toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'});
+                    let aiContent = escapeHtml(data.content).replace(/\n/g, '<br>');
+                    if (data.message_type === 'headlines' && data.message_data?.headlines) {
+                        aiContent += '<div class="pv-headlines-grid">';
+                        data.message_data.headlines.forEach((h, i) => {
+                            aiContent += `<button class="pv-headline-btn" onclick="scSelectHeadline(this, \`${h.replace(/`/g, '')}\`)">${i+1}. ${escapeHtml(h)}</button>`;
+                        });
+                        aiContent += '</div>';
+                    }
+                    container.innerHTML += `<div class="pv-msg assistant"><div>${aiContent}</div><div class="msg-time">${aiTime}</div></div>`;
+                } else {
+                    container.innerHTML += `<div class="pv-msg assistant"><div style="color:#ef4444;">Ошибка AI</div></div>`;
+                }
+            } catch(e) {
+                const typing = document.getElementById('scTyping');
+                if (typing) typing.remove();
+                container.innerHTML += `<div class="pv-msg assistant"><div style="color:#ef4444;">Ошибка соединения</div></div>`;
+            }
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function backToTopic() {
+            if (currentTopicId) {
+                openTopic(currentTopicId);
+            } else {
+                goHome();
+            }
+        }
+
+        async function topicNewChat() {
+            const input = document.getElementById('tvInput');
+            const text = input.value.trim();
+            if (!text || !currentTopicId || !currentUser) return;
+            input.value = '';
+            autoResizeTextarea(input);
+            try {
+                const resp = await fetch(`${API_URL}/api/topics/${currentTopicId}/sub-chats`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({user_id: currentUser.id, chat_type: 'headlines'})
+                });
+                if (resp.ok) {
+                    const data = await resp.json();
+                    openSubChat(data.sub_chat.id);
+                    // Send the message in the new sub-chat
+                    setTimeout(() => {
+                        document.getElementById('scInput').value = text;
+                        scSendMessage();
+                    }, 300);
+                }
+            } catch(e) { showToast('Ошибка', 'error'); }
+        }
+
+        async function deleteTopic() {
+            if (!currentTopicId) return;
+            if (!confirm('Удалить этот топик и все подчаты?')) return;
+            try {
+                await fetch(`${API_URL}/api/topics/${currentTopicId}`, {method: 'DELETE'});
+                currentTopicId = null;
+                await loadTopics();
+                goHome();
+            } catch(e) { showToast('Ошибка удаления', 'error'); }
+        }
+
+        // --- Admin Prompts ---
+        async function openAdminPrompts() {
+            showView('admin');
+            const container = document.getElementById('adminPromptsList');
+            container.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);">Загрузка...</div>';
+            try {
+                const resp = await fetch(`${API_URL}/api/admin/prompts?user_id=${currentUser.id}`);
+                if (resp.ok) {
+                    const prompts = await resp.json();
+                    if (prompts.length === 0) {
+                        container.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);">Нет промптов</div>';
+                        return;
+                    }
+                    container.innerHTML = prompts.map(p => `
+                        <div class="admin-prompt-card" data-key="${p.prompt_key}">
+                            <div class="admin-prompt-title">${escapeHtml(p.title)}</div>
+                            <div class="admin-prompt-key">${p.prompt_key} ${p.description ? '— ' + escapeHtml(p.description) : ''}</div>
+                            <textarea class="admin-prompt-textarea" id="prompt-${p.prompt_key}">${escapeHtml(p.content)}</textarea>
+                            <button class="admin-save-btn" onclick="savePrompt('${p.prompt_key}')">Сохранить</button>
+                        </div>
+                    `).join('');
+                } else {
+                    container.innerHTML = '<div style="padding:20px;text-align:center;color:#ef4444;">Нет доступа</div>';
+                }
+            } catch(e) { container.innerHTML = '<div style="padding:20px;text-align:center;color:#ef4444;">Ошибка загрузки</div>'; }
+        }
+
+        async function savePrompt(promptKey) {
+            const textarea = document.getElementById(`prompt-${promptKey}`);
+            if (!textarea || !currentUser) return;
+            try {
+                const resp = await fetch(`${API_URL}/api/admin/prompts/${promptKey}`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({user_id: currentUser.id, content: textarea.value})
+                });
+                if (resp.ok) {
+                    showToast('Промпт сохранён', 'success');
+                } else {
+                    showToast('Ошибка сохранения', 'error');
+                }
+            } catch(e) { showToast('Ошибка', 'error'); }
         }
 
         // Tab Navigation
@@ -6205,8 +6975,13 @@
                 psAvatar.style.display = 'none';
             }
 
-            // Load projects
+            // Show admin button if admin
+            const adminBtn = document.getElementById('psAdminBtn');
+            if (adminBtn) adminBtn.style.display = currentUser.is_admin ? '' : 'none';
+
+            // Load projects & topics
             loadProjects();
+            loadTopics();
         }
 
         function logout() {
