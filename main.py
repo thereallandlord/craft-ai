@@ -1636,6 +1636,10 @@ async def create_sub_chat(topic_id: str, request: Request):
                 "message_type": "slides",
             }).execute()
 
+            # Save slides_data so "Create carousel" button appears
+            sb.table("sub_chats").update({"slides_data": {"text": ai_text}}).eq("id", sub_chat_id).execute()
+            sub_chat_data["slides_data"] = {"text": ai_text}
+
             ai_response = {"content": ai_text, "message_type": "slides", "message_data": None}
         except Exception as e:
             ai_response = {"content": str(e), "message_type": "text", "message_data": None}

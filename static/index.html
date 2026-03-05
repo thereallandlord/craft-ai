@@ -2783,13 +2783,17 @@
             background: transparent;
             border: none;
             border-radius: 6px;
-            color: #ef4444;
+            color: var(--text-primary);
             font-size: 13px;
             cursor: pointer;
         }
 
         .ps-context-menu button:hover {
             background: var(--bg-hover);
+        }
+
+        .ps-context-menu button.danger {
+            color: #ef4444;
         }
 
         .ps-project-title {
@@ -4466,7 +4470,7 @@
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
                 Переименовать
             </button>
-            <button onclick="closeTopicMenu();deleteProjectById('${projectId}')">
+            <button class="danger" onclick="closeTopicMenu();deleteProjectById('${projectId}')">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
                 Удалить
             </button>`;
@@ -4760,7 +4764,7 @@
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
                 Переименовать
             </button>
-            <button onclick="closeTopicMenu();deleteTopicById('${topicId}')">
+            <button class="danger" onclick="closeTopicMenu();deleteTopicById('${topicId}')">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
                 Удалить
             </button>`;
@@ -4879,7 +4883,7 @@
                         scInitCarouselEditor(sc);
                     } else {
                         renderSubChatMessages(data.messages || [], sc.chat_type);
-                        updateActionBar(sc);
+                        updateActionBar(sc, data.messages || []);
                     }
                 }
             } catch(e) { console.log('Failed to load sub-chat', e); }
@@ -4907,7 +4911,7 @@
             container.scrollTop = container.scrollHeight;
         }
 
-        function updateActionBar(subChat) {
+        function updateActionBar(subChat, messages) {
             const bar = document.getElementById('scActionBar');
             if (!bar) return;
             bar.innerHTML = '';
@@ -4915,9 +4919,13 @@
             if (subChat.chat_type === 'headlines' && subChat.selected_headline) {
                 bar.style.display = 'flex';
                 bar.innerHTML = `<button class="sc-action-btn primary" onclick="createTextSubChat('${escapeHtml(subChat.selected_headline)}')">Написать текст</button>`;
-            } else if (subChat.chat_type === 'text' && subChat.slides_data) {
-                bar.style.display = 'flex';
-                bar.innerHTML = `<button class="sc-action-btn primary" onclick="createCarouselSubChat()">Создать карусель</button>`;
+            } else if (subChat.chat_type === 'text') {
+                // Show "Create carousel" if slides_data exists OR if there's a slides message
+                const hasSlides = subChat.slides_data || (messages && messages.some(m => m.message_type === 'slides'));
+                if (hasSlides) {
+                    bar.style.display = 'flex';
+                    bar.innerHTML = `<button class="sc-action-btn primary" onclick="createCarouselSubChat()">Создать карусель</button>`;
+                }
             }
         }
 
@@ -5175,7 +5183,7 @@
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
                 Переименовать
             </button>
-            <button onclick="closeTopicMenu();deleteCurrentSubChat()">
+            <button class="danger" onclick="closeTopicMenu();deleteCurrentSubChat()">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
                 Удалить подчат
             </button>`;
