@@ -2865,7 +2865,7 @@
             flex: 1;
             min-height: 24px;
             max-height: 160px;
-            padding: 4px 8px;
+            padding: 8px 8px;
             background: transparent;
             border: none;
             color: var(--text-primary);
@@ -3161,14 +3161,14 @@
         /* === View system — overlay on top of tabs === */
         .view-overlay {
             display: none;
-            position: absolute;
-            inset: 0;
-            z-index: 50;
+            flex: 1;
+            min-width: 0;
             background: var(--bg-primary);
         }
 
         .view-overlay.active {
             display: flex;
+            flex-direction: column;
         }
 
         /* === Mobile hamburger === */
@@ -3716,7 +3716,7 @@
         </div>
 
         <!-- === HOME VIEW (overlay) === -->
-        <div class="view-overlay active" id="view-home" style="position:absolute;inset:0;z-index:50;background:var(--bg-primary);display:flex;flex-direction:column;">
+        <div class="view-overlay active" id="view-home">
             <div class="home-view">
                 <button class="sidebar-toggle-btn" onclick="toggleSidebar()" style="position:absolute;top:12px;left:12px;z-index:3;" title="Sidebar">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
@@ -3738,7 +3738,7 @@
         </div>
 
         <!-- === PROJECT VIEW (overlay) === -->
-        <div class="view-overlay" id="view-project" style="position:absolute;inset:0;z-index:50;background:var(--bg-primary);display:none;flex-direction:column;">
+        <div class="view-overlay" id="view-project">
             <div class="project-view">
                 <div class="pv-header">
                     <button class="sidebar-toggle-btn" onclick="toggleSidebar()">
@@ -3829,12 +3829,10 @@
 
         function showView(viewId) {
             document.querySelectorAll('.view-overlay').forEach(el => {
-                el.style.display = 'none';
                 el.classList.remove('active');
             });
             const el = document.getElementById(`view-${viewId}`);
             if (el) {
-                el.style.display = 'flex';
                 el.classList.add('active');
             }
             closeMobileSidebar();
@@ -3842,7 +3840,6 @@
 
         function closeAllViews() {
             document.querySelectorAll('.view-overlay').forEach(el => {
-                el.style.display = 'none';
                 el.classList.remove('active');
             });
             closeMobileSidebar();
@@ -7615,7 +7612,6 @@
             document.getElementById('templateId').value = state.templateId;  // NEW
 
             render();
-            showToast('Загружено', 'success');
         }
 
         async function exportTemplate(identifier, event) {
