@@ -3577,8 +3577,20 @@
         }
 
         .sc-input-bar {
-            padding: 8px calc(max(20px, (100% - 680px) / 2)) 12px;
-            background: linear-gradient(transparent, var(--bg-primary) 50%);
+            padding: 8px calc(max(20px, (100% - 680px) / 2)) 8px;
+            background: var(--bg-primary);
+            position: relative;
+        }
+
+        .sc-input-bar::before {
+            content: '';
+            position: absolute;
+            bottom: 100%;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: linear-gradient(transparent, var(--bg-primary));
+            pointer-events: none;
         }
 
         .sc-input-container {
@@ -3589,6 +3601,96 @@
             border: 1px solid var(--border);
             border-radius: 24px;
             padding: 4px 8px;
+        }
+
+        .sc-voice-btn {
+            width: 32px;
+            height: 32px;
+            background: transparent;
+            border: none;
+            border-radius: 50%;
+            color: var(--text-muted);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            position: relative;
+        }
+
+        .sc-voice-btn:hover {
+            color: var(--text-primary);
+        }
+
+        .sc-voice-btn .ma-tooltip {
+            position: absolute;
+            bottom: calc(100% + 6px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: #2f2f2f;
+            color: #fff;
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            white-space: nowrap;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.15s ease;
+        }
+
+        .sc-voice-btn .ma-tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 4px solid transparent;
+            border-top-color: #2f2f2f;
+        }
+
+        .sc-voice-btn:hover .ma-tooltip {
+            opacity: 1;
+        }
+
+        /* Recording UI */
+        .sc-recording-ui {
+            display: flex;
+            align-items: center;
+            flex: 1;
+            gap: 3px;
+            padding: 0 8px;
+        }
+
+        .sc-waveform-dot {
+            width: 4px;
+            min-width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: var(--text-muted);
+            animation: scWaveform 1.4s ease-in-out infinite;
+        }
+
+        @keyframes scWaveform {
+            0%, 100% { transform: scaleY(1); opacity: 0.4; }
+            50% { transform: scaleY(2.5); opacity: 1; }
+        }
+
+        .sc-rec-btn {
+            width: 32px;
+            height: 32px;
+            background: transparent;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            color: var(--text-primary);
+        }
+
+        .sc-rec-btn:hover {
+            background: var(--bg-hover);
         }
 
         .sc-input-container textarea {
@@ -4374,9 +4476,20 @@
                 </div>
                 <div class="sc-action-bar" id="scActionBar" style="display:none;"></div>
                 <div class="sc-input-bar" id="scInputBar">
-                    <div class="sc-input-container">
+                    <div class="sc-input-container" id="scInputContainer">
                         <textarea placeholder="Сообщение" id="scInput" oninput="autoResizeTextarea(this)" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();scSendMessage()}"></textarea>
-                        <button class="home-send-btn" onclick="scSendMessage()" style="width:32px;height:32px;">
+                        <div id="scRecordingUI" class="sc-recording-ui" style="display:none;"></div>
+                        <button class="sc-voice-btn" id="scMicBtn" onclick="scToggleVoice()">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+                            <span class="ma-tooltip">Диктовать</span>
+                        </button>
+                        <button class="sc-rec-btn" id="scRecCancel" style="display:none;" onclick="scCancelRecording()">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                        </button>
+                        <button class="sc-rec-btn" id="scRecConfirm" style="display:none;" onclick="scConfirmRecording()">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>
+                        </button>
+                        <button class="home-send-btn" id="scSendBtn" onclick="scSendMessage()" style="width:32px;height:32px;">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg>
                         </button>
                     </div>
@@ -5659,6 +5772,109 @@
             container.innerHTML = html;
             container.style.position = 'relative';
             container.style.overflow = 'hidden';
+        }
+
+        // === SUB-CHAT VOICE (ChatGPT style) ===
+        let scVoiceRecorder = null;
+        let scVoiceChunks = [];
+
+        function scToggleVoice() {
+            const input = document.getElementById('scInput');
+            const micBtn = document.getElementById('scMicBtn');
+            const sendBtn = document.getElementById('scSendBtn');
+            const recUI = document.getElementById('scRecordingUI');
+            const cancelBtn = document.getElementById('scRecCancel');
+            const confirmBtn = document.getElementById('scRecConfirm');
+
+            // Generate waveform dots
+            let dots = '';
+            for (let i = 0; i < 60; i++) {
+                dots += `<div class="sc-waveform-dot" style="animation-delay:${(i * 0.05)}s"></div>`;
+            }
+            recUI.innerHTML = dots;
+
+            navigator.mediaDevices.getUserMedia({audio: true}).then(stream => {
+                scVoiceRecorder = new MediaRecorder(stream);
+                scVoiceChunks = [];
+                scVoiceRecorder.ondataavailable = e => {
+                    if (e.data.size > 0) scVoiceChunks.push(e.data);
+                };
+                scVoiceRecorder.stream = stream;
+                scVoiceRecorder.start();
+
+                // Show recording UI
+                input.style.display = 'none';
+                micBtn.style.display = 'none';
+                sendBtn.style.display = 'none';
+                recUI.style.display = 'flex';
+                cancelBtn.style.display = 'flex';
+                confirmBtn.style.display = 'flex';
+            }).catch(() => {
+                // Fallback if mic not available — don't showToast, just reset
+                input.placeholder = 'Нет доступа к микрофону';
+                setTimeout(() => { input.placeholder = 'Сообщение'; }, 2000);
+            });
+        }
+
+        function scResetRecordingUI() {
+            const input = document.getElementById('scInput');
+            const micBtn = document.getElementById('scMicBtn');
+            const sendBtn = document.getElementById('scSendBtn');
+            const recUI = document.getElementById('scRecordingUI');
+            const cancelBtn = document.getElementById('scRecCancel');
+            const confirmBtn = document.getElementById('scRecConfirm');
+
+            input.style.display = '';
+            micBtn.style.display = '';
+            sendBtn.style.display = '';
+            recUI.style.display = 'none';
+            cancelBtn.style.display = 'none';
+            confirmBtn.style.display = 'none';
+            input.disabled = false;
+            input.placeholder = 'Сообщение';
+        }
+
+        function scCancelRecording() {
+            if (scVoiceRecorder && scVoiceRecorder.state === 'recording') {
+                scVoiceRecorder.stream.getTracks().forEach(t => t.stop());
+                scVoiceRecorder.stop();
+            }
+            scVoiceChunks = [];
+            scResetRecordingUI();
+        }
+
+        function scConfirmRecording() {
+            if (!scVoiceRecorder || scVoiceRecorder.state !== 'recording') return;
+            const input = document.getElementById('scInput');
+
+            scVoiceRecorder.onstop = async () => {
+                scVoiceRecorder.stream.getTracks().forEach(t => t.stop());
+                scResetRecordingUI();
+                input.placeholder = 'Расшифровка аудио...';
+                input.disabled = true;
+
+                const blob = new Blob(scVoiceChunks, {type: 'audio/webm'});
+                const formData = new FormData();
+                formData.append('file', blob, 'recording.webm');
+
+                try {
+                    const r = await fetch(`${API_URL}/api/transcribe`, {method: 'POST', body: formData});
+                    if (r.ok) {
+                        const data = await r.json();
+                        if (data.text) {
+                            const current = input.value.trim();
+                            input.value = current ? current + ' ' + data.text : data.text;
+                            autoResizeTextarea(input);
+                        }
+                    }
+                } catch(e) {}
+
+                input.disabled = false;
+                input.placeholder = 'Сообщение';
+                input.focus();
+            };
+
+            scVoiceRecorder.stop();
         }
 
         // === VOICE INPUT (Whisper) ===
