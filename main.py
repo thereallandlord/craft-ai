@@ -696,6 +696,11 @@ renderer = SlideRenderer()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
+@app.get("/favicon.ico")
+async def favicon():
+    return FileResponse("static/favicon-32.png", media_type="image/png")
+
+
 @app.get("/")
 async def index():
     return FileResponse("static/index.html")
