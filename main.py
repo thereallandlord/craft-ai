@@ -26,6 +26,7 @@ import io
 import re
 import uuid
 import hashlib
+import asyncio
 import hmac
 import time
 import numpy as np
@@ -1196,7 +1197,7 @@ def get_system_prompt(status: str, slides_count: int = 7, custom_prompts: dict =
     return cp.get('draft') or SYSTEM_PROMPT_DRAFT
 
 
-def get_user_context(user_id: int) -> str:
+def get_user_context(user_id: int, query: str = "") -> str:
     """Get user profile and memory for personalization."""
     if not supabase:
         return ""
@@ -1207,8 +1208,154 @@ def get_user_context(user_id: int) -> str:
             context_parts.append(f"Профиль пользователя: {user.data['profile_summary']}")
     except Exception:
         pass
-    # TODO: Add vector search for user_memory (Phase 4 - embeddings)
+    # Vector search for relevant memories
+    try:
+        memories = get_relevant_memories(user_id, query)
+        if memories:
+            context_parts.append("Факты о пользователе:\n" + "\n".join(f"- {m}" for m in memories))
+    except Exception:
+        pass
     return "\n".join(context_parts)
+
+
+def _create_embedding(text: str) -> list:
+    """Create embedding via OpenAI text-embedding-3-small."""
+    if not OPENAI_API_KEY:
+        return []
+    try:
+        resp = requests.post(
+            "https://api.openai.com/v1/embeddings",
+            headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
+            json={"model": "text-embedding-3-small", "input": text},
+            timeout=30
+        )
+        if resp.status_code == 200:
+            return resp.json()["data"][0]["embedding"]
+    except Exception:
+        pass
+    return []
+
+
+def get_relevant_memories(user_id: int, query: str, limit: int = 5) -> list:
+    """Vector search for relevant user memories from Supabase."""
+    if not supabase:
+        return []
+    if query:
+        embedding = _create_embedding(query)
+        if embedding:
+            try:
+                result = supabase.rpc("match_memories", {
+                    "query_embedding": embedding,
+                    "match_user_id": str(user_id),
+                    "match_limit": limit,
+                    "match_threshold": 0.6
+                }).execute()
+                return [r["content"] for r in (result.data or [])]
+            except Exception:
+                pass
+    # Fallback: get recent memories without vector search
+    try:
+        result = supabase.table("user_memory").select("content").eq("user_id", str(user_id)).order("created_at", desc=True).limit(limit).execute()
+        return [r["content"] for r in (result.data or [])]
+    except Exception:
+        return []
+
+
+async def _extract_and_save_memories(user_id: int, messages: list):
+    """Async task: extract important facts from conversation and save to memory."""
+    if not OPENROUTER_API_KEY or not supabase:
+        return
+    try:
+        # Load memory_extract prompt from DB
+        prompt_content = get_system_prompt_v3("memory_extract") if "memory_extract" in _prompt_cache else None
+        if not prompt_content:
+            prompt_content = (
+                'Проанализируй последние сообщения диалога. Если есть информация о стиле, '
+                'предпочтениях, бизнесе, нише, аудитории пользователя — верни JSON:\n'
+                '{"memories": ["факт1", "факт2"]}\n'
+                'Если ничего важного — верни:\n{"memories": []}'
+            )
+
+        # Take last 6 messages for analysis
+        recent = messages[-6:] if len(messages) > 6 else messages
+        conversation = "\n".join(f"{m['role']}: {m['content']}" for m in recent if m.get('content'))
+
+        ai_messages = [
+            {"role": "system", "content": prompt_content},
+            {"role": "user", "content": conversation}
+        ]
+
+        ai_text = _call_openrouter(ai_messages, "openai/gpt-4o-mini")
+
+        # Parse JSON response
+        import json as _json
+        try:
+            # Try to extract JSON from response
+            start = ai_text.find('{')
+            end = ai_text.rfind('}') + 1
+            if start >= 0 and end > start:
+                data = _json.loads(ai_text[start:end])
+                memories = data.get("memories", [])
+            else:
+                memories = []
+        except Exception:
+            memories = []
+
+        if not memories:
+            return
+
+        # Save each memory with embedding
+        for mem in memories:
+            if not mem or len(mem.strip()) < 5:
+                continue
+            embedding = _create_embedding(mem)
+            memory_data = {
+                "user_id": str(user_id),
+                "content": mem.strip(),
+                "metadata": {"source": "auto_extract"},
+            }
+            if embedding:
+                memory_data["embedding"] = embedding
+            supabase.table("user_memory").insert(memory_data).execute()
+
+        # Update memory_count and maybe auto-summarize
+        try:
+            user = supabase.table("users").select("memory_count").eq("user_id", str(user_id)).single().execute()
+            new_count = (user.data.get("memory_count") or 0) + len(memories) if user.data else len(memories)
+            supabase.table("users").update({"memory_count": new_count}).eq("user_id", str(user_id)).execute()
+
+            # Auto-summarize every 5 memories
+            if new_count > 0 and new_count % 5 == 0:
+                await _auto_summarize_profile(user_id)
+        except Exception:
+            pass
+
+    except Exception as e:
+        print(f"Memory extraction error: {e}")
+
+
+async def _auto_summarize_profile(user_id: int):
+    """Summarize all memories into a profile summary."""
+    if not supabase or not OPENROUTER_API_KEY:
+        return
+    try:
+        result = supabase.table("user_memory").select("content").eq("user_id", str(user_id)).order("created_at", desc=True).limit(30).execute()
+        if not result.data:
+            return
+        memories_text = "\n".join(f"- {r['content']}" for r in result.data)
+
+        prompt = get_system_prompt_v3("profile_summarize", variables={"memories": memories_text})
+        if not prompt or prompt == SYSTEM_PROMPT_DRAFT:
+            prompt = f"На основе следующих фактов о пользователе создай краткий профиль (3-5 предложений): его ниша, стиль контента, целевая аудитория, предпочтения.\n\nФакты:\n{memories_text}"
+
+        summary = _call_openrouter([
+            {"role": "system", "content": prompt},
+            {"role": "user", "content": "Создай профиль пользователя."}
+        ], "openai/gpt-4o-mini")
+
+        supabase.table("users").update({"profile_summary": summary}).eq("user_id", str(user_id)).execute()
+    except Exception as e:
+        print(f"Profile summarize error: {e}")
 
 
 # === v3: Prompt loading from DB with cache ===
@@ -1481,6 +1628,14 @@ async def create_sub_chat(topic_id: str, request: Request):
         except Exception as e:
             ai_response = {"content": str(e), "message_type": "text", "message_data": None}
 
+    # For carousel sub-chat: pull slides text from parent text sub-chat
+    if chat_type == 'carousel' and parent_subchat_id:
+        parent_msgs = sb.table("project_messages").select("content").eq("sub_chat_id", parent_subchat_id).eq("message_type", "slides").order("created_at", desc=True).limit(1).execute()
+        if parent_msgs.data:
+            slides_text = parent_msgs.data[0]["content"]
+            sb.table("sub_chats").update({"slides_data": {"text": slides_text}}).eq("id", sub_chat_id).execute()
+            sub_chat_data["slides_data"] = {"text": slides_text}
+
     # Update topic's active sub-chat
     sb.table("projects").update({"active_subchat_id": sub_chat_id}).eq("id", topic_id).execute()
 
@@ -1496,6 +1651,14 @@ async def get_sub_chat(sub_chat_id: str):
         raise HTTPException(status_code=404, detail="Sub-chat not found")
     messages = sb.table("project_messages").select("*").eq("sub_chat_id", sub_chat_id).order("created_at").execute()
     return {"sub_chat": sub_chat.data, "messages": messages.data or []}
+
+
+@app.delete("/api/sub-chats/{sub_chat_id}")
+async def delete_sub_chat(sub_chat_id: str):
+    """Delete a sub-chat (cascades messages)."""
+    sb = require_supabase()
+    sb.table("sub_chats").delete().eq("id", sub_chat_id).execute()
+    return {"ok": True}
 
 
 # === v3: Refactored AI Chat ===
@@ -1542,7 +1705,7 @@ async def ai_chat(request: Request):
             "selected_headline": sc.get("selected_headline") or "",
         }
         system_prompt = get_system_prompt_v3(prompt_key, variables=variables)
-        user_context = get_user_context(int(user_id))
+        user_context = get_user_context(int(user_id), query=user_message)
         if user_context:
             system_prompt += f"\n\nКонтекст о пользователе:\n{user_context}"
 
@@ -1595,6 +1758,16 @@ async def ai_chat(request: Request):
             "message_type": message_type,
             "message_data": message_data
         }).execute()
+
+        # Async memory extraction (non-blocking)
+        try:
+            all_msgs = [{"role": m["role"], "content": m["content"]} for m in history]
+            if user_message:
+                all_msgs.append({"role": "user", "content": user_message})
+            all_msgs.append({"role": "assistant", "content": ai_text})
+            asyncio.create_task(_extract_and_save_memories(int(user_id), all_msgs))
+        except Exception:
+            pass
 
         return {
             "content": ai_text,
@@ -1887,11 +2060,39 @@ def require_supabase():
 
 @app.get("/api/admin/prompts")
 async def list_prompts(user_id: int):
-    """List all system prompts. Admin only."""
+    """List all system prompts. Admin only. Seeds defaults if empty."""
     if str(user_id) not in ADMIN_TELEGRAM_IDS:
         raise HTTPException(status_code=403, detail="Admin access required")
     sb = require_supabase()
     result = sb.table("system_prompts").select("*").order("prompt_key").execute()
+    if not result.data:
+        # Seed default prompts if table is empty
+        defaults = [
+            {"prompt_key": "headlines", "title": "Генератор заголовков", "description": "Генерирует 5-7 вариантов заголовков для карусели",
+             "content": "Ты — AI контент-менеджер для Instagram-каруселей.\n\nСейчас этап: ГЕНЕРАЦИЯ ЗАГОЛОВКОВ.\nНа основе идеи пользователя предложи 5-7 цепляющих заголовков для карусели.\n\nФормат ответа:\n1. Заголовок 1\n2. Заголовок 2\n...\n\nПиши на языке пользователя. Заголовки должны быть короткими (3-7 слов), цепляющими, вызывать любопытство.",
+             "variables": [{"name": "user_context", "description": "Профиль и стиль пользователя"}]},
+            {"prompt_key": "text", "title": "Автор текста слайдов", "description": "Пишет текст слайдов карусели на основе выбранного заголовка",
+             "content": "Ты — AI контент-менеджер для Instagram-каруселей. Пользователь выбрал заголовок: \"{selected_headline}\". Напиши текст для слайдов карусели.\n\nФормат ответа СТРОГО:\nСлайд 1\nЗаголовок: [заголовок карусели]\nОписание: [подзаголовок или вступление]\n\nСлайд 2\nЗаголовок: [пункт 1]\nОписание: [раскрытие пункта 1]\n\n... и так далее\n\nПиши кратко, ёмко. Каждый слайд — одна мысль. {slides_count} слайдов.",
+             "variables": [{"name": "slides_count", "description": "Количество слайдов"}, {"name": "selected_headline", "description": "Выбранный заголовок"}, {"name": "user_context", "description": "Профиль пользователя"}]},
+            {"prompt_key": "editing", "title": "Редактор текста", "description": "Помогает улучшить и отредактировать существующий текст карусели",
+             "content": "Ты — AI контент-менеджер. Текст карусели готов. Помоги пользователю улучшить или отредактировать текст.\nЕсли пользователь просит что-то изменить — перепиши соответствующие слайды в том же формате.",
+             "variables": [{"name": "user_context", "description": "Профиль пользователя"}]},
+            {"prompt_key": "carousel", "title": "Дизайнер каруселей", "description": "Помогает с визуальным оформлением карусели",
+             "content": "Ты — AI помощник по дизайну каруселей. Помоги пользователю выбрать визуальное оформление: шаблон, цвета, шрифты. Отвечай кратко и по делу.",
+             "variables": [{"name": "user_context", "description": "Профиль пользователя"}]},
+            {"prompt_key": "memory_extract", "title": "Извлечение памяти", "description": "Анализирует диалог и извлекает важные факты о пользователе",
+             "content": "Проанализируй последние сообщения диалога. Если есть информация о стиле, предпочтениях, бизнесе, нише, аудитории пользователя — верни JSON:\n{\"memories\": [\"факт1\", \"факт2\"]}\nЕсли ничего важного — верни:\n{\"memories\": []}",
+             "variables": []},
+            {"prompt_key": "profile_summarize", "title": "Суммаризация профиля", "description": "Создаёт краткий профиль пользователя из всех воспоминаний",
+             "content": "На основе следующих фактов о пользователе создай краткий профиль (3-5 предложений): его ниша, стиль контента, целевая аудитория, предпочтения.\n\nФакты:\n{memories}",
+             "variables": [{"name": "memories", "description": "Все сохранённые факты о пользователе"}]},
+        ]
+        for d in defaults:
+            try:
+                sb.table("system_prompts").insert(d).execute()
+            except Exception:
+                pass  # Skip if already exists
+        result = sb.table("system_prompts").select("*").order("prompt_key").execute()
     return result.data or []
 
 

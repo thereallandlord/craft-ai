@@ -2722,6 +2722,10 @@
             cursor: pointer;
             transition: background 0.15s ease;
             margin-bottom: 1px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 4px;
         }
 
         .ps-project-item:hover {
@@ -2729,6 +2733,63 @@
         }
 
         .ps-project-item.active {
+            background: var(--bg-hover);
+        }
+
+        .ps-project-item .ps-item-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .ps-item-menu-btn {
+            display: none;
+            width: 24px;
+            height: 24px;
+            background: transparent;
+            border: none;
+            border-radius: 6px;
+            color: var(--text-muted);
+            cursor: pointer;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .ps-project-item:hover .ps-item-menu-btn {
+            display: flex;
+        }
+
+        .ps-item-menu-btn:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .ps-context-menu {
+            position: fixed;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 4px;
+            z-index: 1100;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            min-width: 120px;
+        }
+
+        .ps-context-menu button {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            padding: 8px 12px;
+            background: transparent;
+            border: none;
+            border-radius: 6px;
+            color: #ef4444;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .ps-context-menu button:hover {
             background: var(--bg-hover);
         }
 
@@ -4233,12 +4294,27 @@
                     </button>
                     <span class="sc-title" id="scTitle">Чат</span>
                     <span class="sc-type-badge" id="scTypeBadge">headlines</span>
+                    <button class="sc-back-btn" onclick="showSubChatMenu(event)" title="Ещё">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+                    </button>
                 </div>
                 <div class="sc-messages" id="scMessages">
                     <div style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:14px;">Загрузка...</div>
                 </div>
+                <!-- Carousel editor (shown for chat_type=carousel) -->
+                <div id="scCarouselEditor" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
+                    <div style="padding:12px 16px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);">
+                        <button class="btn" id="scTemplateBtn" onclick="scOpenTemplatePicker()" style="display:flex;align-items:center;gap:6px;padding:8px 14px;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+                            <span id="scTemplateBtnText">Выбрать шаблон</span>
+                        </button>
+                        <span style="flex:1"></span>
+                        <button class="btn btn-primary" id="scDownloadBtn" onclick="scDownloadAll()" style="padding:8px 16px;">Скачать все</button>
+                    </div>
+                    <div id="scPreviewStrip" style="flex:1;overflow-y:auto;padding:16px;display:flex;flex-wrap:wrap;gap:12px;justify-content:center;align-content:start;"></div>
+                </div>
                 <div class="sc-action-bar" id="scActionBar" style="display:none;"></div>
-                <div class="sc-input-bar">
+                <div class="sc-input-bar" id="scInputBar">
                     <div class="sc-input-container">
                         <textarea placeholder="Сообщение" id="scInput" oninput="autoResizeTextarea(this)" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();scSendMessage()}"></textarea>
                         <button class="home-send-btn" onclick="scSendMessage()" style="width:32px;height:32px;">
@@ -4613,11 +4689,47 @@
                 const date = new Date(p.updated_at || p.created_at);
                 const timeStr = date.toLocaleDateString('ru-RU', {day:'numeric', month:'short'});
                 const isActive = currentTopicId === p.id ? ' active' : '';
-                return `<div class="ps-project-item${isActive}" onclick="openTopic('${p.id}')">
-                    <div class="ps-project-title">${escapeHtml(p.title || 'Без названия')}</div>
-                    <div class="ps-project-meta">${p.sub_chat_count ? p.sub_chat_count + ' чатов' : ''} · ${timeStr}</div>
+                return `<div class="ps-project-item${isActive}">
+                    <div class="ps-item-content" onclick="openTopic('${p.id}')">
+                        <div class="ps-project-title">${escapeHtml(p.title || 'Без названия')}</div>
+                        <div class="ps-project-meta">${p.sub_chat_count ? p.sub_chat_count + ' чатов' : ''} · ${timeStr}</div>
+                    </div>
+                    <button class="ps-item-menu-btn" onclick="event.stopPropagation();showTopicMenu(event,'${p.id}')">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+                    </button>
                 </div>`;
             }).join('');
+        }
+
+        function showTopicMenu(event, topicId) {
+            closeTopicMenu();
+            const btn = event.currentTarget;
+            const rect = btn.getBoundingClientRect();
+            const menu = document.createElement('div');
+            menu.className = 'ps-context-menu';
+            menu.id = 'topicContextMenu';
+            menu.innerHTML = `<button onclick="closeTopicMenu();deleteTopicById('${topicId}')">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                Удалить
+            </button>`;
+            menu.style.top = rect.bottom + 4 + 'px';
+            menu.style.left = rect.left + 'px';
+            document.body.appendChild(menu);
+            setTimeout(() => document.addEventListener('click', closeTopicMenu, {once: true}), 10);
+        }
+
+        function closeTopicMenu() {
+            const m = document.getElementById('topicContextMenu');
+            if (m) m.remove();
+        }
+
+        async function deleteTopicById(topicId) {
+            if (!confirm('Удалить этот чат и все подчаты?')) return;
+            try {
+                await fetch(`${API_URL}/api/topics/${topicId}`, {method: 'DELETE'});
+                if (currentTopicId === topicId) { currentTopicId = null; goHome(); }
+                await loadTopics();
+            } catch(e) { showToast('Ошибка удаления', 'error'); }
         }
 
         // --- Open Topic (view-topic) ---
@@ -4670,8 +4782,14 @@
         async function openSubChat(subChatId) {
             currentSubChatId = subChatId;
             showView('subchat');
+            // Reset visibility
             const msgContainer = document.getElementById('scMessages');
+            const carouselEditor = document.getElementById('scCarouselEditor');
+            const inputBar = document.getElementById('scInputBar');
+            msgContainer.style.display = 'flex';
             msgContainer.innerHTML = '<div style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--text-muted);">Загрузка...</div>';
+            carouselEditor.style.display = 'none';
+            inputBar.style.display = '';
             try {
                 const resp = await fetch(`${API_URL}/api/sub-chats/${subChatId}`);
                 if (resp.ok) {
@@ -4681,8 +4799,18 @@
                     const typeLabels = {headlines: 'Заголовки', text: 'Текст', carousel: 'Карусель'};
                     document.getElementById('scTitle').textContent = sc.title || typeLabels[sc.chat_type] || 'Чат';
                     document.getElementById('scTypeBadge').textContent = typeLabels[sc.chat_type] || sc.chat_type;
-                    renderSubChatMessages(data.messages || [], sc.chat_type);
-                    updateActionBar(sc);
+
+                    if (sc.chat_type === 'carousel') {
+                        // Show carousel editor instead of chat
+                        msgContainer.style.display = 'none';
+                        carouselEditor.style.display = 'flex';
+                        inputBar.style.display = 'none';
+                        document.getElementById('scActionBar').style.display = 'none';
+                        scInitCarouselEditor(sc);
+                    } else {
+                        renderSubChatMessages(data.messages || [], sc.chat_type);
+                        updateActionBar(sc);
+                    }
                 }
             } catch(e) { console.log('Failed to load sub-chat', e); }
         }
@@ -4770,6 +4898,153 @@
             } catch(e) { showToast('Ошибка', 'error'); }
         }
 
+        // --- Carousel Editor inside sub-chat ---
+        let scCarouselText = '';
+
+        async function scInitCarouselEditor(subChat) {
+            const strip = document.getElementById('scPreviewStrip');
+            strip.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-muted);">Загрузка текста...</div>';
+
+            // Get text from slides_data (pulled from parent by backend)
+            let slidesText = '';
+            if (subChat.slides_data && subChat.slides_data.text) {
+                slidesText = subChat.slides_data.text;
+            } else if (subChat.parent_subchat_id) {
+                // Fallback: fetch parent sub-chat messages
+                try {
+                    const resp = await fetch(`${API_URL}/api/sub-chats/${subChat.parent_subchat_id}`);
+                    if (resp.ok) {
+                        const data = await resp.json();
+                        const slidesMsg = (data.messages || []).reverse().find(m => m.message_type === 'slides');
+                        if (slidesMsg) slidesText = slidesMsg.content;
+                    }
+                } catch(e) {}
+            }
+
+            if (!slidesText) {
+                strip.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-muted);">Нет текста для карусели. Сначала сгенерируйте текст.</div>';
+                return;
+            }
+
+            scCarouselText = slidesText;
+
+            // Use existing parseCarouselText to parse slides
+            if (typeof parseCarouselText === 'function') {
+                rtParsedData = parseCarouselText(slidesText);
+            } else {
+                strip.innerHTML = '<div style="padding:40px;text-align:center;color:#ef4444;">Ошибка: parseCarouselText не найден</div>';
+                return;
+            }
+
+            if (rtParsedData.length === 0) {
+                strip.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-muted);">Не удалось распарсить текст на слайды</div>';
+                return;
+            }
+
+            // Check if template is selected
+            const templateId = rtTemplate ? (rtTemplate.template_id || rtTemplate.name) : null;
+            if (!templateId) {
+                strip.innerHTML = `<div style="padding:40px;text-align:center;">
+                    <div style="color:var(--text-muted);margin-bottom:16px;">Распознано ${rtParsedData.length} слайдов. Выберите шаблон для создания карусели.</div>
+                    <button class="btn btn-primary" onclick="scOpenTemplatePicker()" style="padding:10px 20px;">Выбрать шаблон</button>
+                </div>`;
+                return;
+            }
+
+            // Build and render slides using existing rt* functions
+            scBuildAndRender();
+        }
+
+        function scBuildAndRender() {
+            if (typeof rtBuildSlides === 'function' && rtTemplate) {
+                rtSlides = rtBuildSlides(rtTemplate, rtParsedData, rtSlidePhotos);
+                rtActiveSlideIndex = 0;
+                scRenderPreviews();
+            }
+        }
+
+        function scRenderPreviews() {
+            const strip = document.getElementById('scPreviewStrip');
+            if (!strip || !rtSlides || rtSlides.length === 0) return;
+            strip.innerHTML = '';
+            rtSlides.forEach((slide, i) => {
+                const card = document.createElement('div');
+                card.style.cssText = 'width:200px;border-radius:8px;overflow:hidden;border:1px solid var(--border);cursor:pointer;';
+                card.onclick = () => { rtActiveSlideIndex = i; };
+
+                // Render preview using existing function
+                const preview = document.createElement('div');
+                preview.style.cssText = 'width:200px;height:250px;position:relative;overflow:hidden;';
+
+                if (typeof rtRenderSinglePreview === 'function') {
+                    // Use the RT render system
+                    const container = document.createElement('div');
+                    container.style.cssText = 'width:1080px;height:1350px;position:absolute;top:0;left:0;transform:scale(0.185);transform-origin:top left;';
+                    if (typeof renderSlidePreview === 'function') {
+                        renderSlidePreview(container, slide, i);
+                    }
+                    preview.appendChild(container);
+                }
+
+                const label = document.createElement('div');
+                label.style.cssText = 'padding:6px 8px;font-size:12px;color:var(--text-secondary);background:var(--bg-secondary);';
+                label.textContent = `Слайд ${i + 1}`;
+
+                card.appendChild(preview);
+                card.appendChild(label);
+                strip.appendChild(card);
+            });
+        }
+
+        function scOpenTemplatePicker() {
+            if (typeof showTemplatesModal === 'function') {
+                // Set callback for template selection from carousel sub-chat
+                window._scTemplateCallback = true;
+                showTemplatesModal();
+            }
+        }
+
+        async function scDownloadAll() {
+            if (!rtSlides || rtSlides.length === 0 || !rtTemplate) {
+                showToast('Сначала выберите шаблон', 'error');
+                return;
+            }
+            showToast('Генерация карусели...', 'info');
+            const templateId = rtTemplate.template_id || rtTemplate.name;
+            const username = rtTemplate?.settings?.username || '@username';
+
+            const slidesData = rtParsedData.map((s, i) => ({
+                TITLE: s.TITLE || '',
+                DESCRIPTION: s.DESCRIPTION || '',
+                PHOTO: rtSlidePhotos[i] || rtSelectedPhoto || null
+            }));
+
+            try {
+                const resp = await fetch(`${API_URL}/generate`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({template_id: templateId, username: username, slides: slidesData})
+                });
+                if (resp.ok) {
+                    const data = await resp.json();
+                    if (data.slides && data.slides.length > 0) {
+                        // Download each slide
+                        for (let i = 0; i < data.slides.length; i++) {
+                            const s = data.slides[i];
+                            const link = document.createElement('a');
+                            link.href = s.base64;
+                            link.download = s.filename || `slide_${i+1}.png`;
+                            link.click();
+                            if (i < data.slides.length - 1) await new Promise(r => setTimeout(r, 300));
+                        }
+                        showToast(`Скачано ${data.slides.length} слайдов`, 'success');
+                    }
+                } else {
+                    showToast('Ошибка генерации', 'error');
+                }
+            } catch(e) { showToast('Ошибка генерации', 'error'); }
+        }
+
         async function scSendMessage() {
             const input = document.getElementById('scInput');
             const text = input.value.trim();
@@ -4816,6 +5091,34 @@
                 container.innerHTML += `<div class="pv-msg assistant"><div style="color:#ef4444;">Ошибка соединения</div></div>`;
             }
             container.scrollTop = container.scrollHeight;
+        }
+
+        function showSubChatMenu(event) {
+            closeTopicMenu();
+            if (!currentSubChatId) return;
+            const btn = event.currentTarget;
+            const rect = btn.getBoundingClientRect();
+            const menu = document.createElement('div');
+            menu.className = 'ps-context-menu';
+            menu.id = 'topicContextMenu';
+            menu.innerHTML = `<button onclick="closeTopicMenu();deleteCurrentSubChat()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                Удалить подчат
+            </button>`;
+            menu.style.top = rect.bottom + 4 + 'px';
+            menu.style.right = (window.innerWidth - rect.right) + 'px';
+            document.body.appendChild(menu);
+            setTimeout(() => document.addEventListener('click', closeTopicMenu, {once: true}), 10);
+        }
+
+        async function deleteCurrentSubChat() {
+            if (!currentSubChatId) return;
+            if (!confirm('Удалить этот подчат?')) return;
+            try {
+                await fetch(`${API_URL}/api/sub-chats/${currentSubChatId}`, {method: 'DELETE'});
+                currentSubChatId = null;
+                backToTopic();
+            } catch(e) { showToast('Ошибка удаления', 'error'); }
         }
 
         function backToTopic() {
@@ -8361,6 +8664,31 @@
         }
 
         async function loadTemplate(identifier) {
+            // If called from carousel sub-chat editor, redirect to scApplyTemplate
+            if (window._scTemplateCallback) {
+                window._scTemplateCallback = false;
+                try {
+                    const r = await fetch(`${API_URL}/templates/${encodeURIComponent(identifier)}`);
+                    if (r.ok) {
+                        const t = await r.json();
+                        rtTemplate = t;
+                        document.getElementById('scTemplateBtnText').textContent = t.name || identifier;
+                        scBuildAndRender();
+                        hideTemplatesModal();
+                        return;
+                    }
+                } catch(e) {}
+                // Fallback: search in templateCache
+                const cached = (typeof templateCache !== 'undefined' ? templateCache : []).find(t => (t.template_id || t.name) === identifier);
+                if (cached) {
+                    rtTemplate = cached;
+                    document.getElementById('scTemplateBtnText').textContent = cached.name || identifier;
+                    scBuildAndRender();
+                }
+                hideTemplatesModal();
+                return;
+            }
+
             // NEW v7.0: identifier can be template_id or name
             try {
                 const r = await fetch(`${API_URL}/templates/${encodeURIComponent(identifier)}`);
