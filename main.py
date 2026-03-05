@@ -1476,7 +1476,7 @@ async def create_topic(request: Request):
         "topic_id": topic_id,
         "user_id": int(user_id),
         "chat_type": "headlines",
-        "title": "Заголовки",
+        "title": "Идеи и темы",
     }).execute()
     sub_chat_data = sub_chat.data[0]
     sub_chat_id = sub_chat_data["id"]

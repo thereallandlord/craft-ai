@@ -4424,7 +4424,7 @@
                 </div>
                 <div class="tv-tabs" id="tvTabs">
                     <button class="tv-tab active" onclick="filterSubChats('all')">Все</button>
-                    <button class="tv-tab" onclick="filterSubChats('headlines')">Заголовки</button>
+                    <button class="tv-tab" onclick="filterSubChats('headlines')">Идеи и темы</button>
                     <button class="tv-tab" onclick="filterSubChats('text')">Текст</button>
                     <button class="tv-tab" onclick="filterSubChats('carousel')">Карусели</button>
                 </div>
@@ -4608,7 +4608,7 @@
             container.innerHTML = filtered.map(p => {
                 const date = new Date(p.updated_at || p.created_at);
                 const timeStr = date.toLocaleDateString('ru-RU', {day:'numeric', month:'short'});
-                const statusMap = {draft:'Черновик', headlines:'Заголовки', text_ready:'Текст готов', carousel_ready:'Карусель готова'};
+                const statusMap = {draft:'Черновик', headlines:'Идеи и темы', text_ready:'Текст готов', carousel_ready:'Карусель готова'};
                 const isActive = currentProjectId === p.id ? ' active' : '';
                 return `<div class="ps-project-item${isActive}" onclick="openProject('${p.id}')">
                     <div class="ps-item-content">
@@ -4680,7 +4680,7 @@
                     const messages = data.messages || [];
                     const pvTitle = document.getElementById('pvProjectTitle');
                     if (pvTitle) pvTitle.textContent = project.title || 'Новая карусель';
-                    const statusMap = {draft:'Черновик', headlines:'Заголовки', text_ready:'Текст готов', carousel_ready:'Карусель готова'};
+                    const statusMap = {draft:'Черновик', headlines:'Идеи и темы', text_ready:'Текст готов', carousel_ready:'Карусель готова'};
                     document.getElementById('pvStatus').textContent = statusMap[project.status] || project.status;
                     if (project.instagram_username) document.getElementById('pvUsername').value = project.instagram_username;
                     if (project.template_id) document.getElementById('pvTemplateBtnText').textContent = project.template_id;
@@ -4753,7 +4753,7 @@
                     }
                     container.innerHTML += `<div class="pv-msg assistant"><div>${aiContent}</div><div class="msg-time">${aiTime}</div></div>`;
                     container.scrollTop = container.scrollHeight;
-                    const statusMap = {draft:'Черновик', headlines:'Заголовки', text_ready:'Текст готов', carousel_ready:'Карусель готова'};
+                    const statusMap = {draft:'Черновик', headlines:'Идеи и темы', text_ready:'Текст готов', carousel_ready:'Карусель готова'};
                     document.getElementById('pvStatus').textContent = statusMap[aiData.status] || aiData.status;
                 } else {
                     container.innerHTML += `<div class="pv-msg assistant"><div style="color:#ef4444;">Ошибка AI. Попробуйте позже.</div></div>`;
@@ -4965,20 +4965,54 @@
             if (!text || !currentUser) return;
             textarea.value = '';
             autoResizeTextarea(textarea);
+
+            // Instantly switch to subchat view
+            showView('subchat');
+            const msgContainer = document.getElementById('scMessages');
+            document.getElementById('scCarouselEditor').style.display = 'none';
+            document.getElementById('scInputBar').style.display = '';
+            document.getElementById('scTitle').textContent = text.substring(0, 40) + (text.length > 40 ? '...' : '');
+            document.getElementById('scTypeBadge').textContent = 'Идеи и темы';
+            document.getElementById('scActionBar').style.display = 'none';
+
+            const time = new Date().toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'});
+            msgContainer.innerHTML = `<div class="pv-msg user"><div>${escapeHtml(text).replace(/\n/g,'<br>')}</div><div class="msg-time">${time}</div></div><div class="pv-msg assistant" id="scTyping"><div class="thinking-dot"></div></div>`;
+            msgContainer.scrollTop = msgContainer.scrollHeight;
+
             try {
                 const resp = await fetch(`${API_URL}/api/topics`, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({user_id: currentUser.id, message: text})
                 });
+                const typing = document.getElementById('scTyping');
+                if (typing) typing.remove();
+
                 if (resp.ok) {
                     const data = await resp.json();
-                    await loadTopics();
-                    // Open the sub-chat directly (headlines chat)
                     currentTopicId = data.topic.id;
-                    openSubChat(data.sub_chat.id);
+                    currentSubChatId = data.sub_chat.id;
+
+                    const aiTime = new Date().toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'});
+                    let aiContent = escapeHtml(data.ai_response.content).replace(/\n/g, '<br>');
+                    if (data.ai_response.message_type === 'headlines' && data.ai_response.message_data?.headlines) {
+                        aiContent += '<div class="pv-headlines-grid">';
+                        data.ai_response.message_data.headlines.forEach((h, i) => {
+                            aiContent += `<button class="pv-headline-btn" onclick="scSelectHeadline(this, \`${h.replace(/`/g,'')}\`)">${i+1}. ${escapeHtml(h)}</button>`;
+                        });
+                        aiContent += '</div>';
+                    }
+                    msgContainer.innerHTML += `<div class="pv-msg assistant"><div>${aiContent}</div><div class="msg-time">${aiTime}</div></div>`;
+                    msgContainer.scrollTop = msgContainer.scrollHeight;
+                    loadTopics();
+                } else {
+                    msgContainer.innerHTML += `<div class="pv-msg assistant"><div style="color:#ef4444;">Ошибка</div></div>`;
                 }
-            } catch(e) { showToast('Ошибка создания топика', 'error'); }
+            } catch(e) {
+                const typing = document.getElementById('scTyping');
+                if (typing) typing.remove();
+                msgContainer.innerHTML += `<div class="pv-msg assistant"><div style="color:#ef4444;">Ошибка соединения</div></div>`;
+            }
         }
 
         // --- Topics loading (replaces loadProjects for sidebar) ---
@@ -5090,7 +5124,7 @@
         function renderSubChatCards() {
             const container = document.getElementById('tvCards');
             if (!container) return;
-            const typeLabels = {headlines: 'Заголовки', text: 'Текст', carousel: 'Карусель'};
+            const typeLabels = {headlines: 'Идеи и темы', text: 'Текст', carousel: 'Карусель'};
             const filtered = currentSubChatFilter === 'all' ? topicSubChats : topicSubChats.filter(sc => sc.chat_type === currentSubChatFilter);
             if (filtered.length === 0) {
                 container.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-muted);font-size:14px;">Нет подчатов</div>';
@@ -5134,7 +5168,7 @@
                     const data = await resp.json();
                     const sc = data.sub_chat;
                     currentTopicId = sc.topic_id;
-                    const typeLabels = {headlines: 'Заголовки', text: 'Текст', carousel: 'Карусель'};
+                    const typeLabels = {headlines: 'Идеи и темы', text: 'Текст', carousel: 'Карусель'};
                     document.getElementById('scTitle').textContent = sc.title || typeLabels[sc.chat_type] || 'Чат';
                     document.getElementById('scTypeBadge').textContent = typeLabels[sc.chat_type] || sc.chat_type;
 
