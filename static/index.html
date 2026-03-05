@@ -4442,13 +4442,62 @@
                 const statusMap = {draft:'Черновик', headlines:'Заголовки', text_ready:'Текст готов', carousel_ready:'Карусель готова'};
                 const isActive = currentProjectId === p.id ? ' active' : '';
                 return `<div class="ps-project-item${isActive}" onclick="openProject('${p.id}')">
-                    <div class="ps-project-title">${escapeHtml(p.title)}</div>
-                    <div class="ps-project-meta">${statusMap[p.status] || p.status} · ${timeStr}</div>
+                    <div class="ps-item-content">
+                        <div class="ps-project-title">${escapeHtml(p.title)}</div>
+                        <div class="ps-project-meta">${statusMap[p.status] || p.status} · ${timeStr}</div>
+                    </div>
+                    <button class="ps-item-menu-btn" onclick="event.stopPropagation();showProjectMenu(event,'${p.id}')">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+                    </button>
                 </div>`;
             }).join('');
         }
 
         function filterProjects(query) { renderProjectsList(query); }
+
+        function showProjectMenu(event, projectId) {
+            closeTopicMenu();
+            const btn = event.currentTarget;
+            const rect = btn.getBoundingClientRect();
+            const menu = document.createElement('div');
+            menu.className = 'ps-context-menu';
+            menu.id = 'topicContextMenu';
+            menu.innerHTML = `<button onclick="closeTopicMenu();renameProjectById('${projectId}')">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                Переименовать
+            </button>
+            <button onclick="closeTopicMenu();deleteProjectById('${projectId}')">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                Удалить
+            </button>`;
+            menu.style.top = rect.bottom + 4 + 'px';
+            menu.style.left = rect.left + 'px';
+            document.body.appendChild(menu);
+            setTimeout(() => document.addEventListener('click', closeTopicMenu, {once: true}), 10);
+        }
+
+        async function renameProjectById(projectId) {
+            const current = allProjects.find(p => p.id === projectId);
+            const newTitle = prompt('Новое название:', current?.title || '');
+            if (!newTitle || !newTitle.trim()) return;
+            try {
+                await fetch(`${API_URL}/api/projects/${projectId}`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({title: newTitle.trim()})
+                });
+                await loadProjects();
+            } catch(e) { showToast('Ошибка переименования', 'error'); }
+        }
+
+        async function deleteProjectById(projectId) {
+            if (!confirm('Удалить этот проект?')) return;
+            try {
+                await fetch(`${API_URL}/api/projects/${projectId}`, {method: 'DELETE'});
+                if (currentProjectId === projectId) { currentProjectId = null; goHome(); }
+                await loadProjects();
+            } catch(e) { showToast('Ошибка удаления', 'error'); }
+        }
 
         async function openProject(projectId) {
             currentProjectId = projectId;
@@ -4707,7 +4756,11 @@
             const menu = document.createElement('div');
             menu.className = 'ps-context-menu';
             menu.id = 'topicContextMenu';
-            menu.innerHTML = `<button onclick="closeTopicMenu();deleteTopicById('${topicId}')">
+            menu.innerHTML = `<button onclick="closeTopicMenu();renameTopicById('${topicId}')">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                Переименовать
+            </button>
+            <button onclick="closeTopicMenu();deleteTopicById('${topicId}')">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
                 Удалить
             </button>`;
@@ -4720,6 +4773,24 @@
         function closeTopicMenu() {
             const m = document.getElementById('topicContextMenu');
             if (m) m.remove();
+        }
+
+        async function renameTopicById(topicId) {
+            const current = allTopics.find(t => t.id === topicId);
+            const newTitle = prompt('Новое название:', current?.title || '');
+            if (!newTitle || !newTitle.trim()) return;
+            try {
+                await fetch(`${API_URL}/api/topics/${topicId}`, {
+                    method: 'PATCH',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({title: newTitle.trim()})
+                });
+                await loadTopics();
+                if (currentTopicId === topicId) {
+                    const tvTitle = document.getElementById('tvTitle');
+                    if (tvTitle) tvTitle.textContent = newTitle.trim();
+                }
+            } catch(e) { showToast('Ошибка переименования', 'error'); }
         }
 
         async function deleteTopicById(topicId) {
@@ -5100,7 +5171,11 @@
             const menu = document.createElement('div');
             menu.className = 'ps-context-menu';
             menu.id = 'topicContextMenu';
-            menu.innerHTML = `<button onclick="closeTopicMenu();deleteCurrentSubChat()">
+            menu.innerHTML = `<button onclick="closeTopicMenu();renameCurrentSubChat()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                Переименовать
+            </button>
+            <button onclick="closeTopicMenu();deleteCurrentSubChat()">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
                 Удалить подчат
             </button>`;
@@ -5108,6 +5183,22 @@
             menu.style.right = (window.innerWidth - rect.right) + 'px';
             document.body.appendChild(menu);
             setTimeout(() => document.addEventListener('click', closeTopicMenu, {once: true}), 10);
+        }
+
+        async function renameCurrentSubChat() {
+            if (!currentSubChatId) return;
+            const current = topicSubChats.find(sc => sc.id === currentSubChatId);
+            const newTitle = prompt('Новое название подчата:', current?.title || '');
+            if (!newTitle || !newTitle.trim()) return;
+            try {
+                await fetch(`${API_URL}/api/sub-chats/${currentSubChatId}`, {
+                    method: 'PATCH',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({title: newTitle.trim()})
+                });
+                const scTitle = document.getElementById('scTitle');
+                if (scTitle) scTitle.textContent = newTitle.trim();
+            } catch(e) { showToast('Ошибка переименования', 'error'); }
         }
 
         async function deleteCurrentSubChat() {

@@ -1544,6 +1544,18 @@ async def get_topic(topic_id: str):
     return {"topic": topic.data, "sub_chats": sub_chats.data or []}
 
 
+@app.patch("/api/topics/{topic_id}")
+async def rename_topic(topic_id: str, request: Request):
+    """Rename a topic."""
+    sb = require_supabase()
+    body = await request.json()
+    title = body.get("title", "").strip()
+    if not title:
+        raise HTTPException(status_code=400, detail="Title is required")
+    result = sb.table("projects").update({"title": title}).eq("id", topic_id).execute()
+    return result.data[0] if result.data else {}
+
+
 @app.delete("/api/topics/{topic_id}")
 async def delete_topic(topic_id: str):
     """Delete a topic (cascades sub-chats and messages)."""
@@ -1651,6 +1663,18 @@ async def get_sub_chat(sub_chat_id: str):
         raise HTTPException(status_code=404, detail="Sub-chat not found")
     messages = sb.table("project_messages").select("*").eq("sub_chat_id", sub_chat_id).order("created_at").execute()
     return {"sub_chat": sub_chat.data, "messages": messages.data or []}
+
+
+@app.patch("/api/sub-chats/{sub_chat_id}")
+async def rename_sub_chat(sub_chat_id: str, request: Request):
+    """Rename a sub-chat."""
+    sb = require_supabase()
+    body = await request.json()
+    title = body.get("title", "").strip()
+    if not title:
+        raise HTTPException(status_code=400, detail="Title is required")
+    result = sb.table("sub_chats").update({"title": title}).eq("id", sub_chat_id).execute()
+    return result.data[0] if result.data else {}
 
 
 @app.delete("/api/sub-chats/{sub_chat_id}")
