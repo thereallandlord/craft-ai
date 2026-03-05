@@ -72,6 +72,14 @@
             position: relative;
         }
 
+        .content-area {
+            flex: 1;
+            position: relative;
+            min-width: 0;
+            display: flex;
+            overflow: hidden;
+        }
+
         /* Theme toggle in nav-bar */
 
         /* Navigation Bar */
@@ -3161,8 +3169,9 @@
         /* === View system — overlay on top of tabs === */
         .view-overlay {
             display: none;
-            flex: 1;
-            min-width: 0;
+            position: absolute;
+            inset: 0;
+            z-index: 10;
             background: var(--bg-primary);
         }
 
@@ -3357,6 +3366,8 @@
                 </button>
             </div>
         </nav>
+
+        <div class="content-area">
 
         <!-- === TAB: Editor (existing) === -->
         <!-- Left Sidebar (editor only) -->
@@ -3799,6 +3810,7 @@
                 </div>
             </div>
         </div>
+        </div><!-- /content-area -->
     </div>
 
     <!-- Templates Modal -->
