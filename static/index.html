@@ -3578,19 +3578,7 @@
 
         .sc-input-bar {
             padding: 8px calc(max(20px, (100% - 680px) / 2)) 8px;
-            background: var(--bg-primary);
-            position: relative;
-        }
-
-        .sc-input-bar::before {
-            content: '';
-            position: absolute;
-            bottom: 100%;
-            left: 0;
-            right: 0;
-            height: 40px;
-            background: linear-gradient(transparent, var(--bg-primary));
-            pointer-events: none;
+            background: transparent;
         }
 
         .sc-input-container {
@@ -4342,10 +4330,18 @@
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                     </button>
                     <textarea class="home-textarea" id="homeTextarea" placeholder="Спросите Craft AI" oninput="autoResizeTextarea(this)" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();homeSubmit()}"></textarea>
-                    <button class="home-mic-btn" id="homeMicBtn" onclick="toggleHomeVoice()">
+                    <div id="homeRecordingUI" class="sc-recording-ui" style="display:none;"></div>
+                    <button class="sc-voice-btn" id="homeMicBtn" onclick="homeToggleVoice()">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+                        <span class="ma-tooltip">Диктовать</span>
                     </button>
-                    <button class="home-send-btn" onclick="homeSubmit()">
+                    <button class="sc-rec-btn" id="homeRecCancel" style="display:none;" onclick="homeCancelRecording()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                    </button>
+                    <button class="sc-rec-btn" id="homeRecConfirm" style="display:none;" onclick="homeConfirmRecording()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>
+                    </button>
+                    <button class="home-send-btn" id="homeSendBtn" onclick="homeSubmit()">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg>
                     </button>
                 </div>
@@ -4849,8 +4845,107 @@
             } catch(e) { showToast('Ошибка перевода', 'error'); }
         }
 
-        function toggleHomeVoice() {
-            if (typeof toggleVoiceInput === 'function') toggleVoiceInput('homeTextarea', 'homeMicBtn');
+        let homeVoiceRecorder = null;
+        let homeVoiceChunks = [];
+
+        function homeToggleVoice() {
+            const input = document.getElementById('homeTextarea');
+            const micBtn = document.getElementById('homeMicBtn');
+            const sendBtn = document.getElementById('homeSendBtn');
+            const plusBtn = document.querySelector('.home-plus-btn');
+            const recUI = document.getElementById('homeRecordingUI');
+            const cancelBtn = document.getElementById('homeRecCancel');
+            const confirmBtn = document.getElementById('homeRecConfirm');
+
+            let dots = '';
+            for (let i = 0; i < 60; i++) {
+                dots += `<div class="sc-waveform-dot" style="animation-delay:${(i * 0.05)}s"></div>`;
+            }
+            recUI.innerHTML = dots;
+
+            navigator.mediaDevices.getUserMedia({audio: true}).then(stream => {
+                homeVoiceRecorder = new MediaRecorder(stream);
+                homeVoiceChunks = [];
+                homeVoiceRecorder.ondataavailable = e => {
+                    if (e.data.size > 0) homeVoiceChunks.push(e.data);
+                };
+                homeVoiceRecorder.stream = stream;
+                homeVoiceRecorder.start();
+
+                input.style.display = 'none';
+                micBtn.style.display = 'none';
+                sendBtn.style.display = 'none';
+                if (plusBtn) plusBtn.style.display = 'none';
+                recUI.style.display = 'flex';
+                cancelBtn.style.display = 'flex';
+                confirmBtn.style.display = 'flex';
+            }).catch(() => {
+                input.placeholder = 'Нет доступа к микрофону';
+                setTimeout(() => { input.placeholder = 'Спросите Craft AI'; }, 2000);
+            });
+        }
+
+        function homeResetRecordingUI() {
+            const input = document.getElementById('homeTextarea');
+            const micBtn = document.getElementById('homeMicBtn');
+            const sendBtn = document.getElementById('homeSendBtn');
+            const plusBtn = document.querySelector('.home-plus-btn');
+            const recUI = document.getElementById('homeRecordingUI');
+            const cancelBtn = document.getElementById('homeRecCancel');
+            const confirmBtn = document.getElementById('homeRecConfirm');
+
+            input.style.display = '';
+            micBtn.style.display = '';
+            sendBtn.style.display = '';
+            if (plusBtn) plusBtn.style.display = '';
+            recUI.style.display = 'none';
+            cancelBtn.style.display = 'none';
+            confirmBtn.style.display = 'none';
+            input.disabled = false;
+            input.placeholder = 'Спросите Craft AI';
+        }
+
+        function homeCancelRecording() {
+            if (homeVoiceRecorder && homeVoiceRecorder.state === 'recording') {
+                homeVoiceRecorder.stream.getTracks().forEach(t => t.stop());
+                homeVoiceRecorder.stop();
+            }
+            homeVoiceChunks = [];
+            homeResetRecordingUI();
+        }
+
+        function homeConfirmRecording() {
+            if (!homeVoiceRecorder || homeVoiceRecorder.state !== 'recording') return;
+            const input = document.getElementById('homeTextarea');
+
+            homeVoiceRecorder.onstop = async () => {
+                homeVoiceRecorder.stream.getTracks().forEach(t => t.stop());
+                homeResetRecordingUI();
+                input.placeholder = 'Расшифровка аудио...';
+                input.disabled = true;
+
+                const blob = new Blob(homeVoiceChunks, {type: 'audio/webm'});
+                const formData = new FormData();
+                formData.append('file', blob, 'recording.webm');
+
+                try {
+                    const r = await fetch(`${API_URL}/api/transcribe`, {method: 'POST', body: formData});
+                    if (r.ok) {
+                        const data = await r.json();
+                        if (data.text) {
+                            const current = input.value.trim();
+                            input.value = current ? current + ' ' + data.text : data.text;
+                            autoResizeTextarea(input);
+                        }
+                    }
+                } catch(e) {}
+
+                input.disabled = false;
+                input.placeholder = 'Спросите Craft AI';
+                input.focus();
+            };
+
+            homeVoiceRecorder.stop();
         }
 
         function togglePvVoice() {
