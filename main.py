@@ -29,8 +29,19 @@ import hashlib
 import hmac
 import time
 import numpy as np
+from supabase import create_client, Client as SupabaseClient
 
 app = FastAPI(title="Carousel Studio", version="7.0")
+
+# === Supabase ===
+SUPABASE_URL = os.getenv("SUPABASE_URL", "")
+SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
+supabase: SupabaseClient | None = None
+if SUPABASE_URL and SUPABASE_SERVICE_KEY:
+    supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+    print("✅ Supabase connected")
+else:
+    print("⚠️ Supabase not configured (SUPABASE_URL / SUPABASE_SERVICE_KEY missing)")
 
 app.add_middleware(
     CORSMiddleware,
@@ -1132,6 +1143,462 @@ async def chat_proxy(request: ChatProxyRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# === AI Chat via OpenRouter ===
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
+
+SYSTEM_PROMPT_DRAFT = """Ты — AI контент-менеджер для Instagram-каруселей. Ты помогаешь создавать контент на основе идеи пользователя.
+
+Сейчас этап: ГЕНЕРАЦИЯ ЗАГОЛОВКОВ.
+На основе идеи пользователя предложи 5-7 цепляющих заголовков для карусели.
+
+Формат ответа:
+1. Заголовок 1
+2. Заголовок 2
+...
+
+Пиши на языке пользователя. Заголовки должны быть короткими (3-7 слов), цепляющими, вызывать любопытство."""
+
+SYSTEM_PROMPT_HEADLINES = """Ты — AI контент-менеджер для Instagram-каруселей. Пользователь выбрал заголовок. Теперь напиши текст для слайдов карусели.
+
+Формат ответа СТРОГО:
+Слайд 1
+Заголовок: [заголовок карусели]
+Описание: [подзаголовок или вступление]
+
+Слайд 2
+Заголовок: [пункт 1]
+Описание: [раскрытие пункта 1]
+
+... и так далее
+
+Пиши кратко, ёмко. Каждый слайд — одна мысль. {slides_count} слайдов."""
+
+SYSTEM_PROMPT_TEXT_READY = """Ты — AI контент-менеджер. Текст карусели готов. Помоги пользователю улучшить или отредактировать текст.
+Если пользователь просит что-то изменить — перепиши соответствующие слайды в том же формате."""
+
+
+def get_system_prompt(status: str, slides_count: int = 7) -> str:
+    if status == 'draft':
+        return SYSTEM_PROMPT_DRAFT
+    elif status == 'headlines':
+        return SYSTEM_PROMPT_HEADLINES.replace('{slides_count}', str(slides_count))
+    elif status == 'text_ready':
+        return SYSTEM_PROMPT_TEXT_READY
+    return SYSTEM_PROMPT_DRAFT
+
+
+def get_user_context(user_id: int) -> str:
+    """Get user profile and memory for personalization."""
+    if not supabase:
+        return ""
+    context_parts = []
+    try:
+        user = supabase.table("users").select("profile_summary").eq("user_id", str(user_id)).single().execute()
+        if user.data and user.data.get("profile_summary"):
+            context_parts.append(f"Профиль пользователя: {user.data['profile_summary']}")
+    except Exception:
+        pass
+    # TODO: Add vector search for user_memory (Phase 4 - embeddings)
+    return "\n".join(context_parts)
+
+
+@app.post("/api/ai/chat")
+async def ai_chat(request: Request):
+    """AI chat within a project. Uses OpenRouter for Gemini/Claude."""
+    if not OPENROUTER_API_KEY:
+        raise HTTPException(status_code=500, detail="OPENROUTER_API_KEY not configured")
+
+    sb = require_supabase()
+    body = await request.json()
+    project_id = body.get("project_id")
+    user_id = body.get("user_id")
+    user_message = body.get("message", "")
+    model = body.get("model", "google/gemini-2.5-pro-preview")
+    slides_count = body.get("slides_count", 7)
+
+    if not project_id or not user_id:
+        raise HTTPException(status_code=400, detail="project_id and user_id required")
+
+    # Get project
+    project = sb.table("projects").select("*").eq("id", project_id).single().execute()
+    if not project.data:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    status = project.data.get("status", "draft")
+
+    # Get message history
+    messages_result = sb.table("project_messages").select("role,content").eq("project_id", project_id).order("created_at").execute()
+    history = messages_result.data or []
+
+    # Build system prompt with user context
+    system_prompt = get_system_prompt(status, slides_count)
+    user_context = get_user_context(int(user_id))
+    if user_context:
+        system_prompt += f"\n\nКонтекст о пользователе:\n{user_context}"
+
+    # Build messages for OpenRouter
+    ai_messages = [{"role": "system", "content": system_prompt}]
+    for msg in history[-20:]:  # Last 20 messages for context window
+        ai_messages.append({"role": msg["role"], "content": msg["content"]})
+    if user_message:
+        ai_messages.append({"role": "user", "content": user_message})
+
+    # Save user message
+    if user_message:
+        sb.table("project_messages").insert({
+            "project_id": project_id,
+            "user_id": int(user_id),
+            "role": "user",
+            "content": user_message,
+            "message_type": "text"
+        }).execute()
+
+    # Call OpenRouter
+    try:
+        resp = requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                "Content-Type": "application/json",
+                "HTTP-Referer": "https://app.craftopen.space",
+                "X-Title": "Craft AI"
+            },
+            json={
+                "model": model,
+                "messages": ai_messages,
+                "temperature": 0.7,
+                "max_tokens": 4096
+            },
+            timeout=120
+        )
+
+        if resp.status_code != 200:
+            raise HTTPException(status_code=resp.status_code, detail=f"OpenRouter error: {resp.text}")
+
+        ai_response = resp.json()
+        ai_text = ai_response["choices"][0]["message"]["content"]
+
+        # Determine message type and parse data
+        message_type = "text"
+        message_data = None
+        new_status = status
+
+        if status == 'draft':
+            # Parse headlines from numbered list
+            headlines = []
+            for line in ai_text.split('\n'):
+                line = line.strip()
+                match = re.match(r'^\d+[\.\)]\s*(.+)', line)
+                if match:
+                    headlines.append(match.group(1).strip())
+            if headlines:
+                message_type = "headlines"
+                message_data = {"headlines": headlines}
+                new_status = "headlines"
+
+        elif status == 'headlines':
+            # Parse slides text
+            message_type = "slides"
+            new_status = "text_ready"
+
+        # Save AI response
+        sb.table("project_messages").insert({
+            "project_id": project_id,
+            "user_id": int(user_id),
+            "role": "assistant",
+            "content": ai_text,
+            "message_type": message_type,
+            "message_data": message_data
+        }).execute()
+
+        # Update project status
+        update_data = {"status": new_status}
+        if status == 'headlines' and project.data.get("selected_headline"):
+            update_data["slides_data"] = ai_text  # Raw text for now, parsed on frontend
+        sb.table("projects").update(update_data).eq("id", project_id).execute()
+
+        return {
+            "content": ai_text,
+            "message_type": message_type,
+            "message_data": message_data,
+            "status": new_status
+        }
+
+    except requests.Timeout:
+        raise HTTPException(status_code=504, detail="AI response timeout")
+    except requests.RequestException as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/ai/select-headline")
+async def ai_select_headline(request: Request):
+    """User selected a headline — update project and trigger text generation."""
+    sb = require_supabase()
+    body = await request.json()
+    project_id = body.get("project_id")
+    headline = body.get("headline")
+
+    if not project_id or not headline:
+        raise HTTPException(status_code=400, detail="project_id and headline required")
+
+    sb.table("projects").update({
+        "selected_headline": headline,
+        "status": "headlines"
+    }).eq("id", project_id).execute()
+
+    return {"ok": True}
+
+
+@app.post("/api/ai/translate")
+async def ai_translate(request: Request):
+    """Translate a project's slides to another language."""
+    if not OPENROUTER_API_KEY:
+        raise HTTPException(status_code=500, detail="OPENROUTER_API_KEY not configured")
+
+    sb = require_supabase()
+    body = await request.json()
+    project_id = body.get("project_id")
+    target_language = body.get("target_language", "en")
+    user_id = body.get("user_id")
+
+    if not project_id:
+        raise HTTPException(status_code=400, detail="project_id required")
+
+    # Get source project
+    project = sb.table("projects").select("*").eq("id", project_id).single().execute()
+    if not project.data:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    # Get slides text from messages
+    messages = sb.table("project_messages").select("content,message_type").eq("project_id", project_id).eq("message_type", "slides").order("created_at", desc=True).limit(1).execute()
+    slides_text = ""
+    if messages.data:
+        slides_text = messages.data[0]["content"]
+    elif project.data.get("slides_data"):
+        slides_text = json.dumps(project.data["slides_data"]) if isinstance(project.data["slides_data"], (list, dict)) else str(project.data["slides_data"])
+
+    if not slides_text:
+        raise HTTPException(status_code=400, detail="No slides text to translate")
+
+    lang_names = {"en": "English", "ru": "Russian", "ar": "Arabic", "tr": "Turkish", "es": "Spanish", "fr": "French", "de": "German"}
+    lang_name = lang_names.get(target_language, target_language)
+
+    try:
+        resp = requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": "google/gemini-2.5-pro-preview",
+                "messages": [
+                    {"role": "system", "content": f"Translate the following carousel slides to {lang_name}. Keep the exact same format (Slide N, Title, Description). Only translate, don't change meaning or structure."},
+                    {"role": "user", "content": slides_text}
+                ],
+                "temperature": 0.3,
+                "max_tokens": 4096
+            },
+            timeout=120
+        )
+
+        if resp.status_code != 200:
+            raise HTTPException(status_code=resp.status_code, detail=f"Translation error: {resp.text}")
+
+        translated_text = resp.json()["choices"][0]["message"]["content"]
+
+        # Create new project for translated version
+        new_project = {
+            "user_id": int(user_id) if user_id else project.data["user_id"],
+            "title": f"{project.data['title']} ({target_language.upper()})",
+            "status": "text_ready",
+            "idea_text": project.data.get("idea_text"),
+            "selected_headline": project.data.get("selected_headline"),
+            "template_id": project.data.get("template_id"),
+            "instagram_username": project.data.get("instagram_username"),
+            "language": target_language,
+            "translated_from": project_id,
+        }
+        result = sb.table("projects").insert(new_project).execute()
+        new_project_id = result.data[0]["id"] if result.data else None
+
+        if new_project_id:
+            sb.table("project_messages").insert({
+                "project_id": new_project_id,
+                "user_id": int(user_id) if user_id else int(project.data["user_id"]),
+                "role": "assistant",
+                "content": translated_text,
+                "message_type": "slides"
+            }).execute()
+
+        return {
+            "translated_text": translated_text,
+            "new_project_id": new_project_id
+        }
+
+    except requests.Timeout:
+        raise HTTPException(status_code=504, detail="Translation timeout")
+    except requests.RequestException as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/ai/save-memory")
+async def ai_save_memory(request: Request):
+    """Save a user preference/memory to user_memory table with embedding."""
+    sb = require_supabase()
+    body = await request.json()
+    user_id = body.get("user_id")
+    content = body.get("content")
+
+    if not user_id or not content:
+        raise HTTPException(status_code=400, detail="user_id and content required")
+
+    # Create embedding via OpenAI
+    embedding = None
+    if OPENAI_API_KEY:
+        try:
+            emb_resp = requests.post(
+                "https://api.openai.com/v1/embeddings",
+                headers={
+                    "Authorization": f"Bearer {OPENAI_API_KEY}",
+                    "Content-Type": "application/json"
+                },
+                json={"model": "text-embedding-3-small", "input": content},
+                timeout=30
+            )
+            if emb_resp.status_code == 200:
+                embedding = emb_resp.json()["data"][0]["embedding"]
+        except Exception:
+            pass
+
+    memory_data = {
+        "user_id": str(user_id),
+        "content": content,
+        "metadata": {"source": "web_chat"},
+    }
+    if embedding:
+        memory_data["embedding"] = embedding
+
+    sb.table("user_memory").insert(memory_data).execute()
+    return {"ok": True}
+
+
+# === Projects CRUD ===
+
+def require_supabase():
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Supabase not configured")
+    return supabase
+
+
+@app.get("/api/projects")
+async def list_projects(user_id: int):
+    """List all projects for a user, sorted by updated_at DESC."""
+    sb = require_supabase()
+    result = sb.table("projects").select("*").eq("user_id", user_id).order("updated_at", desc=True).execute()
+    return result.data
+
+
+@app.post("/api/projects")
+async def create_project(request: Request):
+    """Create a new project."""
+    sb = require_supabase()
+    body = await request.json()
+    user_id = body.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=400, detail="user_id required")
+    project = {
+        "user_id": int(user_id),
+        "title": body.get("title", "Новая карусель"),
+        "status": "draft",
+        "idea_text": body.get("idea_text"),
+        "template_id": body.get("template_id"),
+        "instagram_username": body.get("instagram_username"),
+        "language": body.get("language", "ru"),
+    }
+    result = sb.table("projects").insert(project).execute()
+    return result.data[0] if result.data else {}
+
+
+@app.get("/api/projects/{project_id}")
+async def get_project(project_id: str):
+    """Get project with its messages."""
+    sb = require_supabase()
+    project = sb.table("projects").select("*").eq("id", project_id).single().execute()
+    messages = sb.table("project_messages").select("*").eq("project_id", project_id).order("created_at").execute()
+    return {"project": project.data, "messages": messages.data}
+
+
+@app.put("/api/projects/{project_id}")
+async def update_project(project_id: str, request: Request):
+    """Update a project."""
+    sb = require_supabase()
+    body = await request.json()
+    allowed_fields = {"title", "status", "idea_text", "selected_headline", "slides_data",
+                      "template_id", "instagram_username", "language", "carousel_images"}
+    update_data = {k: v for k, v in body.items() if k in allowed_fields}
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No valid fields to update")
+    result = sb.table("projects").update(update_data).eq("id", project_id).execute()
+    return result.data[0] if result.data else {}
+
+
+@app.delete("/api/projects/{project_id}")
+async def delete_project(project_id: str):
+    """Delete a project (cascade deletes messages)."""
+    sb = require_supabase()
+    sb.table("projects").delete().eq("id", project_id).execute()
+    return {"ok": True}
+
+
+@app.post("/api/projects/{project_id}/messages")
+async def add_project_message(project_id: str, request: Request):
+    """Add a message to a project's chat."""
+    sb = require_supabase()
+    body = await request.json()
+    message = {
+        "project_id": project_id,
+        "user_id": int(body.get("user_id", 0)),
+        "role": body.get("role", "user"),
+        "content": body.get("content", ""),
+        "message_type": body.get("message_type", "text"),
+        "message_data": body.get("message_data"),
+    }
+    result = sb.table("project_messages").insert(message).execute()
+    return result.data[0] if result.data else {}
+
+
+# === User Profile & Memory ===
+
+@app.put("/api/user/profile")
+async def update_user_profile(request: Request):
+    """Update user profile summary."""
+    sb = require_supabase()
+    body = await request.json()
+    user_id = body.get("user_id")
+    profile_summary = body.get("profile_summary", "")
+    if not user_id:
+        raise HTTPException(status_code=400, detail="user_id required")
+    sb.table("users").update({"profile_summary": profile_summary}).eq("user_id", str(user_id)).execute()
+    return {"ok": True}
+
+
+@app.get("/api/user/memories")
+async def get_user_memories(user_id: int):
+    """Get all user memories."""
+    sb = require_supabase()
+    result = sb.table("user_memory").select("id,content,created_at").eq("user_id", str(user_id)).order("created_at", desc=True).execute()
+    return result.data or []
+
+
+@app.delete("/api/user/memories/{memory_id}")
+async def delete_user_memory(memory_id: str):
+    """Delete a specific memory."""
+    sb = require_supabase()
+    sb.table("user_memory").delete().eq("id", memory_id).execute()
+    return {"ok": True}
+
+
 # === Telegram Auth ===
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_BOT_USERNAME = os.getenv("TELEGRAM_BOT_USERNAME", "")
@@ -1177,6 +1644,25 @@ def check_club_membership(user_id: int) -> bool:
     return False
 
 
+def upsert_user_to_supabase(user_id: int, first_name: str = "", username: str = "", is_club_member: bool = False):
+    """Upsert user into Supabase users table. Returns full user profile."""
+    if not supabase:
+        return None
+    try:
+        user_data = {
+            "user_id": str(user_id),
+            "first_name": first_name,
+            "username": username or "",
+            "last_active": "now()",
+        }
+        result = supabase.table("users").upsert(user_data, on_conflict="user_id").execute()
+        if result.data:
+            return result.data[0]
+    except Exception as e:
+        print(f"Supabase upsert error: {e}")
+    return None
+
+
 @app.get("/api/auth/config")
 async def auth_config():
     """Return auth config for frontend (bot username)."""
@@ -1202,17 +1688,27 @@ async def auth_telegram(data: dict):
     is_club_member = check_club_membership(user_id)
     is_admin = str(user_id) in ADMIN_TELEGRAM_IDS
 
-    return {
-        "user": {
-            "id": user_id,
-            "first_name": data.get("first_name", ""),
-            "last_name": data.get("last_name", ""),
-            "username": data.get("username", ""),
-            "photo_url": data.get("photo_url", ""),
-            "is_club_member": is_club_member,
-            "is_admin": is_admin,
-        }
+    # Upsert user in Supabase
+    sb_user = upsert_user_to_supabase(
+        user_id, data.get("first_name", ""), data.get("username", ""), is_club_member
+    )
+
+    user_response = {
+        "id": user_id,
+        "first_name": data.get("first_name", ""),
+        "last_name": data.get("last_name", ""),
+        "username": data.get("username", ""),
+        "photo_url": data.get("photo_url", ""),
+        "is_club_member": is_club_member,
+        "is_admin": is_admin,
     }
+    if sb_user:
+        user_response["plan"] = sb_user.get("plan", "free")
+        user_response["carousels_used"] = sb_user.get("carousels_used", 0)
+        user_response["carousels_limit"] = sb_user.get("carousels_limit", 10)
+        user_response["profile_summary"] = sb_user.get("profile_summary")
+
+    return {"user": user_response}
 
 
 def verify_mini_app_data(init_data_raw: str) -> dict:
@@ -1257,17 +1753,28 @@ async def auth_miniapp(request: Request):
     user_id = data["user"].get("id", 0)
     is_club_member = check_club_membership(user_id)
     is_admin = str(user_id) in ADMIN_TELEGRAM_IDS
-    return {
-        "user": {
-            "id": user_id,
-            "first_name": data["user"].get("first_name", ""),
-            "last_name": data["user"].get("last_name", ""),
-            "username": data["user"].get("username", ""),
-            "photo_url": data["user"].get("photo_url", ""),
-            "is_club_member": is_club_member,
-            "is_admin": is_admin,
-        }
+
+    # Upsert user in Supabase
+    sb_user = upsert_user_to_supabase(
+        user_id, data["user"].get("first_name", ""), data["user"].get("username", ""), is_club_member
+    )
+
+    user_response = {
+        "id": user_id,
+        "first_name": data["user"].get("first_name", ""),
+        "last_name": data["user"].get("last_name", ""),
+        "username": data["user"].get("username", ""),
+        "photo_url": data["user"].get("photo_url", ""),
+        "is_club_member": is_club_member,
+        "is_admin": is_admin,
     }
+    if sb_user:
+        user_response["plan"] = sb_user.get("plan", "free")
+        user_response["carousels_used"] = sb_user.get("carousels_used", 0)
+        user_response["carousels_limit"] = sb_user.get("carousels_limit", 10)
+        user_response["profile_summary"] = sb_user.get("profile_summary")
+
+    return {"user": user_response}
 
 
 @app.post("/api/send-to-chat")

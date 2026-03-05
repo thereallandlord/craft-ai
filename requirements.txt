@@ -5,3 +5,5 @@ requests
 python-multipart
 pydantic
 numpy
+supabase
+openai
