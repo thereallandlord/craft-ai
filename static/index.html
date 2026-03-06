@@ -5683,7 +5683,10 @@
         // Load templates into select dropdowns for Ready Text and Wizard tabs
         let templateCache = []; // Cache loaded templates
 
-        async function loadTemplateSelectors() {
+        async function loadTemplateSelectors(force = false) {
+            // Skip reload if cache already has data (unless forced)
+            if (!force && templateCache.length > 0) return;
+
             let templates = [];
             try {
                 const r = await fetch(`${API_URL}/templates`);
@@ -9204,6 +9207,7 @@
                 if (r.ok) {
                     showToast('Сохранено', 'success');
                     loadTemplatesList();
+                    loadTemplateSelectors(true);
                 } else throw new Error();
             } catch (e) {
                 const t = JSON.parse(localStorage.getItem('carousel_templates') || '{}');
