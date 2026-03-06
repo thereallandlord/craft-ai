@@ -5356,15 +5356,40 @@
                 return;
             }
 
-            // Check if template is selected
-            const templateId = rtTemplate ? (rtTemplate.template_id || rtTemplate.name) : null;
-            if (!templateId) {
+            // Auto-load last used template from userSettings
+            if (!rtTemplate) {
+                const lastId = userSettings.last_template_id || 'kamalov';
+                let t = (typeof templateCache !== 'undefined' ? templateCache : []).find(t => (t.template_id || t.name) === lastId);
+                if (!t) {
+                    // Try to fetch from API
+                    try {
+                        const r = await fetch(`${API_URL}/templates/${encodeURIComponent(lastId)}`);
+                        if (r.ok) t = await r.json();
+                    } catch(e) {}
+                }
+                if (t) {
+                    rtTemplate = t;
+                    const btnText = document.getElementById('scTemplateBtnText');
+                    if (btnText) btnText.textContent = t.name || lastId;
+                }
+            }
+
+            // Set username from userSettings
+            const usernames = userSettings.instagram_usernames || [];
+            if (usernames.length > 0 && rtTemplate && rtTemplate.settings) {
+                rtTemplate.settings.username = usernames[usernames.length - 1];
+            }
+
+            if (!rtTemplate) {
                 strip.innerHTML = `<div style="padding:40px;text-align:center;">
                     <div style="color:var(--text-muted);margin-bottom:16px;">Распознано ${rtParsedData.length} слайдов. Выберите шаблон для создания карусели.</div>
                     <button class="btn btn-primary" onclick="scOpenTemplatePicker()" style="padding:10px 20px;">Выбрать шаблон</button>
                 </div>`;
                 return;
             }
+
+            // Init per-slide photos array
+            rtSlidePhotos = new Array(rtParsedData.length).fill(null);
 
             // Build and render slides using existing rt* functions
             scBuildAndRender();
@@ -5758,6 +5783,8 @@
             }
             // Update hidden input
             document.getElementById(`${prefix}TemplateSelect`).value = templateId;
+            // Save last template to Supabase
+            saveUserSettings({ last_template_id: templateId });
             // Update generate button state for chat
             if (prefix === 'chat') {
                 chatUpdateGenerateBtn();
@@ -6155,7 +6182,7 @@
         function rtLoadUsernames() {
             const select = document.getElementById('rtUsername');
             if (!select) return;
-            const usernames = JSON.parse(localStorage.getItem('craft_usernames') || '[]');
+            const usernames = userSettings.instagram_usernames || [];
             const current = select.value;
             select.innerHTML = '<option value="@username">@username</option>';
             usernames.forEach(u => {
@@ -6167,10 +6194,10 @@
             const name = prompt('Введите Instagram username:');
             if (!name) return;
             const username = name.startsWith('@') ? name : '@' + name;
-            const list = JSON.parse(localStorage.getItem('craft_usernames') || '[]');
+            const list = [...(userSettings.instagram_usernames || [])];
             if (!list.includes(username)) {
                 list.push(username);
-                localStorage.setItem('craft_usernames', JSON.stringify(list));
+                saveUserSettings({ instagram_usernames: list });
             }
             rtLoadUsernames();
             document.getElementById('rtUsername').value = username;
@@ -6724,6 +6751,7 @@
             if (!t) return;
             rtTemplate = t;
             document.getElementById('rtTemplateSelect').value = templateId;
+            saveUserSettings({ last_template_id: templateId });
             rtSlides = rtBuildSlides(t, rtParsedData, rtSlidePhotos);
             if (rtActiveSlideIndex >= rtSlides.length) rtActiveSlideIndex = 0;
             rtRenderAllPreviews();
@@ -7356,7 +7384,7 @@
 
         // Username management
         function chatLoadUsernames() {
-            const usernames = JSON.parse(localStorage.getItem('craft_usernames') || '["@username"]');
+            const usernames = userSettings.instagram_usernames.length > 0 ? userSettings.instagram_usernames : ['@username'];
             const select = document.getElementById('chatUsernameSelect');
             if (select) {
                 select.innerHTML = usernames.map(u => `<option value="${u}">${u}</option>`).join('');
@@ -7367,10 +7395,10 @@
             const name = prompt('Instagram username:');
             if (!name) return;
             const formatted = name.startsWith('@') ? name : '@' + name;
-            let usernames = JSON.parse(localStorage.getItem('craft_usernames') || '["@username"]');
+            let usernames = [...(userSettings.instagram_usernames || [])];
             if (!usernames.includes(formatted)) {
                 usernames.push(formatted);
-                localStorage.setItem('craft_usernames', JSON.stringify(usernames));
+                saveUserSettings({ instagram_usernames: usernames });
             }
             chatLoadUsernames();
             document.getElementById('chatUsernameSelect').value = formatted;
@@ -7636,6 +7664,27 @@
         // Initialize
         // === AUTH ===
         let currentUser = null;
+        let userSettings = { last_template_id: 'kamalov', instagram_usernames: [] };
+
+        async function loadUserSettings() {
+            if (!currentUser) return;
+            try {
+                const r = await fetch(`${API_URL}/api/user/settings?user_id=${currentUser.id}`);
+                if (r.ok) userSettings = await r.json();
+            } catch(e) { console.log('Failed to load user settings', e); }
+        }
+
+        async function saveUserSettings(updates) {
+            if (!currentUser) return;
+            Object.assign(userSettings, updates);
+            try {
+                await fetch(`${API_URL}/api/user/settings`, {
+                    method: 'PATCH',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({user_id: currentUser.id, ...updates})
+                });
+            } catch(e) { console.log('Failed to save user settings', e); }
+        }
 
         async function initAuth() {
             const tg = window.Telegram && window.Telegram.WebApp;
@@ -7823,6 +7872,7 @@
             // Load projects & topics
             loadProjects();
             loadTopics();
+            loadUserSettings();
         }
 
         function logout() {
@@ -9205,6 +9255,7 @@
             // If called from carousel sub-chat editor, redirect to scApplyTemplate
             if (window._scTemplateCallback) {
                 window._scTemplateCallback = false;
+                saveUserSettings({ last_template_id: identifier });
                 try {
                     const r = await fetch(`${API_URL}/templates/${encodeURIComponent(identifier)}`);
                     if (r.ok) {

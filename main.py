@@ -2297,6 +2297,32 @@ async def delete_user_memory(memory_id: str):
     return {"ok": True}
 
 
+@app.get("/api/user/settings")
+async def get_user_settings(user_id: int):
+    """Get user settings (last_template_id, instagram_usernames)."""
+    sb = require_supabase()
+    result = sb.table("users").select("last_template_id, instagram_usernames").eq("user_id", str(user_id)).single().execute()
+    return result.data or {"last_template_id": "kamalov", "instagram_usernames": []}
+
+
+@app.patch("/api/user/settings")
+async def update_user_settings(request: Request):
+    """Update user settings (last_template_id, instagram_usernames)."""
+    sb = require_supabase()
+    body = await request.json()
+    user_id = body.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=400, detail="user_id required")
+    update = {}
+    if "last_template_id" in body:
+        update["last_template_id"] = body["last_template_id"]
+    if "instagram_usernames" in body:
+        update["instagram_usernames"] = body["instagram_usernames"]
+    if update:
+        sb.table("users").update(update).eq("user_id", str(user_id)).execute()
+    return {"ok": True}
+
+
 # === Telegram Auth ===
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_BOT_USERNAME = os.getenv("TELEGRAM_BOT_USERNAME", "")
