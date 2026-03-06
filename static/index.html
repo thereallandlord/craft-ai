@@ -9653,9 +9653,10 @@
                     if (templates.length > 0) {
                         templateCache = templates;
                         try { localStorage.setItem('templateCacheV3', JSON.stringify(templates)); } catch(e) {}
-                        if (document.getElementById('templateGallery').style.display !== 'none') {
-                            renderGalleryCards(container, templates);
-                        }
+                    }
+                    // Always render after fetch (even empty — replaces spinner with "Нет шаблонов")
+                    if (document.getElementById('templateGallery').style.display !== 'none') {
+                        renderGalleryCards(container, templates.length > 0 ? templates : templateCache);
                     }
                 }
             } catch(e) {}
