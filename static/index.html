@@ -4034,16 +4034,6 @@
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">Instagram</label>
-                        <div style="display:flex;gap:8px;">
-                            <select class="form-input" id="rtUsername" style="flex:1;">
-                                <option value="@username">@username</option>
-                            </select>
-                            <button class="btn" onclick="rtAddUsername()" style="white-space:nowrap;padding:8px 12px;">+</button>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
                         <label class="form-label">Фото</label>
                         <div style="display:flex;gap:8px;align-items:center;">
                             <button class="btn" onclick="document.getElementById('rtPhotoInput').click()" style="white-space:nowrap;">Загрузить фото</button>
@@ -5666,7 +5656,6 @@
             // Load template selectors when switching to tabs that need them
             if (tabId === 'ready-text') {
                 loadTemplateSelectors();
-                rtLoadUsernames();
                 rtRenderPhotoLibrary();
             }
             if (tabId === 'create') {
@@ -5779,37 +5768,40 @@
         }
 
         // Template selection modal for Ready Text
-        let _rtTemplateLoading = false;
         function rtOpenTemplateModal() {
             // Prevent duplicate modals
             if (document.querySelector('.rt-color-popup-overlay')) return;
-            if (templateCache.length === 0) {
-                if (_rtTemplateLoading) return; // already loading
-                _rtTemplateLoading = true;
-                const btn = document.getElementById('rtTemplateBtn');
-                const btnText = document.getElementById('rtTemplateBtnText');
-                if (btnText) btnText.textContent = 'Загрузка...';
-                if (btn) btn.disabled = true;
-                loadTemplateSelectors().then(() => {
-                    _rtTemplateLoading = false;
-                    if (btnText) btnText.textContent = 'Выбрать шаблон';
-                    if (btn) btn.disabled = false;
-                    if (templateCache.length === 0) {
-                        showToast('Нет доступных шаблонов', 'error');
-                    } else {
-                        rtOpenTemplateModal(); // retry
-                    }
-                }).catch(() => {
-                    _rtTemplateLoading = false;
-                    if (btnText) btnText.textContent = 'Выбрать шаблон';
-                    if (btn) btn.disabled = false;
-                });
-                return;
-            }
+
+            // Open modal immediately — show loader if templates not ready
             const overlay = document.createElement('div');
             overlay.className = 'rt-color-popup-overlay';
             overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
-            const curId = document.getElementById('rtTemplateSelect').value;
+
+            function renderModalContent() {
+                const curId = document.getElementById('rtTemplateSelect').value;
+                const grid = document.getElementById('rtModalTemplateGrid');
+                if (!grid) return;
+                if (templateCache.length === 0) {
+                    grid.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-muted);">Нет доступных шаблонов</div>';
+                    return;
+                }
+                grid.innerHTML = templateCache.map(t => {
+                    const tid = t.template_id || t.name;
+                    const count = t.slidesCount || (t.slides ? t.slides.length : '?');
+                    return `<div class="template-card ${tid === curId ? 'selected' : ''}" data-template-id="${tid}" onclick="rtSelectTemplateFromModal('${tid}')" style="border-radius:10px;">
+                        <div class="template-card-preview" id="rtModal-preview-${tid}" style="aspect-ratio:4/5;">
+                            <div class="template-card-preview-placeholder">${count} слайдов</div>
+                        </div>
+                        <div class="template-card-name" style="font-size:12px;padding:6px 8px;">${escapeHtml(t.name)}</div>
+                    </div>`;
+                }).join('');
+                requestAnimationFrame(() => {
+                    templateCache.forEach(t => {
+                        if (t.slides && t.slides.length > 0) renderTemplatePreview('rtModal', t);
+                    });
+                });
+            }
+
             overlay.innerHTML = `
                 <div class="rt-color-popup" style="max-width:520px;">
                     <div class="rt-color-popup-header">
@@ -5817,25 +5809,16 @@
                         <button class="rt-color-popup-close" onclick="this.closest('.rt-color-popup-overlay').remove()">&times;</button>
                     </div>
                     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px;max-height:60vh;overflow-y:auto;padding:4px;" id="rtModalTemplateGrid">
-                        ${templateCache.map(t => {
-                            const tid = t.template_id || t.name;
-                            const count = t.slides ? t.slides.length : '?';
-                            return `<div class="template-card ${tid === curId ? 'selected' : ''}" data-template-id="${tid}" onclick="rtSelectTemplateFromModal('${tid}')" style="border-radius:10px;">
-                                <div class="template-card-preview" id="rtModal-preview-${tid}" style="aspect-ratio:4/5;">
-                                    <div class="template-card-preview-placeholder">${count} слайдов</div>
-                                </div>
-                                <div class="template-card-name" style="font-size:12px;padding:6px 8px;">${escapeHtml(t.name)}</div>
-                            </div>`;
-                        }).join('')}
+                        <div style="padding:40px;text-align:center;color:var(--text-muted);grid-column:1/-1;"><span class="spinner"></span> Загрузка шаблонов...</div>
                     </div>
                 </div>`;
             document.body.appendChild(overlay);
-            // Render previews after DOM insertion
-            requestAnimationFrame(() => {
-                templateCache.forEach(t => {
-                    if (t.slides && t.slides.length > 0) renderTemplatePreview('rtModal', t);
-                });
-            });
+
+            if (templateCache.length > 0) {
+                renderModalContent();
+            } else {
+                loadTemplateSelectors(true).then(() => renderModalContent());
+            }
         }
 
         function rtSelectTemplateFromModal(templateId) {
@@ -6162,30 +6145,7 @@
         }
 
         // Ready Text: username selector (shared with chat)
-        function rtLoadUsernames() {
-            const select = document.getElementById('rtUsername');
-            if (!select) return;
-            const usernames = userSettings.instagram_usernames || [];
-            const current = select.value;
-            select.innerHTML = '<option value="@username">@username</option>';
-            usernames.forEach(u => {
-                select.innerHTML += `<option value="${u}" ${u === current ? 'selected' : ''}>${u}</option>`;
-            });
-            rtLoadEditorUsernames();
-        }
 
-        function rtAddUsername() {
-            const name = prompt('Введите Instagram username:');
-            if (!name) return;
-            const username = name.startsWith('@') ? name : '@' + name;
-            const list = [...(userSettings.instagram_usernames || [])];
-            if (!list.includes(username)) {
-                list.push(username);
-                saveUserSettings({ instagram_usernames: list });
-            }
-            rtLoadUsernames();
-            document.getElementById('rtUsername').value = username;
-        }
 
         // Editor username CRUD (inside rtEditorPhase)
         function rtLoadEditorUsernames() {
@@ -6315,10 +6275,8 @@
         function rtBuildSlides(templateData, parsedData, photos) {
             const templateSlides = templateData.slides || [];
             const editorUsernameEl = document.getElementById('rtEditorUsername');
-            const inputUsernameEl = document.getElementById('rtUsername');
             const username = (editorUsernameEl && editorUsernameEl.value) ||
-                             (inputUsernameEl && inputUsernameEl.value && inputUsernameEl.value !== '@username' ? inputUsernameEl.value : '') ||
-                             (userSettings.instagram_usernames.length > 0 ? userSettings.instagram_usernames[userSettings.instagram_usernames.length - 1] : '');
+                             (userSettings.instagram_usernames && userSettings.instagram_usernames.length > 0 ? userSettings.instagram_usernames[userSettings.instagram_usernames.length - 1] : '');
             const introSlides = templateSlides.filter(s => s.type === 'intro');
             const contentSlides = templateSlides.filter(s => s.type === 'content');
             const endingSlides = templateSlides.filter(s => s.type === 'ending');
@@ -6846,9 +6804,7 @@
         async function rtGenerateImages() {
             const templateId = document.getElementById('rtTemplateSelect').value;
             const editorUsernameEl = document.getElementById('rtEditorUsername');
-            const inputUsernameEl = document.getElementById('rtUsername');
             const username = (editorUsernameEl && editorUsernameEl.value) ||
-                             (inputUsernameEl && inputUsernameEl.value && inputUsernameEl.value !== '@username' ? inputUsernameEl.value : '') ||
                              (userSettings.instagram_usernames && userSettings.instagram_usernames.length > 0 ? userSettings.instagram_usernames[userSettings.instagram_usernames.length - 1] : '@username');
             const slidesData = rtParsedData.map((s, i) => {
                 const slide = {...s};
@@ -8003,6 +7959,10 @@
             render();
             loadTemplatesList();
             await loadTemplateSelectors();
+            // Retry if cold start caused first load to fail
+            if (templateCache.length === 0) {
+                setTimeout(() => loadTemplateSelectors(true), 3000);
+            }
             loadWebhookSettings();
             chatInitTab();
 
@@ -9247,7 +9207,7 @@
             const c = document.getElementById('templateList');
             let templates = [];
             try {
-                const r = await fetch(`${API_URL}/templates`);
+                const r = await fetch(`${API_URL}/templates?preview=light`);
                 if (r.ok) {
                     const d = await r.json();
                     templates = d.templates || [];
