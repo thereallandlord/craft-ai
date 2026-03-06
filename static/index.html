@@ -6845,7 +6845,11 @@
 
         async function rtGenerateImages() {
             const templateId = document.getElementById('rtTemplateSelect').value;
-            const username = document.getElementById('rtUsername').value || '@username';
+            const editorUsernameEl = document.getElementById('rtEditorUsername');
+            const inputUsernameEl = document.getElementById('rtUsername');
+            const username = (editorUsernameEl && editorUsernameEl.value) ||
+                             (inputUsernameEl && inputUsernameEl.value && inputUsernameEl.value !== '@username' ? inputUsernameEl.value : '') ||
+                             (userSettings.instagram_usernames && userSettings.instagram_usernames.length > 0 ? userSettings.instagram_usernames[userSettings.instagram_usernames.length - 1] : '@username');
             const slidesData = rtParsedData.map((s, i) => {
                 const slide = {...s};
                 const photo = rtSlidePhotos[i] || (i === 0 ? rtSelectedPhoto : null);
