@@ -615,6 +615,9 @@ class SlideRenderer:
         if current_segs:
             lines.append(current_segs)
 
+        # Get primary font ascent for baseline alignment
+        primary_ascent = font.getmetrics()[0]
+
         curr_y = y
         for line_segs in lines:
             if not line_segs:
@@ -641,15 +644,19 @@ class SlideRenderer:
                 # Font fallback for Unicode/Arabic/special chars
                 seg_font = self.select_font_for_text(seg['text'], seg_font, font_size, font_weight)
 
+                # Baseline alignment: adjust Y when fallback font has different ascent
+                seg_ascent = seg_font.getmetrics()[0]
+                y_offset = primary_ascent - seg_ascent if seg_font != font else 0
+
                 if letter_spacing != 0 and not self._contains_arabic(seg['text']):
                     # Grapheme-cluster rendering with letter-spacing (skip for Arabic)
                     for cluster in grapheme.graphemes(seg['text']):
-                        draw.text((curr_x, curr_y), cluster, font=seg_font, fill=col)
+                        draw.text((curr_x, curr_y + y_offset), cluster, font=seg_font, fill=col)
                         bbox = draw.textbbox((0, 0), cluster, font=seg_font)
                         curr_x += (bbox[2] - bbox[0]) + letter_spacing
                 else:
                     # Whole-string rendering (no letter-spacing, or Arabic text)
-                    draw.text((curr_x, curr_y), seg['text'], font=seg_font, fill=col)
+                    draw.text((curr_x, curr_y + y_offset), seg['text'], font=seg_font, fill=col)
                     bbox = draw.textbbox((0, 0), seg['text'], font=seg_font)
                     curr_x += bbox[2] - bbox[0]
 
