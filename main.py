@@ -68,29 +68,18 @@ async def telegram_headers(request: Request, call_next):
 # Railway Volume монтируется в /app/data (настраивается через Railway Dashboard)
 # Локально используются обычные папки в текущей директории
 DATA_DIR = os.getenv("DATA_PATH", ".")  # Railway: /app/data, локально: текущая директория
-TEMPLATES_DIR = os.path.join(DATA_DIR, "templates")
+TEMPLATES_DIR = os.path.join(DATA_DIR, "templates")  # Legacy, used only for migration
+GIT_TEMPLATES_DIR = "templates"  # Legacy, used only for migration
 UPLOADS_DIR = os.path.join(DATA_DIR, "uploads")
 OUTPUT_DIR = os.path.join(DATA_DIR, "output")
 FONTS_DIR = "fonts"  # fonts всегда локальные (часть кодовой базы)
 
 # Создаём необходимые директории
 os.makedirs("static", exist_ok=True)
-os.makedirs(TEMPLATES_DIR, exist_ok=True)
 os.makedirs(FONTS_DIR, exist_ok=True)
 os.makedirs(UPLOADS_DIR, exist_ok=True)
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-# Copy system templates from git to DATA_DIR if running with separate data volume (Railway)
-GIT_TEMPLATES_DIR = "templates"
-if DATA_DIR != "." and os.path.exists(GIT_TEMPLATES_DIR):
-    for f in os.listdir(GIT_TEMPLATES_DIR):
-        if f.endswith('.json'):
-            dest = os.path.join(TEMPLATES_DIR, f)
-            if not os.path.exists(dest):
-                shutil.copy2(os.path.join(GIT_TEMPLATES_DIR, f), dest)
-                print(f"📋 Copied system template: {f}")
-
-print(f"📁 Templates directory: {TEMPLATES_DIR}")
 print(f"📁 Uploads directory: {UPLOADS_DIR}")
 print(f"📁 Output directory: {OUTPUT_DIR}")
 
@@ -894,217 +883,115 @@ async def upload_font(file: UploadFile):
 
 @app.get("/templates")
 async def list_templates(preview: str = "full", user_id: str = ""):
-    import traceback
+    """List templates from Supabase. Returns system + personal + published."""
+    if not supabase:
+        return {"templates": []}
+
+    templates = []
+
+    def format_row(row, ttype: str):
+        all_slides = row.get("slides") or []
+        if preview == 'light':
+            slides_data = [all_slides[0]] if all_slides else []
+        else:
+            slides_data = all_slides
+        return {
+            "name": row["name"],
+            "template_id": row["template_id"],
+            "createdAt": row.get("created_at", ""),
+            "slidesCount": len(all_slides),
+            "slides": slides_data,
+            "type": ttype,
+            "is_system": row.get("is_system", False),
+            "is_published": row.get("is_published", False),
+            "db_id": str(row["id"]),
+            "owner_id": str(row.get("user_id", ""))
+        }
+
     try:
-        templates = []
+        # 1. System templates (visible to all)
+        sys_result = supabase.table("user_templates").select("*").eq("is_system", True).execute()
+        for row in (sys_result.data or []):
+            templates.append(format_row(row, "system"))
 
-        # 1. System templates (filesystem) — search both TEMPLATES_DIR and GIT_TEMPLATES_DIR
-        template_files = {}  # filename -> full path (dedup, TEMPLATES_DIR takes priority)
-        for tdir in [TEMPLATES_DIR, GIT_TEMPLATES_DIR]:
-            try:
-                if os.path.isdir(tdir):
-                    for f in os.listdir(tdir):
-                        if f.endswith('.json') and f not in template_files:
-                            template_files[f] = os.path.join(tdir, f)
-            except Exception as e:
-                print(f"Error listing templates dir {tdir}: {e}")
+        if user_id:
+            # 2. User's own non-system templates
+            own_result = supabase.table("user_templates").select("*").eq("user_id", user_id).eq("is_system", False).execute()
+            for row in (own_result.data or []):
+                templates.append(format_row(row, "personal"))
 
-        for f, path in template_files.items():
-            try:
-                with open(path, 'r', encoding='utf-8') as file:
-                    d = json.load(file)
-
-                    template_id = d.get('template_id')
-                    if not template_id:
-                        template_id = generate_template_id(d.get('name', f.replace('.json', '')))
-                        d['template_id'] = template_id
-                        try:
-                            with open(path, 'w', encoding='utf-8') as write_file:
-                                json.dump(d, write_file, ensure_ascii=False, indent=2)
-                        except:
-                            pass
-
-                    all_slides = d.get('slides', [])
-                    if preview == 'light':
-                        slides_data = [all_slides[0]] if all_slides else []
-                    else:
-                        slides_data = all_slides
-
-                    templates.append({
-                        "name": d.get('name', f.replace('.json', '')),
-                        "template_id": template_id,
-                        "createdAt": d.get('createdAt', ''),
-                        "slidesCount": len(all_slides),
-                        "slides": slides_data,
-                        "type": "system"
-                    })
-            except Exception as e:
-                print(f"Error loading system template {f}: {e}")
-
-        # 2. User templates from Supabase (personal + published)
-        if supabase and user_id:
-            try:
-                # Personal templates (user's own)
-                result = supabase.table("user_templates").select("*").eq("user_id", user_id).execute()
-                for row in (result.data or []):
-                    all_slides = row.get("slides") or []
-                    if preview == 'light':
-                        slides_data = [all_slides[0]] if all_slides else []
-                    else:
-                        slides_data = all_slides
-                    templates.append({
-                        "name": row["name"],
-                        "template_id": row["template_id"],
-                        "createdAt": row.get("created_at", ""),
-                        "slidesCount": len(all_slides),
-                        "slides": slides_data,
-                        "type": "personal",
-                        "db_id": str(row["id"])
-                    })
-
-                # Published templates (from other users)
-                pub_result = supabase.table("user_templates").select("*").eq("is_published", True).neq("user_id", user_id).execute()
-                for row in (pub_result.data or []):
-                    all_slides = row.get("slides") or []
-                    if preview == 'light':
-                        slides_data = [all_slides[0]] if all_slides else []
-                    else:
-                        slides_data = all_slides
-                    templates.append({
-                        "name": row["name"],
-                        "template_id": row["template_id"],
-                        "createdAt": row.get("created_at", ""),
-                        "slidesCount": len(all_slides),
-                        "slides": slides_data,
-                        "type": "published",
-                        "db_id": str(row["id"])
-                    })
-            except Exception as e:
-                print(f"Error loading user templates: {e}")
-
-        return {"templates": templates}
+            # 3. Published by others (non-system)
+            pub_result = supabase.table("user_templates").select("*").eq("is_published", True).eq("is_system", False).neq("user_id", user_id).execute()
+            for row in (pub_result.data or []):
+                templates.append(format_row(row, "published"))
     except Exception as e:
-        error_tb = traceback.format_exc()
-        print(f"CRITICAL ERROR in /templates: {error_tb}")
-        return {"templates": [], "error": str(e), "traceback": error_tb}
+        print(f"Error loading templates: {e}")
 
-
-@app.get("/debug/templates")
-async def debug_templates():
-    """Diagnostic endpoint to check template directories"""
-    result = {
-        "cwd": os.getcwd(),
-        "DATA_DIR": DATA_DIR,
-        "TEMPLATES_DIR": TEMPLATES_DIR,
-        "GIT_TEMPLATES_DIR": GIT_TEMPLATES_DIR,
-        "templates_dir_exists": os.path.isdir(TEMPLATES_DIR),
-        "git_templates_dir_exists": os.path.isdir(GIT_TEMPLATES_DIR),
-    }
-    try:
-        result["templates_dir_contents"] = os.listdir(TEMPLATES_DIR) if os.path.isdir(TEMPLATES_DIR) else []
-    except Exception as e:
-        result["templates_dir_error"] = str(e)
-    try:
-        result["git_templates_dir_contents"] = os.listdir(GIT_TEMPLATES_DIR) if os.path.isdir(GIT_TEMPLATES_DIR) else []
-    except Exception as e:
-        result["git_templates_dir_error"] = str(e)
-    return result
+    return {"templates": templates}
 
 
 @app.get("/templates/{identifier}")
 async def get_template(identifier: str):
-    # 1. Search filesystem (system templates) — both TEMPLATES_DIR and GIT_TEMPLATES_DIR
-    for tdir in [TEMPLATES_DIR, GIT_TEMPLATES_DIR]:
-        try:
-            if not os.path.isdir(tdir):
-                continue
-            for filename in os.listdir(tdir):
-                if not filename.endswith('.json'):
-                    continue
-                path = os.path.join(tdir, filename)
-                try:
-                    with open(path, 'r', encoding='utf-8') as f:
-                        t = json.load(f)
-                        if t.get('template_id') == identifier or t.get('name') == identifier:
-                            t['type'] = 'system'
-                            return t
-                except:
-                    continue
-        except Exception as e:
-            print(f"Error searching templates in {tdir}: {e}")
+    """Get single template by template_id from Supabase."""
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Supabase not configured")
 
-    # Fallback: try direct filename match in both dirs
-    safe = re.sub(r'[^a-zA-Z0-9_\-а-яА-ЯёЁ]', '_', identifier)
-    for tdir in [TEMPLATES_DIR, GIT_TEMPLATES_DIR]:
-        fallback_path = os.path.join(tdir, f"{safe}.json")
-        if os.path.exists(fallback_path):
-            with open(fallback_path, 'r', encoding='utf-8') as f:
-                t = json.load(f)
-                t['type'] = 'system'
-                return t
-
-    # 2. Search Supabase (user templates)
-    if supabase:
-        try:
-            result = supabase.table("user_templates").select("*").eq("template_id", identifier).execute()
-            if result.data and len(result.data) > 0:
-                row = result.data[0]
-                return {
-                    "name": row["name"],
-                    "template_id": row["template_id"],
-                    "settings": row.get("settings") or {},
-                    "slides": row.get("slides") or [],
-                    "createdAt": row.get("created_at", ""),
-                    "type": "personal" if not row.get("is_published") else "published"
-                }
-        except:
-            pass
+    try:
+        result = supabase.table("user_templates").select("*").eq("template_id", identifier).execute()
+        if result.data and len(result.data) > 0:
+            row = result.data[0]
+            ttype = "system" if row.get("is_system") else ("published" if row.get("is_published") else "personal")
+            return {
+                "name": row["name"],
+                "template_id": row["template_id"],
+                "settings": row.get("settings") or {},
+                "slides": row.get("slides") or [],
+                "createdAt": row.get("created_at", ""),
+                "type": ttype,
+                "is_system": row.get("is_system", False),
+                "is_published": row.get("is_published", False),
+                "db_id": str(row["id"]),
+                "owner_id": str(row.get("user_id", ""))
+            }
+    except Exception as e:
+        print(f"Error getting template {identifier}: {e}")
 
     raise HTTPException(status_code=404, detail="Not found")
 
 
 @app.post("/templates")
 async def save_template(template: TemplateData):
+    """Save template to Supabase. Requires user_id."""
     from datetime import datetime
+
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Supabase not configured")
+    if not template.user_id:
+        raise HTTPException(status_code=400, detail="user_id required")
 
     tid = template.template_id or generate_template_id(template.name)
 
-    # If user_id provided — save to Supabase (personal template)
-    if template.user_id and supabase:
-        try:
-            # Upsert: update if template_id exists for this user, insert otherwise
-            row = {
-                "user_id": template.user_id,
-                "template_id": tid,
-                "name": template.name,
-                "slides": template.slides,
-                "settings": template.settings,
-                "updated_at": datetime.now().isoformat()
-            }
-            supabase.table("user_templates").upsert(row, on_conflict="user_id,template_id").execute()
-            return {"success": True, "name": template.name, "template_id": tid, "type": "personal"}
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Error saving template: {e}")
-
-    # No user_id — save to filesystem (system template / legacy)
-    t = template.dict()
-    t['createdAt'] = datetime.now().isoformat()
-    t['template_id'] = tid
-
-    safe = re.sub(r'[^a-zA-Z0-9_\-а-яА-ЯёЁ]', '_', template.name)
-    path = os.path.join(TEMPLATES_DIR, f"{safe}.json")
-    with open(path, 'w', encoding='utf-8') as f:
-        json.dump(t, f, ensure_ascii=False, indent=2)
-    return {"success": True, "name": template.name, "template_id": tid, "type": "system"}
+    try:
+        row = {
+            "user_id": template.user_id,
+            "template_id": tid,
+            "name": template.name,
+            "slides": template.slides,
+            "settings": template.settings,
+            "updated_at": datetime.now().isoformat()
+        }
+        supabase.table("user_templates").upsert(row, on_conflict="user_id,template_id").execute()
+        return {"success": True, "name": template.name, "template_id": tid, "type": "personal"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error saving template: {e}")
 
 
 @app.put("/templates/{identifier}/publish")
 async def toggle_publish_template(identifier: str, user_id: str = ""):
-    """Toggle is_published on a user template (only owner can do this)"""
+    """Toggle is_published on a user template (only owner can do this)."""
     if not supabase or not user_id:
         raise HTTPException(status_code=400, detail="user_id required")
     try:
-        # Get current state
         result = supabase.table("user_templates").select("id,is_published").eq("template_id", identifier).eq("user_id", user_id).execute()
         if not result.data:
             raise HTTPException(status_code=404, detail="Template not found")
@@ -1118,44 +1005,93 @@ async def toggle_publish_template(identifier: str, user_id: str = ""):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.put("/templates/{identifier}/system")
+async def toggle_system_template(identifier: str, user_id: str = ""):
+    """Toggle is_system on a template. Admin only."""
+    if not supabase or not user_id:
+        raise HTTPException(status_code=400, detail="user_id required")
+    if str(user_id) not in ADMIN_TELEGRAM_IDS:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    try:
+        result = supabase.table("user_templates").select("id,is_system").eq("template_id", identifier).execute()
+        if not result.data:
+            raise HTTPException(status_code=404, detail="Template not found")
+        row = result.data[0]
+        new_state = not row.get("is_system", False)
+        supabase.table("user_templates").update({"is_system": new_state}).eq("id", row["id"]).execute()
+        return {"success": True, "is_system": new_state}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.delete("/templates/{identifier}")
 async def delete_template(identifier: str, user_id: str = ""):
-    # 1. Try Supabase first (user templates)
-    if supabase and user_id:
-        try:
+    """Delete template from Supabase."""
+    if not supabase or not user_id:
+        raise HTTPException(status_code=400, detail="user_id required")
+    try:
+        # Admin can delete any template, regular user only their own
+        if str(user_id) in ADMIN_TELEGRAM_IDS:
+            result = supabase.table("user_templates").delete().eq("template_id", identifier).execute()
+        else:
             result = supabase.table("user_templates").delete().eq("template_id", identifier).eq("user_id", user_id).execute()
-            if result.data and len(result.data) > 0:
-                return {"success": True}
-        except:
-            pass
-
-    # 2. Filesystem (system templates)
-    template_path = None
-    if os.path.exists(TEMPLATES_DIR):
-        for filename in os.listdir(TEMPLATES_DIR):
-            if not filename.endswith('.json'):
-                continue
-            path = os.path.join(TEMPLATES_DIR, filename)
-            try:
-                with open(path, 'r', encoding='utf-8') as f:
-                    t = json.load(f)
-                    if t.get('template_id') == identifier or t.get('name') == identifier:
-                        template_path = path
-                        break
-            except:
-                continue
-
-    if not template_path:
-        safe = re.sub(r'[^a-zA-Z0-9_\-а-яА-ЯёЁ]', '_', identifier)
-        fallback_path = os.path.join(TEMPLATES_DIR, f"{safe}.json")
-        if os.path.exists(fallback_path):
-            template_path = fallback_path
-
-    if template_path and os.path.exists(template_path):
-        os.remove(template_path)
-        return {"success": True}
+        if result.data and len(result.data) > 0:
+            return {"success": True}
+    except Exception as e:
+        print(f"Error deleting template: {e}")
 
     raise HTTPException(status_code=404, detail="Not found")
+
+
+@app.post("/admin/migrate-templates")
+async def migrate_filesystem_templates(user_id: str = ""):
+    """One-time migration: move filesystem templates to Supabase. Admin only."""
+    from datetime import datetime
+
+    if not supabase or not user_id:
+        raise HTTPException(status_code=400, detail="user_id required")
+    if str(user_id) not in ADMIN_TELEGRAM_IDS:
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    migrated = []
+    errors = []
+
+    for tdir in [TEMPLATES_DIR, GIT_TEMPLATES_DIR]:
+        try:
+            if not os.path.isdir(tdir):
+                continue
+            for f in os.listdir(tdir):
+                if not f.endswith('.json'):
+                    continue
+                path = os.path.join(tdir, f)
+                try:
+                    with open(path, 'r', encoding='utf-8') as file:
+                        d = json.load(file)
+
+                    template_id = d.get('template_id')
+                    if not template_id:
+                        template_id = generate_template_id(d.get('name', f.replace('.json', '')))
+
+                    row = {
+                        "user_id": user_id,
+                        "template_id": template_id,
+                        "name": d.get('name', f.replace('.json', '')),
+                        "slides": d.get('slides', []),
+                        "settings": d.get('settings', {}),
+                        "is_system": False,
+                        "is_published": False,
+                        "updated_at": datetime.now().isoformat()
+                    }
+                    supabase.table("user_templates").upsert(row, on_conflict="user_id,template_id").execute()
+                    migrated.append(f)
+                except Exception as e:
+                    errors.append({"file": f, "error": str(e)})
+        except Exception as e:
+            errors.append({"dir": tdir, "error": str(e)})
+
+    return {"migrated": migrated, "errors": errors, "total": len(migrated)}
 
 
 @app.post("/render-slide")

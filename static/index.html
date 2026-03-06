@@ -5817,11 +5817,17 @@
                 const published = templateCache.filter(t => t.type === 'published');
 
                 function renderCards(list) {
+                    const isAdmin = currentUser && currentUser.is_admin;
                     return `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;">
                         ${list.map(t => {
                             const tid = t.template_id || t.name;
                             const count = t.slidesCount || (t.slides ? t.slides.length : '?');
-                            return `<div class="template-card ${tid === curId ? 'selected' : ''}" data-template-id="${tid}" onclick="rtSelectTemplateFromModal('${tid}')" style="border-radius:10px;">
+                            const adminBtns = isAdmin ? `<div style="position:absolute;top:4px;right:4px;display:flex;gap:2px;z-index:2;" onclick="event.stopPropagation()">
+                                <button onclick="toggleTemplateSystem('${tid}')" title="${t.is_system ? 'Убрать из системных' : 'Сделать системным'}" style="width:24px;height:24px;border-radius:6px;border:none;cursor:pointer;font-size:12px;background:${t.is_system ? 'rgba(99,102,241,0.9)' : 'rgba(0,0,0,0.5)'};color:#fff;">${t.is_system ? 'S' : 's'}</button>
+                                <button onclick="toggleTemplatePublish('${tid}')" title="${t.is_published ? 'Снять с публикации' : 'Опубликовать'}" style="width:24px;height:24px;border-radius:6px;border:none;cursor:pointer;font-size:12px;background:${t.is_published ? 'rgba(34,197,94,0.9)' : 'rgba(0,0,0,0.5)'};color:#fff;">${t.is_published ? 'P' : 'p'}</button>
+                            </div>` : '';
+                            return `<div class="template-card ${tid === curId ? 'selected' : ''}" data-template-id="${tid}" onclick="rtSelectTemplateFromModal('${tid}')" style="border-radius:10px;position:relative;">
+                                ${adminBtns}
                                 <div class="template-card-preview" id="rtModal-preview-${tid}" style="aspect-ratio:4/5;">
                                     <div class="template-card-preview-placeholder">${count} слайдов</div>
                                 </div>
@@ -5875,6 +5881,35 @@
         function rtSelectTemplateFromModal(templateId) {
             document.querySelector('.rt-color-popup-overlay')?.remove();
             selectTemplateCard('rt', templateId);
+        }
+
+        async function toggleTemplateSystem(templateId) {
+            if (!currentUser) return;
+            try {
+                const r = await fetch(`${API_URL}/templates/${encodeURIComponent(templateId)}/system?user_id=${currentUser.id}`, {method: 'PUT'});
+                if (r.ok) {
+                    await loadTemplateSelectors(true);
+                    // Re-render modal if open
+                    const grid = document.getElementById('rtModalTemplateGrid');
+                    if (grid) {
+                        rtOpenTemplateModal();
+                    }
+                }
+            } catch(e) { console.error('toggleTemplateSystem error:', e); }
+        }
+
+        async function toggleTemplatePublish(templateId) {
+            if (!currentUser) return;
+            try {
+                const r = await fetch(`${API_URL}/templates/${encodeURIComponent(templateId)}/publish?user_id=${currentUser.id}`, {method: 'PUT'});
+                if (r.ok) {
+                    await loadTemplateSelectors(true);
+                    const grid = document.getElementById('rtModalTemplateGrid');
+                    if (grid) {
+                        rtOpenTemplateModal();
+                    }
+                }
+            } catch(e) { console.error('toggleTemplatePublish error:', e); }
         }
 
         function chatToggleTemplatePicker() {
@@ -9282,10 +9317,14 @@
             if (templates.length === 0) {
                 html += '<div class="props-hint">Нет сохраненных шаблонов</div>';
             } else {
-                html += templates.map(t => `
+                html += templates.map(t => {
+                    const typeBadge = t.type === 'system' ? '<span style="font-size:10px;background:rgba(99,102,241,0.15);color:#6366f1;padding:1px 6px;border-radius:4px;margin-left:6px;">Системный</span>'
+                        : t.type === 'published' ? '<span style="font-size:10px;background:rgba(34,197,94,0.15);color:#22c55e;padding:1px 6px;border-radius:4px;margin-left:6px;">Опубликован</span>'
+                        : '';
+                    return `
                     <div class="template-item" onclick="loadTemplate('${t.template_id || t.name}')">
                         <div class="template-item-info">
-                            <span class="template-item-name">${t.name}</span>
+                            <span class="template-item-name">${t.name}${typeBadge}</span>
                             ${t.template_id ? `<span class="template-item-id">${t.template_id}</span>` : ''}
                             <span class="template-item-meta">${t.slides ? t.slides.length : t.slidesCount || '?'} слайдов</span>
                         </div>
@@ -9293,8 +9332,8 @@
                             <button class="template-item-btn" onclick="exportTemplate('${t.template_id || t.name}',event)">↓</button>
                             <button class="template-item-btn delete" onclick="deleteTemplate('${t.template_id || t.name}',event)">×</button>
                         </div>
-                    </div>
-                `).join('');
+                    </div>`;
+                }).join('');
             }
 
             c.innerHTML = html;
