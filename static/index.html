@@ -4459,17 +4459,7 @@
                     <div style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:14px;">Загрузка...</div>
                 </div>
                 <!-- Carousel editor (shown for chat_type=carousel) -->
-                <div id="scCarouselEditor" style="display:none;flex:1;overflow:hidden;flex-direction:column;">
-                    <div style="padding:12px 16px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);">
-                        <button class="btn" id="scTemplateBtn" onclick="scOpenTemplatePicker()" style="display:flex;align-items:center;gap:6px;padding:8px 14px;">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
-                            <span id="scTemplateBtnText">Выбрать шаблон</span>
-                        </button>
-                        <span style="flex:1"></span>
-                        <button class="btn btn-primary" id="scDownloadBtn" onclick="scDownloadAll()" style="padding:8px 16px;">Скачать все</button>
-                    </div>
-                    <div id="scPreviewStrip" style="flex:1;overflow-y:auto;padding:16px;display:flex;flex-wrap:wrap;gap:12px;justify-content:center;align-content:start;"></div>
-                </div>
+                <div id="scCarouselEditor" style="display:none;flex:1;overflow:hidden;flex-direction:column;"></div>
                 <div class="sc-action-bar" id="scActionBar" style="display:none;"></div>
                 <div class="sc-input-bar" id="scInputBar">
                     <div class="sc-input-container" id="scInputContainer">
@@ -4547,6 +4537,7 @@
         }
 
         function closeAllViews() {
+            scRestoreRtEditor();
             document.querySelectorAll('.view-overlay').forEach(el => {
                 el.classList.remove('active');
             });
@@ -5152,6 +5143,7 @@
 
         // --- Open Sub-chat (view-subchat) ---
         async function openSubChat(subChatId) {
+            scRestoreRtEditor();
             currentSubChatId = subChatId;
             showView('subchat');
             // Reset visibility
@@ -5313,19 +5305,27 @@
             } catch(e) { showToast('Ошибка', 'error'); }
         }
 
-        // --- Carousel Editor inside sub-chat ---
-        let scCarouselText = '';
+        // --- Carousel Editor inside sub-chat (reuses RT editor via DOM move) ---
+        let _rtEditorInSubChat = false;
+
+        function scRestoreRtEditor() {
+            const editor = document.getElementById('rtEditorPhase');
+            if (editor && editor._originalParent && editor.parentElement !== editor._originalParent) {
+                editor._originalParent.appendChild(editor);
+                editor.style.display = 'none';
+                _rtEditorInSubChat = false;
+            }
+        }
 
         async function scInitCarouselEditor(subChat) {
-            const strip = document.getElementById('scPreviewStrip');
-            strip.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-muted);">Загрузка текста...</div>';
+            const container = document.getElementById('scCarouselEditor');
+            container.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-muted);">Загрузка...</div>';
 
-            // Get text from slides_data (pulled from parent by backend)
+            // 1. Get text from slides_data or parent
             let slidesText = '';
             if (subChat.slides_data && subChat.slides_data.text) {
                 slidesText = subChat.slides_data.text;
             } else if (subChat.parent_subchat_id) {
-                // Fallback: fetch parent sub-chat messages
                 try {
                     const resp = await fetch(`${API_URL}/api/sub-chats/${subChat.parent_subchat_id}`);
                     if (resp.ok) {
@@ -5337,143 +5337,54 @@
             }
 
             if (!slidesText) {
-                strip.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-muted);">Нет текста для карусели. Сначала сгенерируйте текст.</div>';
+                container.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-muted);">Нет текста для карусели.</div>';
                 return;
             }
 
-            scCarouselText = slidesText;
-
-            // Use existing parseCarouselText to parse slides
-            if (typeof parseCarouselText === 'function') {
-                rtParsedData = parseCarouselText(slidesText);
-            } else {
-                strip.innerHTML = '<div style="padding:40px;text-align:center;color:#ef4444;">Ошибка: parseCarouselText не найден</div>';
-                return;
-            }
-
+            // 2. Parse text
+            rtParsedData = parseCarouselText(slidesText);
             if (rtParsedData.length === 0) {
-                strip.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-muted);">Не удалось распарсить текст на слайды</div>';
+                container.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-muted);">Не удалось распарсить текст.</div>';
                 return;
             }
 
-            // Auto-load last used template from userSettings
+            // 3. Load template from userSettings
+            const lastId = userSettings.last_template_id || 'kamalov';
+            rtTemplate = (templateCache || []).find(t => (t.template_id || t.name) === lastId);
             if (!rtTemplate) {
-                const lastId = userSettings.last_template_id || 'kamalov';
-                let t = (typeof templateCache !== 'undefined' ? templateCache : []).find(t => (t.template_id || t.name) === lastId);
-                if (!t) {
-                    // Try to fetch from API
-                    try {
-                        const r = await fetch(`${API_URL}/templates/${encodeURIComponent(lastId)}`);
-                        if (r.ok) t = await r.json();
-                    } catch(e) {}
-                }
-                if (t) {
-                    rtTemplate = t;
-                    const btnText = document.getElementById('scTemplateBtnText');
-                    if (btnText) btnText.textContent = t.name || lastId;
-                }
+                try {
+                    const r = await fetch(`${API_URL}/templates/${encodeURIComponent(lastId)}`);
+                    if (r.ok) rtTemplate = await r.json();
+                } catch(e) {}
             }
-
-            // Set username from userSettings
-            const usernames = userSettings.instagram_usernames || [];
-            if (usernames.length > 0 && rtTemplate && rtTemplate.settings) {
-                rtTemplate.settings.username = usernames[usernames.length - 1];
+            if (!rtTemplate && templateCache && templateCache.length > 0) {
+                rtTemplate = templateCache[0];
             }
-
             if (!rtTemplate) {
-                strip.innerHTML = `<div style="padding:40px;text-align:center;">
-                    <div style="color:var(--text-muted);margin-bottom:16px;">Распознано ${rtParsedData.length} слайдов. Выберите шаблон для создания карусели.</div>
-                    <button class="btn btn-primary" onclick="scOpenTemplatePicker()" style="padding:10px 20px;">Выбрать шаблон</button>
-                </div>`;
+                container.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-muted);">Шаблон не найден.</div>';
                 return;
             }
 
-            // Init per-slide photos array
+            // 4. Init state
             rtSlidePhotos = new Array(rtParsedData.length).fill(null);
+            rtSelectedPhoto = null;
+            rtSlides = rtBuildSlides(rtTemplate, rtParsedData, rtSlidePhotos);
+            rtActiveSlideIndex = 0;
+            rtActivePanel = 'text';
 
-            // Build and render slides using existing rt* functions
-            scBuildAndRender();
-        }
-
-        function scBuildAndRender() {
-            if (typeof rtBuildSlides === 'function' && rtTemplate) {
-                rtSlides = rtBuildSlides(rtTemplate, rtParsedData, rtSlidePhotos);
-                rtActiveSlideIndex = 0;
-                scRenderPreviews();
+            // 5. Move RT editor into scCarouselEditor
+            const editor = document.getElementById('rtEditorPhase');
+            if (!editor._originalParent) {
+                editor._originalParent = editor.parentElement;
             }
-        }
+            container.innerHTML = '';
+            container.appendChild(editor);
+            editor.style.display = '';
+            _rtEditorInSubChat = true;
 
-        function scRenderPreviews() {
-            const strip = document.getElementById('scPreviewStrip');
-            if (!strip || !rtSlides || rtSlides.length === 0) return;
-            strip.innerHTML = '';
-            const cardW = 200;
-            rtSlides.forEach((slide, i) => {
-                const card = document.createElement('div');
-                card.style.cssText = `width:${cardW}px;border-radius:8px;overflow:hidden;border:1px solid var(--border);cursor:pointer;flex-shrink:0;`;
-                card.onclick = () => { rtActiveSlideIndex = i; };
-
-                const preview = document.createElement('div');
-                preview.style.cssText = `width:${cardW}px;height:${cardW * 1.25}px;position:relative;overflow:hidden;`;
-                preview.innerHTML = rtRenderMiniPreview(slide, cardW);
-
-                const label = document.createElement('div');
-                label.style.cssText = 'padding:6px 8px;font-size:12px;color:var(--text-secondary);background:var(--bg-secondary);';
-                label.textContent = `Слайд ${i + 1}`;
-
-                card.appendChild(preview);
-                card.appendChild(label);
-                strip.appendChild(card);
-            });
-        }
-
-        function scOpenTemplatePicker() {
-            if (typeof showTemplatesModal === 'function') {
-                // Set callback for template selection from carousel sub-chat
-                window._scTemplateCallback = true;
-                showTemplatesModal();
-            }
-        }
-
-        async function scDownloadAll() {
-            if (!rtSlides || rtSlides.length === 0 || !rtTemplate) {
-                showToast('Сначала выберите шаблон', 'error');
-                return;
-            }
-            showToast('Генерация карусели...', 'info');
-            const templateId = rtTemplate.template_id || rtTemplate.name;
-            const username = rtTemplate?.settings?.username || '@username';
-
-            const slidesData = rtParsedData.map((s, i) => ({
-                TITLE: s.TITLE || '',
-                DESCRIPTION: s.DESCRIPTION || '',
-                PHOTO: rtSlidePhotos[i] || rtSelectedPhoto || null
-            }));
-
-            try {
-                const resp = await fetch(`${API_URL}/generate`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({template_id: templateId, username: username, slides: slidesData})
-                });
-                if (resp.ok) {
-                    const data = await resp.json();
-                    if (data.slides && data.slides.length > 0) {
-                        // Download each slide
-                        for (let i = 0; i < data.slides.length; i++) {
-                            const s = data.slides[i];
-                            const link = document.createElement('a');
-                            link.href = s.base64;
-                            link.download = s.filename || `slide_${i+1}.png`;
-                            link.click();
-                            if (i < data.slides.length - 1) await new Promise(r => setTimeout(r, 300));
-                        }
-                        showToast(`Скачано ${data.slides.length} слайдов`, 'success');
-                    }
-                } else {
-                    showToast('Ошибка генерации', 'error');
-                }
-            } catch(e) { showToast('Ошибка генерации', 'error'); }
+            // 6. Render
+            rtRenderAllPreviews();
+            rtSwitchPanel('text');
         }
 
         async function scSendMessage() {
@@ -6756,6 +6667,12 @@
         }
 
         function rtBackToInput() {
+            // If RT editor is inside a carousel sub-chat, restore it and go back
+            if (_rtEditorInSubChat) {
+                scRestoreRtEditor();
+                // Navigate back to parent text sub-chat if available
+                return;
+            }
             document.getElementById('rtEditorPhase').style.display = 'none';
             document.getElementById('rtInputPhase').style.display = '';
             // Hide Telegram BackButton when returning to input
@@ -9244,28 +9161,11 @@
         }
 
         async function loadTemplate(identifier) {
-            // If called from carousel sub-chat editor, redirect to scApplyTemplate
+            // If called from carousel sub-chat editor, use rtChangeTemplate
             if (window._scTemplateCallback) {
                 window._scTemplateCallback = false;
                 saveUserSettings({ last_template_id: identifier });
-                try {
-                    const r = await fetch(`${API_URL}/templates/${encodeURIComponent(identifier)}`);
-                    if (r.ok) {
-                        const t = await r.json();
-                        rtTemplate = t;
-                        document.getElementById('scTemplateBtnText').textContent = t.name || identifier;
-                        scBuildAndRender();
-                        hideTemplatesModal();
-                        return;
-                    }
-                } catch(e) {}
-                // Fallback: search in templateCache
-                const cached = (typeof templateCache !== 'undefined' ? templateCache : []).find(t => (t.template_id || t.name) === identifier);
-                if (cached) {
-                    rtTemplate = cached;
-                    document.getElementById('scTemplateBtnText').textContent = cached.name || identifier;
-                    scBuildAndRender();
-                }
+                rtChangeTemplate(identifier);
                 hideTemplatesModal();
                 return;
             }
