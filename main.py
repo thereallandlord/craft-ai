@@ -881,7 +881,7 @@ async def upload_font(file: UploadFile):
 
 
 @app.get("/templates")
-async def list_templates():
+async def list_templates(preview: str = "full"):
     templates = []
     for f in os.listdir(TEMPLATES_DIR):
         if f.endswith('.json'):
@@ -902,12 +902,19 @@ async def list_templates():
                         except:
                             pass  # Если не удалось сохранить - не критично
 
+                    all_slides = d.get('slides', [])
+                    # preview=light: only first slide (for template picker), preview=full: all slides
+                    if preview == 'light':
+                        slides_data = [all_slides[0]] if all_slides else []
+                    else:
+                        slides_data = all_slides
+
                     templates.append({
                         "name": d.get('name', f.replace('.json', '')),
                         "template_id": template_id,  # NEW
                         "createdAt": d.get('createdAt', ''),
-                        "slidesCount": len(d.get('slides', [])),
-                        "slides": d.get('slides', [])  # Добавляем для фронтенда
+                        "slidesCount": len(all_slides),
+                        "slides": slides_data
                     })
             except:
                 pass

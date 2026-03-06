@@ -5689,7 +5689,8 @@
 
             let templates = [];
             try {
-                const r = await fetch(`${API_URL}/templates`);
+                // Light mode: only first slide per template (fast, ~10KB vs ~850KB)
+                const r = await fetch(`${API_URL}/templates?preview=light`);
                 if (r.ok) {
                     const d = await r.json();
                     templates = d.templates || [];
@@ -6796,9 +6797,21 @@
             templateCache.forEach(t => { if (t.slides && t.slides.length > 0) renderTemplatePreview('rtEd', t); });
         }
 
-        function rtChangeTemplate(templateId) {
-            const t = templateCache.find(t => (t.template_id || t.name) === templateId);
+        async function rtChangeTemplate(templateId) {
+            let t = templateCache.find(t => (t.template_id || t.name) === templateId);
             if (!t) return;
+            // If cache has only preview (1 slide), load full template from API
+            if (t.slides && t.slides.length < t.slidesCount) {
+                try {
+                    const r = await fetch(`${API_URL}/templates/${encodeURIComponent(templateId)}`);
+                    if (r.ok) {
+                        const full = await r.json();
+                        const idx = templateCache.findIndex(c => (c.template_id || c.name) === templateId);
+                        if (idx >= 0) templateCache[idx] = {...templateCache[idx], slides: full.slides};
+                        t = templateCache[idx] || full;
+                    }
+                } catch(e) {}
+            }
             rtTemplate = t;
             const templateSelect = document.getElementById('rtTemplateSelect');
             if (templateSelect) templateSelect.value = templateId;
@@ -6810,7 +6823,6 @@
             if (rtActiveSlideIndex >= rtSlides.length) rtActiveSlideIndex = 0;
             rtRenderAllPreviews();
             rtRenderActivePanel();
-            // Update template panel selection
             document.querySelectorAll('#rtEditorTemplateGrid .template-card').forEach(c => {
                 c.classList.toggle('selected', c.onclick.toString().includes(templateId));
             });
@@ -6998,6 +7010,16 @@
             if (!rtTemplate) {
                 showToast('Шаблон не найден', 'error');
                 return;
+            }
+            // Load full template if cache has only preview
+            if (rtTemplate.slides && rtTemplate.slides.length < rtTemplate.slidesCount) {
+                try {
+                    const r = await fetch(`${API_URL}/templates/${encodeURIComponent(templateId)}`);
+                    if (r.ok) {
+                        const full = await r.json();
+                        rtTemplate.slides = full.slides;
+                    }
+                } catch(e) {}
             }
 
             // Init per-slide photos array
