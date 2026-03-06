@@ -896,40 +896,48 @@ async def upload_font(file: UploadFile):
 async def list_templates(preview: str = "full", user_id: str = ""):
     templates = []
 
-    # 1. System templates (filesystem) — visible to all
-    for f in os.listdir(TEMPLATES_DIR):
-        if f.endswith('.json'):
-            try:
-                path = os.path.join(TEMPLATES_DIR, f)
-                with open(path, 'r', encoding='utf-8') as file:
-                    d = json.load(file)
+    # 1. System templates (filesystem) — search both TEMPLATES_DIR and GIT_TEMPLATES_DIR
+    template_files = {}  # filename -> full path (dedup, TEMPLATES_DIR takes priority)
+    for tdir in [TEMPLATES_DIR, GIT_TEMPLATES_DIR]:
+        try:
+            if os.path.isdir(tdir):
+                for f in os.listdir(tdir):
+                    if f.endswith('.json') and f not in template_files:
+                        template_files[f] = os.path.join(tdir, f)
+        except Exception as e:
+            print(f"Error listing templates dir {tdir}: {e}")
 
-                    template_id = d.get('template_id')
-                    if not template_id:
-                        template_id = generate_template_id(d.get('name', f.replace('.json', '')))
-                        d['template_id'] = template_id
-                        try:
-                            with open(path, 'w', encoding='utf-8') as write_file:
-                                json.dump(d, write_file, ensure_ascii=False, indent=2)
-                        except:
-                            pass
+    for f, path in template_files.items():
+        try:
+            with open(path, 'r', encoding='utf-8') as file:
+                d = json.load(file)
 
-                    all_slides = d.get('slides', [])
-                    if preview == 'light':
-                        slides_data = [all_slides[0]] if all_slides else []
-                    else:
-                        slides_data = all_slides
+                template_id = d.get('template_id')
+                if not template_id:
+                    template_id = generate_template_id(d.get('name', f.replace('.json', '')))
+                    d['template_id'] = template_id
+                    try:
+                        with open(path, 'w', encoding='utf-8') as write_file:
+                            json.dump(d, write_file, ensure_ascii=False, indent=2)
+                    except:
+                        pass
 
-                    templates.append({
-                        "name": d.get('name', f.replace('.json', '')),
-                        "template_id": template_id,
-                        "createdAt": d.get('createdAt', ''),
-                        "slidesCount": len(all_slides),
-                        "slides": slides_data,
-                        "type": "system"
-                    })
-            except:
-                pass
+                all_slides = d.get('slides', [])
+                if preview == 'light':
+                    slides_data = [all_slides[0]] if all_slides else []
+                else:
+                    slides_data = all_slides
+
+                templates.append({
+                    "name": d.get('name', f.replace('.json', '')),
+                    "template_id": template_id,
+                    "createdAt": d.get('createdAt', ''),
+                    "slidesCount": len(all_slides),
+                    "slides": slides_data,
+                    "type": "system"
+                })
+        except Exception as e:
+            print(f"Error loading system template {f}: {e}")
 
     # 2. User templates from Supabase (personal + published)
     if sb and user_id:
@@ -975,31 +983,59 @@ async def list_templates(preview: str = "full", user_id: str = ""):
     return {"templates": templates}
 
 
+@app.get("/debug/templates")
+async def debug_templates():
+    """Diagnostic endpoint to check template directories"""
+    result = {
+        "cwd": os.getcwd(),
+        "DATA_DIR": DATA_DIR,
+        "TEMPLATES_DIR": TEMPLATES_DIR,
+        "GIT_TEMPLATES_DIR": GIT_TEMPLATES_DIR,
+        "templates_dir_exists": os.path.isdir(TEMPLATES_DIR),
+        "git_templates_dir_exists": os.path.isdir(GIT_TEMPLATES_DIR),
+    }
+    try:
+        result["templates_dir_contents"] = os.listdir(TEMPLATES_DIR) if os.path.isdir(TEMPLATES_DIR) else []
+    except Exception as e:
+        result["templates_dir_error"] = str(e)
+    try:
+        result["git_templates_dir_contents"] = os.listdir(GIT_TEMPLATES_DIR) if os.path.isdir(GIT_TEMPLATES_DIR) else []
+    except Exception as e:
+        result["git_templates_dir_error"] = str(e)
+    return result
+
+
 @app.get("/templates/{identifier}")
 async def get_template(identifier: str):
-    # 1. Search filesystem (system templates)
-    if os.path.exists(TEMPLATES_DIR):
-        for filename in os.listdir(TEMPLATES_DIR):
-            if not filename.endswith('.json'):
+    # 1. Search filesystem (system templates) — both TEMPLATES_DIR and GIT_TEMPLATES_DIR
+    for tdir in [TEMPLATES_DIR, GIT_TEMPLATES_DIR]:
+        try:
+            if not os.path.isdir(tdir):
                 continue
-            path = os.path.join(TEMPLATES_DIR, filename)
-            try:
-                with open(path, 'r', encoding='utf-8') as f:
-                    t = json.load(f)
-                    if t.get('template_id') == identifier or t.get('name') == identifier:
-                        t['type'] = 'system'
-                        return t
-            except:
-                continue
+            for filename in os.listdir(tdir):
+                if not filename.endswith('.json'):
+                    continue
+                path = os.path.join(tdir, filename)
+                try:
+                    with open(path, 'r', encoding='utf-8') as f:
+                        t = json.load(f)
+                        if t.get('template_id') == identifier or t.get('name') == identifier:
+                            t['type'] = 'system'
+                            return t
+                except:
+                    continue
+        except Exception as e:
+            print(f"Error searching templates in {tdir}: {e}")
 
-    # Fallback: try direct filename match
+    # Fallback: try direct filename match in both dirs
     safe = re.sub(r'[^a-zA-Z0-9_\-а-яА-ЯёЁ]', '_', identifier)
-    fallback_path = os.path.join(TEMPLATES_DIR, f"{safe}.json")
-    if os.path.exists(fallback_path):
-        with open(fallback_path, 'r', encoding='utf-8') as f:
-            t = json.load(f)
-            t['type'] = 'system'
-            return t
+    for tdir in [TEMPLATES_DIR, GIT_TEMPLATES_DIR]:
+        fallback_path = os.path.join(tdir, f"{safe}.json")
+        if os.path.exists(fallback_path):
+            with open(fallback_path, 'r', encoding='utf-8') as f:
+                t = json.load(f)
+                t['type'] = 'system'
+                return t
 
     # 2. Search Supabase (user templates)
     if sb:

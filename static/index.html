@@ -5680,7 +5680,7 @@
             // Try localStorage first for instant display
             if (!force) {
                 try {
-                    const cached = JSON.parse(localStorage.getItem('templateCacheV2') || '[]');
+                    const cached = JSON.parse(localStorage.getItem('templateCacheV3') || '[]');
                     if (cached.length > 0) {
                         templateCache = cached;
                         // Background refresh after 1s
@@ -5713,7 +5713,7 @@
             templateCache = templates;
             // Only persist to localStorage if we got data (don't overwrite good cache with empty)
             if (templates.length > 0) {
-                try { localStorage.setItem('templateCacheV2', JSON.stringify(templates)); } catch(e) {}
+                try { localStorage.setItem('templateCacheV3', JSON.stringify(templates)); } catch(e) {}
             }
 
             // Auto-select first template for RT if none selected
