@@ -1267,7 +1267,11 @@ async def _extract_and_save_memories(user_id: int, messages: list):
         return
     try:
         # Load memory_extract prompt from DB
-        prompt_content = get_system_prompt_v3("memory_extract") if "memory_extract" in _prompt_cache else None
+        if "memory_extract" in _prompt_cache:
+            prompt_content, memory_model = get_system_prompt_v3("memory_extract")
+        else:
+            prompt_content = None
+            memory_model = "openai/gpt-4o-mini"
         if not prompt_content:
             prompt_content = (
                 'Проанализируй последние сообщения диалога. Если есть информация о стиле, '
@@ -1285,7 +1289,7 @@ async def _extract_and_save_memories(user_id: int, messages: list):
             {"role": "user", "content": conversation}
         ]
 
-        ai_text = _call_openrouter(ai_messages, "openai/gpt-4o-mini")
+        ai_text = _call_openrouter(ai_messages, memory_model)
 
         # Parse JSON response
         import json as _json
@@ -1344,14 +1348,15 @@ async def _auto_summarize_profile(user_id: int):
             return
         memories_text = "\n".join(f"- {r['content']}" for r in result.data)
 
-        prompt = get_system_prompt_v3("profile_summarize", variables={"memories": memories_text})
+        prompt, profile_model = get_system_prompt_v3("profile_summarize", variables={"memories": memories_text})
         if not prompt or prompt == SYSTEM_PROMPT_DRAFT:
             prompt = f"На основе следующих фактов о пользователе создай краткий профиль (3-5 предложений): его ниша, стиль контента, целевая аудитория, предпочтения.\n\nФакты:\n{memories_text}"
+            profile_model = "openai/gpt-4o-mini"
 
         summary = _call_openrouter([
             {"role": "system", "content": prompt},
             {"role": "user", "content": "Создай профиль пользователя."}
-        ], "openai/gpt-4o-mini")
+        ], profile_model)
 
         supabase.table("users").update({"profile_summary": summary}).eq("user_id", str(user_id)).execute()
     except Exception as e:
@@ -1364,8 +1369,8 @@ _prompt_cache_time = 0
 PROMPT_CACHE_TTL = 60  # seconds
 
 
-def get_system_prompt_v3(chat_type: str, has_slides: bool = False, variables: dict = None) -> str:
-    """Load prompt from system_prompts table with caching."""
+def get_system_prompt_v3(chat_type: str, has_slides: bool = False, variables: dict = None):
+    """Load prompt from system_prompts table with caching. Returns (content, model)."""
     global _prompt_cache, _prompt_cache_time
 
     if chat_type == 'headlines':
@@ -1375,14 +1380,14 @@ def get_system_prompt_v3(chat_type: str, has_slides: bool = False, variables: di
     elif chat_type == 'carousel':
         prompt_key = 'carousel'
     else:
-        prompt_key = 'headlines'
+        prompt_key = chat_type  # memory_extract, profile_summarize, etc.
 
     now = time.time()
     if now - _prompt_cache_time > PROMPT_CACHE_TTL:
         try:
             sb = require_supabase()
-            result = sb.table("system_prompts").select("prompt_key,content").eq("is_active", True).execute()
-            _prompt_cache = {row["prompt_key"]: row["content"] for row in (result.data or [])}
+            result = sb.table("system_prompts").select("prompt_key,content,model").eq("is_active", True).execute()
+            _prompt_cache = {row["prompt_key"]: {"content": row["content"], "model": row.get("model", "openai/gpt-4o")} for row in (result.data or [])}
             _prompt_cache_time = now
         except Exception:
             pass
@@ -1394,13 +1399,20 @@ def get_system_prompt_v3(chat_type: str, has_slides: bool = False, variables: di
         'editing': SYSTEM_PROMPT_TEXT_READY,
         'carousel': "Ты — AI помощник по дизайну каруселей. Помоги пользователю выбрать визуальное оформление."
     }
-    template = _prompt_cache.get(prompt_key, fallbacks.get(prompt_key, SYSTEM_PROMPT_DRAFT))
+
+    prompt_data = _prompt_cache.get(prompt_key)
+    if prompt_data:
+        template = prompt_data["content"]
+        model = prompt_data.get("model", "openai/gpt-4o")
+    else:
+        template = fallbacks.get(prompt_key, SYSTEM_PROMPT_DRAFT)
+        model = "openai/gpt-4o"
 
     if variables:
         for key, value in variables.items():
             template = template.replace(f'{{{key}}}', str(value))
 
-    return template
+    return template, model
 
 
 def _call_openrouter(messages: list, model: str = "openai/gpt-4o", temperature: float = 0.7) -> str:
@@ -1456,7 +1468,6 @@ async def create_topic(request: Request):
     body = await request.json()
     user_id = body.get("user_id")
     message = body.get("message", "")
-    model = body.get("model", "openai/gpt-4o")
 
     if not user_id or not message:
         raise HTTPException(status_code=400, detail="user_id and message required")
@@ -1492,7 +1503,7 @@ async def create_topic(request: Request):
     }).execute()
 
     # 4. Call AI
-    system_prompt = get_system_prompt_v3("headlines")
+    system_prompt, prompt_model = get_system_prompt_v3("headlines")
     user_context = get_user_context(int(user_id))
     if user_context:
         system_prompt += f"\n\nКонтекст о пользователе:\n{user_context}"
@@ -1503,7 +1514,7 @@ async def create_topic(request: Request):
     ]
 
     try:
-        ai_text = _call_openrouter(ai_messages, model)
+        ai_text = _call_openrouter(ai_messages, body.get("model") or prompt_model)
     except Exception as e:
         return {"topic": topic_data, "sub_chat": sub_chat_data, "ai_response": {"content": str(e), "message_type": "text", "message_data": None}}
 
@@ -1590,7 +1601,6 @@ async def create_sub_chat(topic_id: str, request: Request):
     chat_type = body.get("chat_type")
     selected_headline = body.get("selected_headline")
     parent_subchat_id = body.get("parent_subchat_id")
-    model = body.get("model", "openai/gpt-4o")
     slides_count = body.get("slides_count", 7)
 
     if not user_id or not chat_type:
@@ -1613,7 +1623,7 @@ async def create_sub_chat(topic_id: str, request: Request):
 
     # For text sub-chat: auto-generate slide text
     if chat_type == 'text' and selected_headline and OPENROUTER_API_KEY:
-        system_prompt = get_system_prompt_v3("text", variables={
+        system_prompt, prompt_model = get_system_prompt_v3("text", variables={
             "slides_count": str(slides_count),
             "selected_headline": selected_headline,
         })
@@ -1625,7 +1635,7 @@ async def create_sub_chat(topic_id: str, request: Request):
             ai_text = _call_openrouter([
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": f"Напиши текст карусели на тему: {selected_headline}"}
-            ], model)
+            ], body.get("model") or prompt_model)
 
             sb.table("project_messages").insert({
                 "project_id": topic_id,
@@ -1709,7 +1719,6 @@ async def ai_chat(request: Request):
     sub_chat_id = body.get("sub_chat_id")
     user_id = body.get("user_id")
     user_message = body.get("message", "")
-    model = body.get("model", "openai/gpt-4o")
     slides_count = body.get("slides_count", 7)
     custom_prompts = body.get("custom_prompts", {})
 
@@ -1738,7 +1747,7 @@ async def ai_chat(request: Request):
             "slides_count": str(slides_count),
             "selected_headline": sc.get("selected_headline") or "",
         }
-        system_prompt = get_system_prompt_v3(prompt_key, variables=variables)
+        system_prompt, prompt_model = get_system_prompt_v3(prompt_key, variables=variables)
         user_context = get_user_context(int(user_id), query=user_message)
         if user_context:
             system_prompt += f"\n\nКонтекст о пользователе:\n{user_context}"
@@ -1766,7 +1775,7 @@ async def ai_chat(request: Request):
 
         # Call AI
         try:
-            ai_text = _call_openrouter(ai_messages, model)
+            ai_text = _call_openrouter(ai_messages, body.get("model") or prompt_model)
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
@@ -1864,7 +1873,7 @@ async def ai_chat(request: Request):
                 "X-Title": "Craft AI"
             },
             json={
-                "model": model,
+                "model": body.get("model", "openai/gpt-4o"),
                 "messages": ai_messages,
                 "temperature": 0.7,
                 "max_tokens": 4096
@@ -2103,21 +2112,27 @@ async def list_prompts(user_id: int):
         # Seed default prompts if table is empty
         defaults = [
             {"prompt_key": "headlines", "title": "Генератор заголовков", "description": "Генерирует 5-7 вариантов заголовков для карусели",
-             "content": "Ты — AI контент-менеджер для Instagram-каруселей.\n\nСейчас этап: ГЕНЕРАЦИЯ ЗАГОЛОВКОВ.\nНа основе идеи пользователя предложи 5-7 цепляющих заголовков для карусели.\n\nФормат ответа:\n1. Заголовок 1\n2. Заголовок 2\n...\n\nПиши на языке пользователя. Заголовки должны быть короткими (3-7 слов), цепляющими, вызывать любопытство.",
+             "model": "google/gemini-2.5-flash",
+             "content": "# РОЛЬ: Генератор вирусных заголовков для Instagram\n\nТы — креативный копирайтер, который создаёт цепляющие заголовки для каруселей.\n\nАЛГОРИТМ:\n1. Проанализируй тему пользователя\n2. Учти контекст о пользователе (если есть)\n3. Сгенерируй 5-7 уникальных заголовков\n\nТРЕБОВАНИЯ К ЗАГОЛОВКАМ:\n- Короткие, ёмкие (макс 60 символов)\n- Разговорный язык на \"ты\"\n- Конкретика > абстракции\n- Каждый заголовок на отдельной строке с номером\n\nТРИГГЕРЫ (миксуй разные):\n- Боль: \"Ты тратишь 5 часов на контент, а подписчики не растут\"\n- Контраст: \"Они набирают 10К в месяц. Ты — 200 за полгода\"\n- Цифры: \"847 подписчиков за 14 дней без съёмок Reels\"\n- Провокация: \"Нейросеть заменит тебя через 6 месяцев\"\n- Секрет: \"Алгоритм изменился 4 октября. 90% не знают\"\n- Срочность: \"60 дней, пока ниша не переполнена\"\n\nЗАПРЕЩЕНО:\n- \"Разбираем\", \"Давай разберём\"\n- \"Давай я тебе сейчас расскажу\"\n- \"Итак, друзья...\"\n- Канцелярит и официоз\n- Вода без конкретики\n\nФормат: просто пронумерованный список заголовков.",
              "variables": [{"name": "user_context", "description": "Профиль и стиль пользователя"}]},
             {"prompt_key": "text", "title": "Автор текста слайдов", "description": "Пишет текст слайдов карусели на основе выбранного заголовка",
-             "content": "Ты — AI контент-менеджер для Instagram-каруселей. Пользователь выбрал заголовок: \"{selected_headline}\". Напиши текст для слайдов карусели.\n\nФормат ответа СТРОГО:\nСлайд 1\nЗаголовок: [заголовок карусели]\nОписание: [подзаголовок или вступление]\n\nСлайд 2\nЗаголовок: [пункт 1]\nОписание: [раскрытие пункта 1]\n\n... и так далее\n\nПиши кратко, ёмко. Каждый слайд — одна мысль. {slides_count} слайдов.",
+             "model": "google/gemini-2.5-flash",
+             "content": "# РОЛЬ: КОПИРАЙТЕР INSTAGRAM-КАРУСЕЛЕЙ\n\nТы создаёшь тексты для Instagram-каруселей.\n\nЗаголовок карусели: \"{selected_headline}\"\nКоличество слайдов: {slides_count}\n\nСТРУКТУРА КАРУСЕЛИ:\n\nСлайд 1 — ОБЛОЖКА:\n- Заголовок: ТОЧНО как \"{selected_headline}\" (без изменений!)\n- Описание: Короткий подзаголовок-интрига (до 80 символов)\n\nСлайд 2 — ХУК:\n- Заголовок: Зачем это читать? (2-4 слова)\n- Описание: Какую проблему решает карусель? (до 150 символов)\n\nСлайды 3-8 — КОНТЕНТ:\n- Заголовок: Заголовок пункта (короткий, ёмкий)\n- Описание: Раскрытие пункта (до 200 символов)\n\nПредпоследний слайд — ВЫВОД:\n- Заголовок: \"Главное\" / \"Итог\" / \"Запомни\"\n- Описание: Суть всей карусели (до 150 символов)\n\nПоследний слайд — ПРИЗЫВ:\n- Заголовок: \"Что дальше?\"\n- Описание: Призыв к действию (до 120 символов)\n\nФОРМАТ ОТВЕТА СТРОГО:\nСлайд 1\nЗаголовок: ...\nОписание: ...\n\nСлайд 2\nЗаголовок: ...\nОписание: ...\n\nПРАВИЛА:\n- Пиши на \"ты\"\n- Короткие предложения (max 15-20 слов)\n- Без воды — каждое слово работает\n- Как человек, не как робот\n\nСТОП-СЛОВА (ЗАПРЕЩЕНЫ):\n- \"Это не просто\"\n- \"Представьте\"\n- \"В современном мире\"\n- \"Как известно\"\n- \"Не секрет, что\"\n- \"Уникальный\" (без доказательств)\n\nКРИТИЧНО:\n- \"{selected_headline}\" — TITLE слайда 1 (без изменений!)\n- {slides_count} — точное количество слайдов",
              "variables": [{"name": "slides_count", "description": "Количество слайдов"}, {"name": "selected_headline", "description": "Выбранный заголовок"}, {"name": "user_context", "description": "Профиль пользователя"}]},
             {"prompt_key": "editing", "title": "Редактор текста", "description": "Помогает улучшить и отредактировать существующий текст карусели",
-             "content": "Ты — AI контент-менеджер. Текст карусели готов. Помоги пользователю улучшить или отредактировать текст.\nЕсли пользователь просит что-то изменить — перепиши соответствующие слайды в том же формате.",
+             "model": "openai/gpt-4o",
+             "content": "# РОЛЬ: Редактор текста карусели\n\nТекст карусели уже готов. Помоги пользователю улучшить или отредактировать его.\n\nПРАВИЛА:\n- Если просят изменить конкретный слайд — перепиши только его\n- Сохраняй формат: \"Слайд N\\nЗаголовок: ...\\nОписание: ...\"\n- Жди указаний пользователя\n- Пиши на \"ты\", кратко, ёмко\n\nЗАПРЕЩЕНО:\n- НЕ переписывай всё без запроса\n- НЕ добавляй слайды без запроса\n- НЕ меняй заголовок (Слайд 1) без прямого запроса",
              "variables": [{"name": "user_context", "description": "Профиль пользователя"}]},
             {"prompt_key": "carousel", "title": "Дизайнер каруселей", "description": "Помогает с визуальным оформлением карусели",
-             "content": "Ты — AI помощник по дизайну каруселей. Помоги пользователю выбрать визуальное оформление: шаблон, цвета, шрифты. Отвечай кратко и по делу.",
+             "model": "openai/gpt-4o",
+             "content": "# РОЛЬ: Дизайнер каруселей\n\nПомоги пользователю с визуальным оформлением карусели: шаблон, цвета, шрифты, фотографии.\nОтвечай кратко и по делу. Давай конкретные рекомендации.",
              "variables": [{"name": "user_context", "description": "Профиль пользователя"}]},
             {"prompt_key": "memory_extract", "title": "Извлечение памяти", "description": "Анализирует диалог и извлекает важные факты о пользователе",
+             "model": "openai/gpt-4o-mini",
              "content": "Проанализируй последние сообщения диалога. Если есть информация о стиле, предпочтениях, бизнесе, нише, аудитории пользователя — верни JSON:\n{\"memories\": [\"факт1\", \"факт2\"]}\nЕсли ничего важного — верни:\n{\"memories\": []}",
              "variables": []},
             {"prompt_key": "profile_summarize", "title": "Суммаризация профиля", "description": "Создаёт краткий профиль пользователя из всех воспоминаний",
+             "model": "openai/gpt-4o-mini",
              "content": "На основе следующих фактов о пользователе создай краткий профиль (3-5 предложений): его ниша, стиль контента, целевая аудитория, предпочтения.\n\nФакты:\n{memories}",
              "variables": [{"name": "memories", "description": "Все сохранённые факты о пользователе"}]},
         ]
@@ -2140,7 +2155,7 @@ async def update_prompt(prompt_key: str, request: Request):
     if not user_id or str(user_id) not in ADMIN_TELEGRAM_IDS:
         raise HTTPException(status_code=403, detail="Admin access required")
 
-    allowed_fields = {"title", "description", "content", "variables", "is_active"}
+    allowed_fields = {"title", "description", "content", "variables", "is_active", "model"}
     update_data = {k: v for k, v in body.items() if k in allowed_fields}
     if not update_data:
         raise HTTPException(status_code=400, detail="No valid fields to update")

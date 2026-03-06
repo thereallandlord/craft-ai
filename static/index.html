@@ -5582,14 +5582,30 @@
                         container.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);">Нет промптов</div>';
                         return;
                     }
-                    container.innerHTML = prompts.map(p => `
+                    const modelOptions = [
+                        {value: 'openai/gpt-4o', label: 'GPT-4o'},
+                        {value: 'openai/gpt-4o-mini', label: 'GPT-4o Mini'},
+                        {value: 'google/gemini-2.5-pro', label: 'Gemini 2.5 Pro'},
+                        {value: 'google/gemini-2.5-flash', label: 'Gemini 2.5 Flash'},
+                        {value: 'anthropic/claude-sonnet-4.5', label: 'Claude Sonnet 4.5'},
+                    ];
+                    container.innerHTML = prompts.map(p => {
+                        const currentModel = p.model || 'openai/gpt-4o';
+                        const modelSelect = modelOptions.map(m =>
+                            `<option value="${m.value}" ${m.value === currentModel ? 'selected' : ''}>${m.label}</option>`
+                        ).join('');
+                        return `
                         <div class="admin-prompt-card" data-key="${p.prompt_key}">
                             <div class="admin-prompt-title">${escapeHtml(p.title)}</div>
                             <div class="admin-prompt-key">${p.prompt_key} ${p.description ? '— ' + escapeHtml(p.description) : ''}</div>
+                            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                                <label style="font-size:12px;color:var(--text-muted);font-weight:500;white-space:nowrap;">Модель:</label>
+                                <select class="form-input" id="model-${p.prompt_key}" style="flex:1;padding:6px 10px;font-size:13px;">${modelSelect}</select>
+                            </div>
                             <textarea class="admin-prompt-textarea" id="prompt-${p.prompt_key}">${escapeHtml(p.content)}</textarea>
                             <button class="admin-save-btn" onclick="savePrompt('${p.prompt_key}')">Сохранить</button>
-                        </div>
-                    `).join('');
+                        </div>`;
+                    }).join('');
                 } else {
                     container.innerHTML = '<div style="padding:20px;text-align:center;color:#ef4444;">Нет доступа</div>';
                 }
@@ -5598,12 +5614,15 @@
 
         async function savePrompt(promptKey) {
             const textarea = document.getElementById(`prompt-${promptKey}`);
+            const modelSelect = document.getElementById(`model-${promptKey}`);
             if (!textarea || !currentUser) return;
+            const payload = {user_id: currentUser.id, content: textarea.value};
+            if (modelSelect) payload.model = modelSelect.value;
             try {
                 const resp = await fetch(`${API_URL}/api/admin/prompts/${promptKey}`, {
                     method: 'PUT',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({user_id: currentUser.id, content: textarea.value})
+                    body: JSON.stringify(payload)
                 });
                 if (resp.ok) {
                     showToast('Промпт сохранён', 'success');
