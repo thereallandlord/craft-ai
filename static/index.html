@@ -5311,8 +5311,20 @@
         function scRestoreRtEditor() {
             const editor = document.getElementById('rtEditorPhase');
             if (editor && editor._originalParent && editor.parentElement !== editor._originalParent) {
-                editor._originalParent.appendChild(editor);
+                // Restore styles
                 editor.style.display = 'none';
+                editor.style.padding = '';
+                editor.style.flexDirection = '';
+                editor.style.minHeight = '';
+                const rtHeader = editor.querySelector('.rt-editor-header');
+                if (rtHeader) rtHeader.style.display = '';
+                editor.querySelectorAll('.rt-panel').forEach(p => {
+                    p.style.maxHeight = '';
+                    p.style.flex = '';
+                    p.style.minHeight = '';
+                });
+                // Move back
+                editor._originalParent.appendChild(editor);
                 _rtEditorInSubChat = false;
             }
         }
@@ -5379,7 +5391,25 @@
             }
             container.innerHTML = '';
             container.appendChild(editor);
-            editor.style.display = '';
+            container.style.overflow = 'auto';
+
+            // Style editor for sub-chat context
+            editor.style.display = 'flex';
+            editor.style.flexDirection = 'column';
+            editor.style.padding = '16px 20px';
+            editor.style.minHeight = '0';
+
+            // Hide duplicate header (sub-chat already has its own)
+            const rtHeader = editor.querySelector('.rt-editor-header');
+            if (rtHeader) rtHeader.style.display = 'none';
+
+            // Make panels fill available space
+            editor.querySelectorAll('.rt-panel').forEach(p => {
+                p.style.maxHeight = 'none';
+                p.style.flex = '1';
+                p.style.minHeight = '0';
+            });
+
             _rtEditorInSubChat = true;
 
             // 6. Render
