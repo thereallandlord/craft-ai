@@ -894,93 +894,99 @@ async def upload_font(file: UploadFile):
 
 @app.get("/templates")
 async def list_templates(preview: str = "full", user_id: str = ""):
-    templates = []
+    import traceback
+    try:
+        templates = []
 
-    # 1. System templates (filesystem) — search both TEMPLATES_DIR and GIT_TEMPLATES_DIR
-    template_files = {}  # filename -> full path (dedup, TEMPLATES_DIR takes priority)
-    for tdir in [TEMPLATES_DIR, GIT_TEMPLATES_DIR]:
-        try:
-            if os.path.isdir(tdir):
-                for f in os.listdir(tdir):
-                    if f.endswith('.json') and f not in template_files:
-                        template_files[f] = os.path.join(tdir, f)
-        except Exception as e:
-            print(f"Error listing templates dir {tdir}: {e}")
+        # 1. System templates (filesystem) — search both TEMPLATES_DIR and GIT_TEMPLATES_DIR
+        template_files = {}  # filename -> full path (dedup, TEMPLATES_DIR takes priority)
+        for tdir in [TEMPLATES_DIR, GIT_TEMPLATES_DIR]:
+            try:
+                if os.path.isdir(tdir):
+                    for f in os.listdir(tdir):
+                        if f.endswith('.json') and f not in template_files:
+                            template_files[f] = os.path.join(tdir, f)
+            except Exception as e:
+                print(f"Error listing templates dir {tdir}: {e}")
 
-    for f, path in template_files.items():
-        try:
-            with open(path, 'r', encoding='utf-8') as file:
-                d = json.load(file)
+        for f, path in template_files.items():
+            try:
+                with open(path, 'r', encoding='utf-8') as file:
+                    d = json.load(file)
 
-                template_id = d.get('template_id')
-                if not template_id:
-                    template_id = generate_template_id(d.get('name', f.replace('.json', '')))
-                    d['template_id'] = template_id
-                    try:
-                        with open(path, 'w', encoding='utf-8') as write_file:
-                            json.dump(d, write_file, ensure_ascii=False, indent=2)
-                    except:
-                        pass
+                    template_id = d.get('template_id')
+                    if not template_id:
+                        template_id = generate_template_id(d.get('name', f.replace('.json', '')))
+                        d['template_id'] = template_id
+                        try:
+                            with open(path, 'w', encoding='utf-8') as write_file:
+                                json.dump(d, write_file, ensure_ascii=False, indent=2)
+                        except:
+                            pass
 
-                all_slides = d.get('slides', [])
-                if preview == 'light':
-                    slides_data = [all_slides[0]] if all_slides else []
-                else:
-                    slides_data = all_slides
+                    all_slides = d.get('slides', [])
+                    if preview == 'light':
+                        slides_data = [all_slides[0]] if all_slides else []
+                    else:
+                        slides_data = all_slides
 
-                templates.append({
-                    "name": d.get('name', f.replace('.json', '')),
-                    "template_id": template_id,
-                    "createdAt": d.get('createdAt', ''),
-                    "slidesCount": len(all_slides),
-                    "slides": slides_data,
-                    "type": "system"
-                })
-        except Exception as e:
-            print(f"Error loading system template {f}: {e}")
+                    templates.append({
+                        "name": d.get('name', f.replace('.json', '')),
+                        "template_id": template_id,
+                        "createdAt": d.get('createdAt', ''),
+                        "slidesCount": len(all_slides),
+                        "slides": slides_data,
+                        "type": "system"
+                    })
+            except Exception as e:
+                print(f"Error loading system template {f}: {e}")
 
-    # 2. User templates from Supabase (personal + published)
-    if sb and user_id:
-        try:
-            # Personal templates (user's own)
-            result = sb.table("user_templates").select("*").eq("user_id", user_id).execute()
-            for row in (result.data or []):
-                all_slides = row.get("slides") or []
-                if preview == 'light':
-                    slides_data = [all_slides[0]] if all_slides else []
-                else:
-                    slides_data = all_slides
-                templates.append({
-                    "name": row["name"],
-                    "template_id": row["template_id"],
-                    "createdAt": row.get("created_at", ""),
-                    "slidesCount": len(all_slides),
-                    "slides": slides_data,
-                    "type": "personal",
-                    "db_id": str(row["id"])
-                })
+        # 2. User templates from Supabase (personal + published)
+        if sb and user_id:
+            try:
+                # Personal templates (user's own)
+                result = sb.table("user_templates").select("*").eq("user_id", user_id).execute()
+                for row in (result.data or []):
+                    all_slides = row.get("slides") or []
+                    if preview == 'light':
+                        slides_data = [all_slides[0]] if all_slides else []
+                    else:
+                        slides_data = all_slides
+                    templates.append({
+                        "name": row["name"],
+                        "template_id": row["template_id"],
+                        "createdAt": row.get("created_at", ""),
+                        "slidesCount": len(all_slides),
+                        "slides": slides_data,
+                        "type": "personal",
+                        "db_id": str(row["id"])
+                    })
 
-            # Published templates (from other users)
-            pub_result = sb.table("user_templates").select("*").eq("is_published", True).neq("user_id", user_id).execute()
-            for row in (pub_result.data or []):
-                all_slides = row.get("slides") or []
-                if preview == 'light':
-                    slides_data = [all_slides[0]] if all_slides else []
-                else:
-                    slides_data = all_slides
-                templates.append({
-                    "name": row["name"],
-                    "template_id": row["template_id"],
-                    "createdAt": row.get("created_at", ""),
-                    "slidesCount": len(all_slides),
-                    "slides": slides_data,
-                    "type": "published",
-                    "db_id": str(row["id"])
-                })
-        except Exception as e:
-            print(f"Error loading user templates: {e}")
+                # Published templates (from other users)
+                pub_result = sb.table("user_templates").select("*").eq("is_published", True).neq("user_id", user_id).execute()
+                for row in (pub_result.data or []):
+                    all_slides = row.get("slides") or []
+                    if preview == 'light':
+                        slides_data = [all_slides[0]] if all_slides else []
+                    else:
+                        slides_data = all_slides
+                    templates.append({
+                        "name": row["name"],
+                        "template_id": row["template_id"],
+                        "createdAt": row.get("created_at", ""),
+                        "slidesCount": len(all_slides),
+                        "slides": slides_data,
+                        "type": "published",
+                        "db_id": str(row["id"])
+                    })
+            except Exception as e:
+                print(f"Error loading user templates: {e}")
 
-    return {"templates": templates}
+        return {"templates": templates}
+    except Exception as e:
+        error_tb = traceback.format_exc()
+        print(f"CRITICAL ERROR in /templates: {error_tb}")
+        return {"templates": [], "error": str(e), "traceback": error_tb}
 
 
 @app.get("/debug/templates")
