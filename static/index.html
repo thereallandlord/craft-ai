@@ -5407,24 +5407,15 @@
             const strip = document.getElementById('scPreviewStrip');
             if (!strip || !rtSlides || rtSlides.length === 0) return;
             strip.innerHTML = '';
+            const cardW = 200;
             rtSlides.forEach((slide, i) => {
                 const card = document.createElement('div');
-                card.style.cssText = 'width:200px;border-radius:8px;overflow:hidden;border:1px solid var(--border);cursor:pointer;';
+                card.style.cssText = `width:${cardW}px;border-radius:8px;overflow:hidden;border:1px solid var(--border);cursor:pointer;flex-shrink:0;`;
                 card.onclick = () => { rtActiveSlideIndex = i; };
 
-                // Render preview using existing function
                 const preview = document.createElement('div');
-                preview.style.cssText = 'width:200px;height:250px;position:relative;overflow:hidden;';
-
-                if (typeof rtRenderSinglePreview === 'function') {
-                    // Use the RT render system
-                    const container = document.createElement('div');
-                    container.style.cssText = 'width:1080px;height:1350px;position:absolute;top:0;left:0;transform:scale(0.185);transform-origin:top left;';
-                    if (typeof renderSlidePreview === 'function') {
-                        renderSlidePreview(container, slide, i);
-                    }
-                    preview.appendChild(container);
-                }
+                preview.style.cssText = `width:${cardW}px;height:${cardW * 1.25}px;position:relative;overflow:hidden;`;
+                preview.innerHTML = rtRenderMiniPreview(slide, cardW);
 
                 const label = document.createElement('div');
                 label.style.cssText = 'padding:6px 8px;font-size:12px;color:var(--text-secondary);background:var(--bg-secondary);';
@@ -6267,7 +6258,8 @@
 
         function rtBuildSlides(templateData, parsedData, photos) {
             const templateSlides = templateData.slides || [];
-            const username = document.getElementById('rtUsername').value || '@username';
+            const rtUsernameEl = document.getElementById('rtUsername');
+            const username = (rtUsernameEl && rtUsernameEl.value) || (userSettings.instagram_usernames.length > 0 ? userSettings.instagram_usernames[userSettings.instagram_usernames.length - 1] : '@username');
             const introSlides = templateSlides.filter(s => s.type === 'intro');
             const contentSlides = templateSlides.filter(s => s.type === 'content');
             const endingSlides = templateSlides.filter(s => s.type === 'ending');
