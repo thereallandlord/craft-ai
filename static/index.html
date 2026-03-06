@@ -5753,6 +5753,7 @@
                 templateCache = templates;
             }
             if (templates.length > 0) {
+                try { localStorage.setItem('templateCacheV3', JSON.stringify(templates)); } catch(e) {}
             }
 
             // Auto-select first template for RT if none selected
@@ -8065,6 +8066,8 @@
         async function init() {
             // Start auth immediately (don't await — runs in parallel)
             initAuth();
+            // Preload templates in background so they're ready when user clicks "Шаблоны"
+            preloadTemplates();
 
             // Restore tab from URL hash IMMEDIATELY (before any awaits block us)
             const hash = window.location.hash.slice(1);
@@ -9652,6 +9655,20 @@
             });
         }
 
+        async function preloadTemplates() {
+            try {
+                const r = await fetch(`${API_URL}/templates?preview=light`);
+                if (r.ok) {
+                    const data = await r.json();
+                    const templates = data.templates || [];
+                    if (templates.length > 0) {
+                        templateCache = templates;
+                        try { localStorage.setItem('templateCacheV3', JSON.stringify(templates)); } catch(e) {}
+                    }
+                }
+            } catch(e) {}
+        }
+
         async function refreshGalleryFromServer(container) {
             try {
                 const uid = currentUser ? currentUser.id : '';
@@ -9660,6 +9677,7 @@
                     const templates = (await r.json()).templates || [];
                     if (templates.length > 0) {
                         templateCache = templates;
+                        try { localStorage.setItem('templateCacheV3', JSON.stringify(templates)); } catch(e) {}
                     }
                     // Always render after fetch (even empty — replaces spinner with "Нет шаблонов")
                     if (document.getElementById('templateGallery').style.display !== 'none') {
@@ -9680,7 +9698,21 @@
                 return;
             }
 
-            // No cache (page refresh) — show spinner and load
+            // localStorage fallback (Chrome after page refresh)
+            try {
+                const cached = localStorage.getItem('templateCacheV3');
+                if (cached) {
+                    const parsed = JSON.parse(cached);
+                    if (parsed.length > 0) {
+                        templateCache = parsed;
+                        renderGalleryCards(content, parsed);
+                        setTimeout(() => refreshGalleryFromServer(content), 500);
+                        return;
+                    }
+                }
+            } catch(e) {}
+
+            // No cache — show spinner and load
             content.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-muted);"><span class="spinner"></span> Загрузка шаблонов...</div>';
             await refreshGalleryFromServer(content);
         }
