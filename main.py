@@ -817,14 +817,14 @@ async def favicon():
 
 @app.get("/")
 async def index():
-    return FileResponse("static/index.html")
+    return FileResponse("static/index.html", headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
 
 
 @app.get("/health")
 async def health():
     return {
         "status": "healthy",
-        "version": "7.0",  # NEW: Updated version
+        "version": "7.1",
         "fonts": os.listdir("fonts") if os.path.exists("fonts") else []
     }
 
