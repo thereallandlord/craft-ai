@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="format-detection" content="telephone=no">
     <title>Craft AI</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -23,6 +23,7 @@
             --tg-safe-top: 0px;
             --tg-safe-bottom: 0px;
             --tg-content-top: 0px;
+            --tg-total-top: 0px;
             --bg-primary: #ffffff;
             --bg-secondary: #f9f9f9;
             --bg-tertiary: #f4f4f4;
@@ -88,7 +89,7 @@
 
         /* Navigation Bar */
         .nav-bar {
-            display: none !important;
+            display: none;
         }
 
         .nav-brand {
@@ -2235,19 +2236,111 @@
             background: var(--bg-hover);
         }
 
-        /* Telegram Mini App body class */
+        /* === TELEGRAM MINI APP === */
+
+        /* Body — fixed layout, no scroll, no rubber-banding */
         body.tg-miniapp {
-            padding-top: calc(var(--tg-safe-top) + var(--tg-content-top));
+            overflow: hidden !important;
+            height: 100dvh;
+            position: fixed;
+            width: 100%;
+            overscroll-behavior: none;
         }
-        body.tg-miniapp .nav-bar {
+        body.tg-miniapp .app {
+            height: 100dvh;
+            flex-direction: column;
+            overflow: hidden;
+            padding-top: var(--tg-total-top);
+        }
+
+        /* Sticky header — semi-transparent, sits under Dynamic Island */
+        .tg-header { display: none; }
+        body.tg-miniapp .tg-header {
+            display: block;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: var(--tg-total-top);
+            z-index: 10000;
+            background: color-mix(in srgb, var(--bg-primary) 85%, transparent);
+            -webkit-backdrop-filter: blur(20px);
+            backdrop-filter: blur(20px);
+            border-bottom: 0.5px solid var(--border);
+        }
+        .tg-header-content {
+            position: absolute;
             bottom: 0;
-            padding-bottom: var(--tg-safe-bottom);
+            left: 0;
+            right: 0;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 60px; /* Avoid TG close button (left) + 3-dot menu (right) */
+        }
+        .tg-header-title {
+            font-size: 17px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        /* Bottom nav-bar — visible in TG with safe area */
+        body.tg-miniapp .nav-bar {
+            display: flex !important;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            width: 100%;
             height: calc(56px + var(--tg-safe-bottom));
+            flex-direction: row;
+            justify-content: space-around;
+            padding: 4px 8px;
+            padding-bottom: var(--tg-safe-bottom);
+            gap: 0;
+            z-index: 9999;
+            border-right: none;
+            border-top: 1px solid var(--border);
+            background: color-mix(in srgb, var(--bg-secondary) 90%, transparent);
+            -webkit-backdrop-filter: blur(20px);
+            backdrop-filter: blur(20px);
         }
+        body.tg-miniapp .nav-brand,
+        body.tg-miniapp .nav-divider,
+        body.tg-miniapp .nav-spacer { display: none; }
+        body.tg-miniapp .nav-item { width: 36px; height: 36px; font-size: 16px; }
+        body.tg-miniapp .nav-item svg { width: 18px; height: 18px; }
+        body.tg-miniapp .nav-item .nav-tooltip { display: none !important; }
+
+        /* Content area — space for bottom nav */
+        body.tg-miniapp .content-area {
+            padding-bottom: calc(56px + var(--tg-safe-bottom));
+        }
+        body.tg-miniapp .tab-page {
+            overflow: hidden;
+        }
+        body.tg-miniapp .tab-page-content {
+            overflow-y: auto;
+            padding-bottom: calc(80px + var(--tg-safe-bottom));
+        }
+
+        /* Prevent rubber-banding on scrollable areas */
+        body.tg-miniapp .chat-messages,
+        body.tg-miniapp .tab-page-content,
+        body.tg-miniapp .slides-list {
+            overscroll-behavior: contain;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* View overlays */
         body.tg-miniapp .view-overlay {
-            padding-top: calc(var(--tg-safe-top, 0px) + var(--tg-content-top, 0px));
-            padding-bottom: var(--tg-safe-bottom, 0px);
+            padding-top: 0;
+            padding-bottom: calc(56px + var(--tg-safe-bottom));
         }
+
+        /* Nav user section — hide in TG (auth is automatic) */
+        body.tg-miniapp .nav-user { display: none; }
 
         /* === MOBILE ADAPTATION === */
         @media (max-width: 768px) {
@@ -3876,6 +3969,13 @@
 
 
     <div class="app">
+        <!-- Telegram Mini App Header -->
+        <div class="tg-header" id="tgHeader">
+            <div class="tg-header-content">
+                <span class="tg-header-title">Craft AI</span>
+            </div>
+        </div>
+
         <!-- Sidebar overlay (mobile) -->
         <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeMobileSidebar()"></div>
 
@@ -7861,6 +7961,8 @@
                 tg.ready();
                 tg.expand();
                 document.body.classList.add('tg-miniapp');
+                // Request fullscreen for native app feel
+                try { if (tg.requestFullscreen) tg.requestFullscreen(); } catch(e) {}
                 function tgUpdateInsets() {
                     const root = document.documentElement.style;
                     const sa = tg.safeAreaInset || {};
@@ -7868,11 +7970,13 @@
                     root.setProperty('--tg-safe-top', (sa.top || 0) + 'px');
                     root.setProperty('--tg-safe-bottom', (sa.bottom || 0) + 'px');
                     root.setProperty('--tg-content-top', (csa.top || 0) + 'px');
+                    root.setProperty('--tg-total-top', ((sa.top || 0) + (csa.top || 0)) + 'px');
                 }
                 tgUpdateInsets();
                 if (tg.onEvent) {
                     tg.onEvent('safeAreaChanged', tgUpdateInsets);
                     tg.onEvent('contentSafeAreaChanged', tgUpdateInsets);
+                    tg.onEvent('fullscreenChanged', tgUpdateInsets);
                 }
                 if (tg.enableClosingConfirmation) tg.enableClosingConfirmation();
                 if (tg.disableVerticalSwipes) tg.disableVerticalSwipes();
