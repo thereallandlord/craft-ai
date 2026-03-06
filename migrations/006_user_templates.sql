@@ -3,7 +3,7 @@
 
 CREATE TABLE IF NOT EXISTS user_templates (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    user_id BIGINT NOT NULL,
     template_id TEXT NOT NULL,
     name TEXT NOT NULL,
     slides JSONB NOT NULL DEFAULT '[]',
