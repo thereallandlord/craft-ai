@@ -5775,15 +5775,30 @@
         }
 
         // Template selection modal for Ready Text
+        let _rtTemplateLoading = false;
         function rtOpenTemplateModal() {
+            // Prevent duplicate modals
+            if (document.querySelector('.rt-color-popup-overlay')) return;
             if (templateCache.length === 0) {
-                // Try loading templates first
+                if (_rtTemplateLoading) return; // already loading
+                _rtTemplateLoading = true;
+                const btn = document.getElementById('rtTemplateBtn');
+                const btnText = document.getElementById('rtTemplateBtnText');
+                if (btnText) btnText.textContent = 'Загрузка...';
+                if (btn) btn.disabled = true;
                 loadTemplateSelectors().then(() => {
+                    _rtTemplateLoading = false;
+                    if (btnText) btnText.textContent = 'Выбрать шаблон';
+                    if (btn) btn.disabled = false;
                     if (templateCache.length === 0) {
                         showToast('Нет доступных шаблонов', 'error');
                     } else {
                         rtOpenTemplateModal(); // retry
                     }
+                }).catch(() => {
+                    _rtTemplateLoading = false;
+                    if (btnText) btnText.textContent = 'Выбрать шаблон';
+                    if (btn) btn.disabled = false;
                 });
                 return;
             }
