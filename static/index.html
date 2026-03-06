@@ -9592,22 +9592,7 @@
 
         // === TEMPLATE GALLERY FUNCTIONS ===
 
-        async function openTemplateGallery() {
-            const content = document.getElementById('templateGalleryContent');
-            if (!content) return;
-            content.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-muted);"><span class="spinner"></span> Загрузка...</div>';
-
-            let templates = [];
-            try {
-                const uid = currentUser ? currentUser.id : '';
-                const r = await fetch(`${API_URL}/templates?preview=light${uid ? '&user_id=' + uid : ''}`);
-                if (r.ok) templates = (await r.json()).templates || [];
-            } catch(e) {}
-
-            if (templates.length === 0 && templateCache.length > 0) {
-                templates = templateCache;
-            }
-
+        function renderGalleryCards(container, templates) {
             const isAdmin = currentUser && currentUser.is_admin;
             const personal = templates.filter(t => t.type === 'personal');
             const system = templates.filter(t => t.type === 'system');
@@ -9649,7 +9634,7 @@
             if (!html) {
                 html = '<div style="padding:40px;text-align:center;color:var(--text-muted);">Нет шаблонов. Нажмите «Создать с нуля» чтобы начать.</div>';
             }
-            content.innerHTML = html;
+            container.innerHTML = html;
 
             // Render previews
             requestAnimationFrame(() => {
@@ -9657,6 +9642,44 @@
                     if (t.slides && t.slides.length > 0) renderTemplatePreview('gallery', t);
                 });
             });
+        }
+
+        async function refreshGalleryFromServer(container) {
+            try {
+                const uid = currentUser ? currentUser.id : '';
+                const r = await fetch(`${API_URL}/templates?preview=light${uid ? '&user_id=' + uid : ''}`);
+                if (r.ok) {
+                    const templates = (await r.json()).templates || [];
+                    if (templates.length > 0) {
+                        templateCache = templates;
+                        try { localStorage.setItem('templateCacheV3', JSON.stringify(templates)); } catch(e) {}
+                        if (document.getElementById('templateGallery').style.display !== 'none') {
+                            renderGalleryCards(container, templates);
+                        }
+                    }
+                }
+            } catch(e) {}
+        }
+
+        async function openTemplateGallery() {
+            const content = document.getElementById('templateGalleryContent');
+            if (!content) return;
+
+            // Cache-first: show instantly from memory or localStorage
+            let cached = templateCache;
+            if (!cached.length) {
+                try { cached = JSON.parse(localStorage.getItem('templateCacheV3') || '[]'); } catch(e) {}
+            }
+            if (cached.length > 0) {
+                renderGalleryCards(content, cached);
+                // Background refresh
+                setTimeout(() => refreshGalleryFromServer(content), 500);
+                return;
+            }
+
+            // No cache — show spinner and load
+            content.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-muted);"><span class="spinner"></span> Загрузка...</div>';
+            await refreshGalleryFromServer(content);
         }
 
         async function openTemplatePreview(templateId, templateType) {
@@ -9766,7 +9789,14 @@
             if (propsPanel) propsPanel.style.display = 'none';
             const sidebarEditor = document.getElementById('sidebar-editor');
             if (sidebarEditor) sidebarEditor.style.display = 'none';
-            openTemplateGallery();
+            // Render from cache instantly, refresh in background (template may have been edited)
+            const content = document.getElementById('templateGalleryContent');
+            if (content && templateCache.length > 0) {
+                renderGalleryCards(content, templateCache);
+                setTimeout(() => refreshGalleryFromServer(content), 300);
+            } else {
+                openTemplateGallery();
+            }
         }
 
         function showTemplatesModal() {
