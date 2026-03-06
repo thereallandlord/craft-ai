@@ -4075,6 +4075,14 @@
 
                     <div class="rt-preview-strip" id="rtPreviewStrip"></div>
 
+                    <div style="display:flex;align-items:center;gap:8px;padding:8px 0;">
+                        <span style="font-size:12px;color:var(--text-muted);font-weight:500;">Instagram</span>
+                        <select class="form-input" id="rtEditorUsername" onchange="rtEditorUsernameChanged(this.value)" style="flex:1;padding:6px 10px;font-size:13px;"></select>
+                        <button class="btn" onclick="rtEditorAddUsername()" title="Добавить" style="padding:6px 10px;font-size:13px;">+</button>
+                        <button class="btn" onclick="rtEditorRenameUsername()" title="Переименовать" style="padding:6px 10px;font-size:13px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                        <button class="btn" onclick="rtEditorDeleteUsername()" title="Удалить" style="padding:6px 10px;font-size:13px;color:var(--text-muted);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                    </div>
+
                     <div class="rt-toolbar-tabs">
                         <button class="rt-toolbar-tab active" data-panel="text" onclick="rtSwitchPanel('text')">Текст</button>
                         <button class="rt-toolbar-tab" data-panel="background" onclick="rtSwitchPanel('background')">Фон</button>
@@ -5360,29 +5368,33 @@
                 return;
             }
 
-            // 3. Load template from userSettings
-            const lastId = userSettings.last_template_id || 'kamalov';
-            rtTemplate = (templateCache || []).find(t => (t.template_id || t.name) === lastId);
-            if (!rtTemplate) {
-                try {
-                    const r = await fetch(`${API_URL}/templates/${encodeURIComponent(lastId)}`);
-                    if (r.ok) rtTemplate = await r.json();
-                } catch(e) {}
-            }
-            if (!rtTemplate && templateCache && templateCache.length > 0) {
-                rtTemplate = templateCache[0];
-            }
-            if (!rtTemplate) {
-                container.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-muted);">Шаблон не найден.</div>';
-                return;
-            }
-
-            // 4. Init state
+            // 3. Init photos
             rtSlidePhotos = new Array(rtParsedData.length).fill(null);
             rtSelectedPhoto = null;
-            rtSlides = rtBuildSlides(rtTemplate, rtParsedData, rtSlidePhotos);
             rtActiveSlideIndex = 0;
-            rtActivePanel = 'text';
+
+            // 4. Load template from userSettings
+            const lastId = userSettings.last_template_id;
+            let noTemplate = false;
+            if (lastId) {
+                rtTemplate = (templateCache || []).find(t => (t.template_id || t.name) === lastId);
+                if (!rtTemplate) {
+                    try {
+                        const r = await fetch(`${API_URL}/templates/${encodeURIComponent(lastId)}`);
+                        if (r.ok) rtTemplate = await r.json();
+                    } catch(e) {}
+                }
+            }
+            if (!rtTemplate) noTemplate = true;
+
+            // Build slides if template available
+            if (rtTemplate) {
+                rtSlides = rtBuildSlides(rtTemplate, rtParsedData, rtSlidePhotos);
+                rtActivePanel = 'text';
+            } else {
+                rtSlides = [];
+                rtActivePanel = 'template';
+            }
 
             // 5. Move RT editor into scCarouselEditor
             const editor = document.getElementById('rtEditorPhase');
@@ -5413,8 +5425,9 @@
             _rtEditorInSubChat = true;
 
             // 6. Render
+            rtLoadEditorUsernames();
             rtRenderAllPreviews();
-            rtSwitchPanel('text');
+            rtSwitchPanel(noTemplate ? 'template' : 'text');
         }
 
         async function scSendMessage() {
@@ -6120,6 +6133,7 @@
             usernames.forEach(u => {
                 select.innerHTML += `<option value="${u}" ${u === current ? 'selected' : ''}>${u}</option>`;
             });
+            rtLoadEditorUsernames();
         }
 
         function rtAddUsername() {
@@ -6133,6 +6147,69 @@
             }
             rtLoadUsernames();
             document.getElementById('rtUsername').value = username;
+        }
+
+        // Editor username CRUD (inside rtEditorPhase)
+        function rtLoadEditorUsernames() {
+            const select = document.getElementById('rtEditorUsername');
+            if (!select) return;
+            const usernames = userSettings.instagram_usernames || [];
+            select.innerHTML = '';
+            if (usernames.length === 0) {
+                select.innerHTML = '<option value="">Нет username</option>';
+            } else {
+                usernames.forEach(u => {
+                    select.innerHTML += `<option value="${u}">${u}</option>`;
+                });
+                select.value = usernames[usernames.length - 1];
+            }
+        }
+
+        function rtEditorUsernameChanged(value) {
+            if (!rtTemplate || !rtParsedData || rtParsedData.length === 0) return;
+            rtSlides = rtBuildSlides(rtTemplate, rtParsedData, rtSlidePhotos);
+            rtRenderAllPreviews();
+            rtRenderActivePanel();
+        }
+
+        function rtEditorAddUsername() {
+            const name = prompt('Введите Instagram username:');
+            if (!name) return;
+            const username = name.startsWith('@') ? name : '@' + name;
+            const list = [...(userSettings.instagram_usernames || [])];
+            if (!list.includes(username)) {
+                list.push(username);
+                saveUserSettings({ instagram_usernames: list });
+            }
+            rtLoadEditorUsernames();
+            document.getElementById('rtEditorUsername').value = username;
+            rtEditorUsernameChanged(username);
+        }
+
+        function rtEditorRenameUsername() {
+            const select = document.getElementById('rtEditorUsername');
+            const current = select.value;
+            if (!current) return;
+            const newName = prompt('Новый username:', current);
+            if (!newName || newName === current) return;
+            const formatted = newName.startsWith('@') ? newName : '@' + newName;
+            const list = [...(userSettings.instagram_usernames || [])];
+            const idx = list.indexOf(current);
+            if (idx !== -1) list[idx] = formatted;
+            saveUserSettings({ instagram_usernames: list });
+            rtLoadEditorUsernames();
+            select.value = formatted;
+            rtEditorUsernameChanged(formatted);
+        }
+
+        function rtEditorDeleteUsername() {
+            const select = document.getElementById('rtEditorUsername');
+            const current = select.value;
+            if (!current) return;
+            const list = (userSettings.instagram_usernames || []).filter(u => u !== current);
+            saveUserSettings({ instagram_usernames: list });
+            rtLoadEditorUsernames();
+            rtEditorUsernameChanged(select.value);
         }
 
         function rtHandlePhoto(input) {
@@ -6199,8 +6276,11 @@
 
         function rtBuildSlides(templateData, parsedData, photos) {
             const templateSlides = templateData.slides || [];
-            const rtUsernameEl = document.getElementById('rtUsername');
-            const username = (rtUsernameEl && rtUsernameEl.value) || (userSettings.instagram_usernames.length > 0 ? userSettings.instagram_usernames[userSettings.instagram_usernames.length - 1] : '@username');
+            const editorUsernameEl = document.getElementById('rtEditorUsername');
+            const inputUsernameEl = document.getElementById('rtUsername');
+            const username = (editorUsernameEl && editorUsernameEl.value) ||
+                             (inputUsernameEl && inputUsernameEl.value && inputUsernameEl.value !== '@username' ? inputUsernameEl.value : '') ||
+                             (userSettings.instagram_usernames.length > 0 ? userSettings.instagram_usernames[userSettings.instagram_usernames.length - 1] : '');
             const introSlides = templateSlides.filter(s => s.type === 'intro');
             const contentSlides = templateSlides.filter(s => s.type === 'content');
             const endingSlides = templateSlides.filter(s => s.type === 'ending');
@@ -6683,8 +6763,12 @@
             const t = templateCache.find(t => (t.template_id || t.name) === templateId);
             if (!t) return;
             rtTemplate = t;
-            document.getElementById('rtTemplateSelect').value = templateId;
+            const templateSelect = document.getElementById('rtTemplateSelect');
+            if (templateSelect) templateSelect.value = templateId;
             saveUserSettings({ last_template_id: templateId });
+            if (!rtSlidePhotos || rtSlidePhotos.length !== rtParsedData.length) {
+                rtSlidePhotos = new Array(rtParsedData.length).fill(null);
+            }
             rtSlides = rtBuildSlides(t, rtParsedData, rtSlidePhotos);
             if (rtActiveSlideIndex >= rtSlides.length) rtActiveSlideIndex = 0;
             rtRenderAllPreviews();
@@ -6902,6 +6986,7 @@
             if (tgSendBtn) tgSendBtn.style.display = (tg && tg.initData) ? '' : 'none';
             rtGeneratedImages = null; // Reset cache for new slides
 
+            rtLoadEditorUsernames();
             rtRenderAllPreviews();
             rtSwitchPanel('text');
             showToast(`Карусель: ${rtSlides.length} слайдов`, 'success');
