@@ -23,6 +23,7 @@ import base64
 import json
 import os
 import io
+import shutil
 import grapheme
 import arabic_reshaper
 from bidi.algorithm import get_display
@@ -78,6 +79,16 @@ os.makedirs(TEMPLATES_DIR, exist_ok=True)
 os.makedirs(FONTS_DIR, exist_ok=True)
 os.makedirs(UPLOADS_DIR, exist_ok=True)
 os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+# Copy system templates from git to DATA_DIR if running with separate data volume (Railway)
+GIT_TEMPLATES_DIR = "templates"
+if DATA_DIR != "." and os.path.exists(GIT_TEMPLATES_DIR):
+    for f in os.listdir(GIT_TEMPLATES_DIR):
+        if f.endswith('.json'):
+            dest = os.path.join(TEMPLATES_DIR, f)
+            if not os.path.exists(dest):
+                shutil.copy2(os.path.join(GIT_TEMPLATES_DIR, f), dest)
+                print(f"📋 Copied system template: {f}")
 
 print(f"📁 Templates directory: {TEMPLATES_DIR}")
 print(f"📁 Uploads directory: {UPLOADS_DIR}")
