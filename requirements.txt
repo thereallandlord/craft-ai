@@ -7,3 +7,6 @@ pydantic
 numpy
 supabase
 openai
+arabic-reshaper
+python-bidi
+grapheme

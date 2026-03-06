@@ -23,6 +23,9 @@ import base64
 import json
 import os
 import io
+import grapheme
+import arabic_reshaper
+from bidi.algorithm import get_display
 import re
 import uuid
 import hashlib
@@ -208,9 +211,94 @@ class SlideRenderer:
                         pass
 
             if key not in self.font_cache:
-                self.font_cache[key] = ImageFont.load_default()
+                self.font_cache[key] = self.get_fallback_font(size, weight)
 
         return self.font_cache[key]
+
+    # === Multilingual support ===
+
+    def _contains_arabic_letters(self, text: str) -> bool:
+        """Check if text contains actual Arabic letters (not just symbols like ﷺ)."""
+        for ch in text:
+            # Arabic letters: U+0621-U+064A (main), U+0671-U+06D3 (extended)
+            if '\u0621' <= ch <= '\u064A' or '\u0671' <= ch <= '\u06D3':
+                return True
+        return False
+
+    def _contains_arabic(self, text: str) -> bool:
+        """Check if text contains Arabic script characters (including symbols)."""
+        for ch in text:
+            if '\u0600' <= ch <= '\u06FF' or '\u0750' <= ch <= '\u077F' or '\uFB50' <= ch <= '\uFDFF' or '\uFE70' <= ch <= '\uFEFF':
+                return True
+        return False
+
+    def preprocess_text(self, text: str) -> str:
+        """Reshape Arabic characters and apply BiDi algorithm for correct RTL rendering."""
+        if self._contains_arabic_letters(text):
+            reshaped = arabic_reshaper.reshape(text)
+            return get_display(reshaped)
+        return text
+
+    _notdef_cache = {}  # font_id -> notdef_mask_sum
+
+    def has_glyph(self, font, char: str) -> bool:
+        """Check if font contains a glyph for the character (not .notdef)."""
+        try:
+            if char.strip() == '':
+                return True
+            # Compare mask with a known-missing glyph (.notdef)
+            font_id = id(font)
+            if font_id not in self._notdef_cache:
+                notdef_mask = font.getmask('\uFFFF')
+                self._notdef_cache[font_id] = sum(notdef_mask)
+            char_mask = font.getmask(char)
+            return sum(char_mask) != self._notdef_cache[font_id]
+        except:
+            return False
+
+    def get_fallback_font(self, size: int, weight: str = '400'):
+        """Return a Noto fallback font for Unicode coverage."""
+        weight_name = 'Bold' if str(weight) in ('600', '700', '800', '900') else 'Regular'
+        fallback_chain = [
+            f'fonts/NotoSansArabic-{weight_name}.ttf',
+            f'fonts/NotoSans-{weight_name}.ttf',
+            'fonts/NotoSansSymbols2-Regular.ttf',
+        ]
+        key = f"_fallback_{weight_name}_{size}"
+        if key not in self.font_cache:
+            for path in fallback_chain:
+                if os.path.exists(path):
+                    try:
+                        self.font_cache[key] = ImageFont.truetype(path, size)
+                        return self.font_cache[key]
+                    except:
+                        continue
+            self.font_cache[key] = ImageFont.load_default()
+        return self.font_cache[key]
+
+    def select_font_for_text(self, text: str, primary_font, size: int, weight: str = '400'):
+        """Use primary font if it has all glyphs, otherwise try fallback chain per-character."""
+        for ch in text:
+            if ch.strip() == '':
+                continue
+            if not self.has_glyph(primary_font, ch):
+                # Try specific fallback fonts for this character
+                weight_name = 'Bold' if str(weight) in ('600', '700', '800', '900') else 'Regular'
+                for path in [f'fonts/NotoSansArabic-{weight_name}.ttf', f'fonts/NotoSans-{weight_name}.ttf', 'fonts/NotoSansSymbols2-Regular.ttf']:
+                    fkey = f"_fb_{path}_{size}"
+                    if fkey not in self.font_cache:
+                        if os.path.exists(path):
+                            try:
+                                self.font_cache[fkey] = ImageFont.truetype(path, size)
+                            except:
+                                continue
+                        else:
+                            continue
+                    fb = self.font_cache[fkey]
+                    if self.has_glyph(fb, ch):
+                        return fb
+                return self.get_fallback_font(size, weight)
+        return primary_font
 
     def load_image(self, source: str):
         if not source:
@@ -428,14 +516,14 @@ class SlideRenderer:
 
     def get_text_width(self, text: str, font, letter_spacing: int, draw) -> int:
         """Calculate text width with letter spacing"""
-        if letter_spacing == 0:
+        if letter_spacing == 0 or self._contains_arabic(text):
             bbox = draw.textbbox((0, 0), text, font=font)
             return bbox[2] - bbox[0]
         else:
-            # Calculate width char by char with spacing
+            # Calculate width by grapheme clusters with spacing
             total_width = 0
-            for char in text:
-                bbox = draw.textbbox((0, 0), char, font=font)
+            for cluster in grapheme.graphemes(text):
+                bbox = draw.textbbox((0, 0), cluster, font=font)
                 total_width += (bbox[2] - bbox[0]) + letter_spacing
             # Remove last letter spacing
             return total_width - letter_spacing if total_width > 0 else 0
@@ -495,6 +583,15 @@ class SlideRenderer:
         if not segments:
             segments = [{'text': content, 'hl': False, 'bold': False, 'color': None}]
 
+        # Preprocess text for Arabic/RTL and auto-align
+        has_arabic_letters = False
+        for seg in segments:
+            if self._contains_arabic_letters(seg['text']):
+                has_arabic_letters = True
+                seg['text'] = self.preprocess_text(seg['text'])
+        if has_arabic_letters and align == 'left':
+            align = 'right'
+
         lines = []
         current_words, current_segs = [], []
         for seg in segments:
@@ -525,7 +622,8 @@ class SlideRenderer:
                 continue
 
             line_text = ''.join(s['text'] for s in line_segs)
-            line_w = self.get_text_width(line_text, font, letter_spacing, draw)
+            line_font = self.select_font_for_text(line_text, font, font_size, font_weight)
+            line_w = self.get_text_width(line_text, line_font, letter_spacing, draw)
 
             curr_x = x - line_w if align == 'right' else (x - line_w // 2 if align == 'center' else x)
 
@@ -540,15 +638,17 @@ class SlideRenderer:
                 else:
                     col = base_color
                 seg_font = bold_font if seg.get('bold') else font
+                # Font fallback for Unicode/Arabic/special chars
+                seg_font = self.select_font_for_text(seg['text'], seg_font, font_size, font_weight)
 
-                if letter_spacing != 0:
-                    # NEW: Посимвольный рендеринг с letter-spacing
-                    for char in seg['text']:
-                        draw.text((curr_x, curr_y), char, font=seg_font, fill=col)
-                        bbox = draw.textbbox((0, 0), char, font=seg_font)
+                if letter_spacing != 0 and not self._contains_arabic(seg['text']):
+                    # Grapheme-cluster rendering with letter-spacing (skip for Arabic)
+                    for cluster in grapheme.graphemes(seg['text']):
+                        draw.text((curr_x, curr_y), cluster, font=seg_font, fill=col)
+                        bbox = draw.textbbox((0, 0), cluster, font=seg_font)
                         curr_x += (bbox[2] - bbox[0]) + letter_spacing
                 else:
-                    # Обычный рендеринг без letter-spacing
+                    # Whole-string rendering (no letter-spacing, or Arabic text)
                     draw.text((curr_x, curr_y), seg['text'], font=seg_font, fill=col)
                     bbox = draw.textbbox((0, 0), seg['text'], font=seg_font)
                     curr_x += bbox[2] - bbox[0]
@@ -598,6 +698,11 @@ class SlideRenderer:
 
         if not segments:
             segments = [{'text': content, 'hl': False}]
+
+        # Preprocess Arabic text for correct line counting
+        for seg in segments:
+            if self._contains_arabic_letters(seg['text']):
+                seg['text'] = self.preprocess_text(seg['text'])
 
         # Разбиваем на строки
         lines = []
