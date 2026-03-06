@@ -5654,6 +5654,7 @@
 
         function switchTab(tabId) {
             currentTab = tabId;
+            try { localStorage.setItem('craft_activeTab', tabId); } catch(e) {}
 
             // Close overlay views when switching to a tab
             if (typeof closeAllViews === 'function') closeAllViews();
@@ -5745,8 +5746,11 @@
             }
             _templateRetryCount = 0;
 
-            templateCache = templates;
-            // Only persist to localStorage if we got data (don't overwrite good cache with empty)
+            // Don't overwrite good cache with empty data (e.g. fetch without user_id)
+            if (templates.length > 0 || templateCache.length === 0) {
+                templateCache = templates;
+            }
+            // Only persist to localStorage if we got data
             if (templates.length > 0) {
                 try { localStorage.setItem('templateCacheV3', JSON.stringify(templates)); } catch(e) {}
             }
@@ -8087,6 +8091,10 @@
             loadWebhookSettings();
             chatInitTab();
 
+            // Restore last active tab
+            const savedTab = localStorage.getItem('craft_activeTab');
+            if (savedTab) switchTab(savedTab);
+
             // NEW v7.0: Keyboard shortcuts for Undo/Redo
             document.addEventListener('keydown', (e) => {
                 // Ctrl+Z or Cmd+Z for Undo
@@ -9666,10 +9674,13 @@
             const content = document.getElementById('templateGalleryContent');
             if (!content) return;
 
-            // Cache-first: show instantly from memory or localStorage
+            // Cache-first: try memory, then localStorage (localStorage may have fuller data)
             let cached = templateCache;
-            if (!cached.length) {
-                try { cached = JSON.parse(localStorage.getItem('templateCacheV3') || '[]'); } catch(e) {}
+            if (!cached.length || !cached.some(t => t.type === 'personal')) {
+                try {
+                    const stored = JSON.parse(localStorage.getItem('templateCacheV3') || '[]');
+                    if (stored.length > cached.length) cached = stored;
+                } catch(e) {}
             }
             if (cached.length > 0) {
                 renderGalleryCards(content, cached);
