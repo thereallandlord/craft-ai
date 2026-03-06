@@ -5672,6 +5672,7 @@
         // Load templates into select dropdowns for Ready Text and Wizard tabs
         let templateCache = []; // Cache loaded templates
 
+        let _templateRetryCount = 0;
         async function loadTemplateSelectors(force = false) {
             // Skip reload if cache already has data (unless forced)
             if (!force && templateCache.length > 0) return;
@@ -5701,9 +5702,19 @@
                 templates = Object.values(JSON.parse(localStorage.getItem('carousel_templates') || '{}'));
             }
 
+            // If fetch returned empty (cold start?) — retry up to 3 times
+            if (templates.length === 0 && _templateRetryCount < 3) {
+                _templateRetryCount++;
+                await new Promise(r => setTimeout(r, 2000));
+                return loadTemplateSelectors(true);
+            }
+            _templateRetryCount = 0;
+
             templateCache = templates;
-            // Persist to localStorage for instant load next time
-            try { localStorage.setItem('templateCacheV2', JSON.stringify(templates)); } catch(e) {}
+            // Only persist to localStorage if we got data (don't overwrite good cache with empty)
+            if (templates.length > 0) {
+                try { localStorage.setItem('templateCacheV2', JSON.stringify(templates)); } catch(e) {}
+            }
 
             // Auto-select first template for RT if none selected
             if (templates.length > 0 && !document.getElementById('rtTemplateSelect').value) {
