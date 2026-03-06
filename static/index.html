@@ -5676,10 +5676,23 @@
             // Skip reload if cache already has data (unless forced)
             if (!force && templateCache.length > 0) return;
 
+            // Try localStorage first for instant display
+            if (!force) {
+                try {
+                    const cached = JSON.parse(localStorage.getItem('templateCacheV2') || '[]');
+                    if (cached.length > 0) {
+                        templateCache = cached;
+                        // Background refresh after 1s
+                        setTimeout(() => loadTemplateSelectors(true), 1000);
+                        return;
+                    }
+                } catch(e) {}
+            }
+
             let templates = [];
             try {
-                // Light mode: only first slide per template (fast, ~10KB vs ~850KB)
-                const r = await fetch(`${API_URL}/templates?preview=light`);
+                const uid = (typeof currentUser !== 'undefined' && currentUser) ? currentUser.id : '';
+                const r = await fetch(`${API_URL}/templates?preview=light${uid ? '&user_id=' + uid : ''}`);
                 if (r.ok) {
                     const d = await r.json();
                     templates = d.templates || [];
@@ -5689,6 +5702,8 @@
             }
 
             templateCache = templates;
+            // Persist to localStorage for instant load next time
+            try { localStorage.setItem('templateCacheV2', JSON.stringify(templates)); } catch(e) {}
 
             // Auto-select first template for RT if none selected
             if (templates.length > 0 && !document.getElementById('rtTemplateSelect').value) {
@@ -5785,16 +5800,41 @@
                     grid.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-muted);">Нет доступных шаблонов</div>';
                     return;
                 }
-                grid.innerHTML = templateCache.map(t => {
-                    const tid = t.template_id || t.name;
-                    const count = t.slidesCount || (t.slides ? t.slides.length : '?');
-                    return `<div class="template-card ${tid === curId ? 'selected' : ''}" data-template-id="${tid}" onclick="rtSelectTemplateFromModal('${tid}')" style="border-radius:10px;">
-                        <div class="template-card-preview" id="rtModal-preview-${tid}" style="aspect-ratio:4/5;">
-                            <div class="template-card-preview-placeholder">${count} слайдов</div>
-                        </div>
-                        <div class="template-card-name" style="font-size:12px;padding:6px 8px;">${escapeHtml(t.name)}</div>
+                // Group by type: personal → system → published
+                const personal = templateCache.filter(t => t.type === 'personal');
+                const system = templateCache.filter(t => !t.type || t.type === 'system');
+                const published = templateCache.filter(t => t.type === 'published');
+
+                function renderCards(list) {
+                    return `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;">
+                        ${list.map(t => {
+                            const tid = t.template_id || t.name;
+                            const count = t.slidesCount || (t.slides ? t.slides.length : '?');
+                            return `<div class="template-card ${tid === curId ? 'selected' : ''}" data-template-id="${tid}" onclick="rtSelectTemplateFromModal('${tid}')" style="border-radius:10px;">
+                                <div class="template-card-preview" id="rtModal-preview-${tid}" style="aspect-ratio:4/5;">
+                                    <div class="template-card-preview-placeholder">${count} слайдов</div>
+                                </div>
+                                <div class="template-card-name" style="font-size:12px;padding:6px 8px;">${escapeHtml(t.name)}</div>
+                            </div>`;
+                        }).join('')}
                     </div>`;
-                }).join('');
+                }
+
+                let html = '';
+                if (personal.length > 0) {
+                    html += `<div style="font-size:13px;font-weight:600;color:var(--text-muted);margin:8px 0 6px;">Мои шаблоны</div>`;
+                    html += renderCards(personal);
+                }
+                if (system.length > 0) {
+                    html += `<div style="font-size:13px;font-weight:600;color:var(--text-muted);margin:${personal.length ? '16' : '8'}px 0 6px;">Системные</div>`;
+                    html += renderCards(system);
+                }
+                if (published.length > 0) {
+                    html += `<div style="font-size:13px;font-weight:600;color:var(--text-muted);margin:16px 0 6px;">От сообщества</div>`;
+                    html += renderCards(published);
+                }
+                grid.innerHTML = html;
+
                 requestAnimationFrame(() => {
                     templateCache.forEach(t => {
                         if (t.slides && t.slides.length > 0) renderTemplatePreview('rtModal', t);
@@ -5803,12 +5843,12 @@
             }
 
             overlay.innerHTML = `
-                <div class="rt-color-popup" style="max-width:520px;">
+                <div class="rt-color-popup" style="max-width:700px;width:90vw;">
                     <div class="rt-color-popup-header">
                         <span class="rt-color-popup-title">Выберите шаблон</span>
                         <button class="rt-color-popup-close" onclick="this.closest('.rt-color-popup-overlay').remove()">&times;</button>
                     </div>
-                    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px;max-height:60vh;overflow-y:auto;padding:4px;" id="rtModalTemplateGrid">
+                    <div style="max-height:70vh;overflow-y:auto;padding:4px;" id="rtModalTemplateGrid">
                         <div style="padding:40px;text-align:center;color:var(--text-muted);grid-column:1/-1;"><span class="spinner"></span> Загрузка шаблонов...</div>
                     </div>
                 </div>`;
@@ -9178,10 +9218,11 @@
 
             const template = {
                 name: state.templateName,
-                template_id: templateId,  // NEW
+                template_id: templateId,
                 settings: state.settings,
                 slides: state.slides,
-                createdAt: new Date().toISOString()
+                createdAt: new Date().toISOString(),
+                user_id: currentUser ? currentUser.id : undefined
             };
 
             try {
@@ -9207,7 +9248,8 @@
             const c = document.getElementById('templateList');
             let templates = [];
             try {
-                const r = await fetch(`${API_URL}/templates?preview=light`);
+                const uid = (typeof currentUser !== 'undefined' && currentUser) ? currentUser.id : '';
+                const r = await fetch(`${API_URL}/templates?preview=light${uid ? '&user_id=' + uid : ''}`);
                 if (r.ok) {
                     const d = await r.json();
                     templates = d.templates || [];
@@ -9443,7 +9485,8 @@
             if (!confirm(`Удалить "${templateName}"?`)) return;
 
             try {
-                await fetch(`${API_URL}/templates/${encodeURIComponent(identifier)}`, { method: 'DELETE' });
+                const uid = currentUser ? currentUser.id : '';
+                await fetch(`${API_URL}/templates/${encodeURIComponent(identifier)}?user_id=${uid}`, { method: 'DELETE' });
             } catch (e) { }
 
             // Delete from localStorage (search by name AND template_id)

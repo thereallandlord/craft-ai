@@ -106,6 +106,7 @@ class TemplateData(BaseModel):
     settings: Dict[str, Any] = {}
     slides: List[Dict[str, Any]]
     createdAt: Optional[str] = None
+    user_id: Optional[str] = None  # If set, save to Supabase instead of filesystem
 
 
 def generate_template_id(name: str) -> str:
@@ -881,8 +882,10 @@ async def upload_font(file: UploadFile):
 
 
 @app.get("/templates")
-async def list_templates(preview: str = "full"):
+async def list_templates(preview: str = "full", user_id: str = ""):
     templates = []
+
+    # 1. System templates (filesystem) — visible to all
     for f in os.listdir(TEMPLATES_DIR):
         if f.endswith('.json'):
             try:
@@ -890,20 +893,17 @@ async def list_templates(preview: str = "full"):
                 with open(path, 'r', encoding='utf-8') as file:
                     d = json.load(file)
 
-                    # NEW v7.0: Генерируем template_id на лету если его нет
                     template_id = d.get('template_id')
                     if not template_id:
                         template_id = generate_template_id(d.get('name', f.replace('.json', '')))
-                        # Сохраняем template_id в файл для будущего использования
                         d['template_id'] = template_id
                         try:
                             with open(path, 'w', encoding='utf-8') as write_file:
                                 json.dump(d, write_file, ensure_ascii=False, indent=2)
                         except:
-                            pass  # Если не удалось сохранить - не критично
+                            pass
 
                     all_slides = d.get('slides', [])
-                    # preview=light: only first slide (for template picker), preview=full: all slides
                     if preview == 'light':
                         slides_data = [all_slides[0]] if all_slides else []
                     else:
@@ -911,33 +911,72 @@ async def list_templates(preview: str = "full"):
 
                     templates.append({
                         "name": d.get('name', f.replace('.json', '')),
-                        "template_id": template_id,  # NEW
+                        "template_id": template_id,
                         "createdAt": d.get('createdAt', ''),
                         "slidesCount": len(all_slides),
-                        "slides": slides_data
+                        "slides": slides_data,
+                        "type": "system"
                     })
             except:
                 pass
+
+    # 2. User templates from Supabase (personal + published)
+    if sb and user_id:
+        try:
+            # Personal templates (user's own)
+            result = sb.table("user_templates").select("*").eq("user_id", user_id).execute()
+            for row in (result.data or []):
+                all_slides = row.get("slides") or []
+                if preview == 'light':
+                    slides_data = [all_slides[0]] if all_slides else []
+                else:
+                    slides_data = all_slides
+                templates.append({
+                    "name": row["name"],
+                    "template_id": row["template_id"],
+                    "createdAt": row.get("created_at", ""),
+                    "slidesCount": len(all_slides),
+                    "slides": slides_data,
+                    "type": "personal",
+                    "db_id": str(row["id"])
+                })
+
+            # Published templates (from other users)
+            pub_result = sb.table("user_templates").select("*").eq("is_published", True).neq("user_id", user_id).execute()
+            for row in (pub_result.data or []):
+                all_slides = row.get("slides") or []
+                if preview == 'light':
+                    slides_data = [all_slides[0]] if all_slides else []
+                else:
+                    slides_data = all_slides
+                templates.append({
+                    "name": row["name"],
+                    "template_id": row["template_id"],
+                    "createdAt": row.get("created_at", ""),
+                    "slidesCount": len(all_slides),
+                    "slides": slides_data,
+                    "type": "published",
+                    "db_id": str(row["id"])
+                })
+        except Exception as e:
+            print(f"Error loading user templates: {e}")
+
     return {"templates": templates}
 
 
 @app.get("/templates/{identifier}")
 async def get_template(identifier: str):
-    # NEW v7.0: Find template by template_id OR name
-    template_path = None
-
-    # Search through all templates
+    # 1. Search filesystem (system templates)
     if os.path.exists(TEMPLATES_DIR):
         for filename in os.listdir(TEMPLATES_DIR):
             if not filename.endswith('.json'):
                 continue
-
             path = os.path.join(TEMPLATES_DIR, filename)
             try:
                 with open(path, 'r', encoding='utf-8') as f:
                     t = json.load(f)
-                    # Match by template_id or name
                     if t.get('template_id') == identifier or t.get('name') == identifier:
+                        t['type'] = 'system'
                         return t
             except:
                 continue
@@ -947,7 +986,26 @@ async def get_template(identifier: str):
     fallback_path = os.path.join(TEMPLATES_DIR, f"{safe}.json")
     if os.path.exists(fallback_path):
         with open(fallback_path, 'r', encoding='utf-8') as f:
-            return json.load(f)
+            t = json.load(f)
+            t['type'] = 'system'
+            return t
+
+    # 2. Search Supabase (user templates)
+    if sb:
+        try:
+            result = sb.table("user_templates").select("*").eq("template_id", identifier).execute()
+            if result.data and len(result.data) > 0:
+                row = result.data[0]
+                return {
+                    "name": row["name"],
+                    "template_id": row["template_id"],
+                    "settings": row.get("settings") or {},
+                    "slides": row.get("slides") or [],
+                    "createdAt": row.get("created_at", ""),
+                    "type": "personal" if not row.get("is_published") else "published"
+                }
+        except:
+            pass
 
     raise HTTPException(status_code=404, detail="Not found")
 
@@ -955,43 +1013,85 @@ async def get_template(identifier: str):
 @app.post("/templates")
 async def save_template(template: TemplateData):
     from datetime import datetime
+
+    tid = template.template_id or generate_template_id(template.name)
+
+    # If user_id provided — save to Supabase (personal template)
+    if template.user_id and sb:
+        try:
+            # Upsert: update if template_id exists for this user, insert otherwise
+            row = {
+                "user_id": template.user_id,
+                "template_id": tid,
+                "name": template.name,
+                "slides": template.slides,
+                "settings": template.settings,
+                "updated_at": datetime.now().isoformat()
+            }
+            sb.table("user_templates").upsert(row, on_conflict="user_id,template_id").execute()
+            return {"success": True, "name": template.name, "template_id": tid, "type": "personal"}
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error saving template: {e}")
+
+    # No user_id — save to filesystem (system template / legacy)
     t = template.dict()
     t['createdAt'] = datetime.now().isoformat()
-
-    # NEW v7.0: Генерируем template_id если не передан
-    if not t.get('template_id'):
-        t['template_id'] = generate_template_id(template.name)
+    t['template_id'] = tid
 
     safe = re.sub(r'[^a-zA-Z0-9_\-а-яА-ЯёЁ]', '_', template.name)
     path = os.path.join(TEMPLATES_DIR, f"{safe}.json")
     with open(path, 'w', encoding='utf-8') as f:
         json.dump(t, f, ensure_ascii=False, indent=2)
-    return {"success": True, "name": template.name, "template_id": t['template_id']}
+    return {"success": True, "name": template.name, "template_id": tid, "type": "system"}
+
+
+@app.put("/templates/{identifier}/publish")
+async def toggle_publish_template(identifier: str, user_id: str = ""):
+    """Toggle is_published on a user template (only owner can do this)"""
+    if not sb or not user_id:
+        raise HTTPException(status_code=400, detail="user_id required")
+    try:
+        # Get current state
+        result = sb.table("user_templates").select("id,is_published").eq("template_id", identifier).eq("user_id", user_id).execute()
+        if not result.data:
+            raise HTTPException(status_code=404, detail="Template not found")
+        row = result.data[0]
+        new_state = not row.get("is_published", False)
+        sb.table("user_templates").update({"is_published": new_state}).eq("id", row["id"]).execute()
+        return {"success": True, "is_published": new_state}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.delete("/templates/{identifier}")
-async def delete_template(identifier: str):
-    # NEW v7.0: Find template by template_id OR name
-    template_path = None
+async def delete_template(identifier: str, user_id: str = ""):
+    # 1. Try Supabase first (user templates)
+    if sb and user_id:
+        try:
+            result = sb.table("user_templates").delete().eq("template_id", identifier).eq("user_id", user_id).execute()
+            if result.data and len(result.data) > 0:
+                return {"success": True}
+        except:
+            pass
 
-    # Search through all templates
+    # 2. Filesystem (system templates)
+    template_path = None
     if os.path.exists(TEMPLATES_DIR):
         for filename in os.listdir(TEMPLATES_DIR):
             if not filename.endswith('.json'):
                 continue
-
             path = os.path.join(TEMPLATES_DIR, filename)
             try:
                 with open(path, 'r', encoding='utf-8') as f:
                     t = json.load(f)
-                    # Match by template_id or name
                     if t.get('template_id') == identifier or t.get('name') == identifier:
                         template_path = path
                         break
             except:
                 continue
 
-    # Fallback: try direct filename match
     if not template_path:
         safe = re.sub(r'[^a-zA-Z0-9_\-а-яА-ЯёЁ]', '_', identifier)
         fallback_path = os.path.join(TEMPLATES_DIR, f"{safe}.json")
