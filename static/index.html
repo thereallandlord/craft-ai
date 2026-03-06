@@ -5752,12 +5752,7 @@
             if (templates.length > 0 || templateCache.length === 0) {
                 templateCache = templates;
             }
-            // Persist slim version to localStorage (without slides — too heavy for Safari's 5MB limit)
             if (templates.length > 0) {
-                try {
-                    const slim = templates.map(t => ({...t, slides: []}));
-                    localStorage.setItem('templateCacheV3', JSON.stringify(slim));
-                } catch(e) {}
             }
 
             // Auto-select first template for RT if none selected
@@ -9665,11 +9660,6 @@
                     const templates = (await r.json()).templates || [];
                     if (templates.length > 0) {
                         templateCache = templates;
-                        // Save slim version to localStorage (without slides — they're too heavy for Safari's 5MB limit)
-                        try {
-                            const slim = templates.map(t => ({...t, slides: []}));
-                            localStorage.setItem('templateCacheV3', JSON.stringify(slim));
-                        } catch(e) {}
                     }
                     // Always render after fetch (even empty — replaces spinner with "Нет шаблонов")
                     if (document.getElementById('templateGallery').style.display !== 'none') {
@@ -9683,20 +9673,15 @@
             const content = document.getElementById('templateGalleryContent');
             if (!content) return;
 
-            // Always check localStorage FIRST (survives page refresh, most reliable)
-            let cached = [];
-            try { cached = JSON.parse(localStorage.getItem('templateCacheV3') || '[]'); } catch(e) {}
-            // If in-memory cache has more data, use it instead
-            if (templateCache.length > cached.length) cached = templateCache;
-            if (cached.length > 0) {
-                renderGalleryCards(content, cached);
-                // Background refresh
+            // In-memory cache — instant display when switching tabs
+            if (templateCache.length > 0) {
+                renderGalleryCards(content, templateCache);
                 setTimeout(() => refreshGalleryFromServer(content), 500);
                 return;
             }
 
-            // No cache — show spinner and load
-            content.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-muted);"><span class="spinner"></span> Загрузка...</div>';
+            // No cache (page refresh) — show spinner and load
+            content.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-muted);"><span class="spinner"></span> Загрузка шаблонов...</div>';
             await refreshGalleryFromServer(content);
         }
 
