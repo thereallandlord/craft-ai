@@ -942,10 +942,10 @@ async def list_templates(preview: str = "full", user_id: str = ""):
                 print(f"Error loading system template {f}: {e}")
 
         # 2. User templates from Supabase (personal + published)
-        if sb and user_id:
+        if supabase and user_id:
             try:
                 # Personal templates (user's own)
-                result = sb.table("user_templates").select("*").eq("user_id", user_id).execute()
+                result = supabase.table("user_templates").select("*").eq("user_id", user_id).execute()
                 for row in (result.data or []):
                     all_slides = row.get("slides") or []
                     if preview == 'light':
@@ -963,7 +963,7 @@ async def list_templates(preview: str = "full", user_id: str = ""):
                     })
 
                 # Published templates (from other users)
-                pub_result = sb.table("user_templates").select("*").eq("is_published", True).neq("user_id", user_id).execute()
+                pub_result = supabase.table("user_templates").select("*").eq("is_published", True).neq("user_id", user_id).execute()
                 for row in (pub_result.data or []):
                     all_slides = row.get("slides") or []
                     if preview == 'light':
@@ -1044,9 +1044,9 @@ async def get_template(identifier: str):
                 return t
 
     # 2. Search Supabase (user templates)
-    if sb:
+    if supabase:
         try:
-            result = sb.table("user_templates").select("*").eq("template_id", identifier).execute()
+            result = supabase.table("user_templates").select("*").eq("template_id", identifier).execute()
             if result.data and len(result.data) > 0:
                 row = result.data[0]
                 return {
@@ -1070,7 +1070,7 @@ async def save_template(template: TemplateData):
     tid = template.template_id or generate_template_id(template.name)
 
     # If user_id provided — save to Supabase (personal template)
-    if template.user_id and sb:
+    if template.user_id and supabase:
         try:
             # Upsert: update if template_id exists for this user, insert otherwise
             row = {
@@ -1081,7 +1081,7 @@ async def save_template(template: TemplateData):
                 "settings": template.settings,
                 "updated_at": datetime.now().isoformat()
             }
-            sb.table("user_templates").upsert(row, on_conflict="user_id,template_id").execute()
+            supabase.table("user_templates").upsert(row, on_conflict="user_id,template_id").execute()
             return {"success": True, "name": template.name, "template_id": tid, "type": "personal"}
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Error saving template: {e}")
@@ -1101,16 +1101,16 @@ async def save_template(template: TemplateData):
 @app.put("/templates/{identifier}/publish")
 async def toggle_publish_template(identifier: str, user_id: str = ""):
     """Toggle is_published on a user template (only owner can do this)"""
-    if not sb or not user_id:
+    if not supabase or not user_id:
         raise HTTPException(status_code=400, detail="user_id required")
     try:
         # Get current state
-        result = sb.table("user_templates").select("id,is_published").eq("template_id", identifier).eq("user_id", user_id).execute()
+        result = supabase.table("user_templates").select("id,is_published").eq("template_id", identifier).eq("user_id", user_id).execute()
         if not result.data:
             raise HTTPException(status_code=404, detail="Template not found")
         row = result.data[0]
         new_state = not row.get("is_published", False)
-        sb.table("user_templates").update({"is_published": new_state}).eq("id", row["id"]).execute()
+        supabase.table("user_templates").update({"is_published": new_state}).eq("id", row["id"]).execute()
         return {"success": True, "is_published": new_state}
     except HTTPException:
         raise
@@ -1121,9 +1121,9 @@ async def toggle_publish_template(identifier: str, user_id: str = ""):
 @app.delete("/templates/{identifier}")
 async def delete_template(identifier: str, user_id: str = ""):
     # 1. Try Supabase first (user templates)
-    if sb and user_id:
+    if supabase and user_id:
         try:
-            result = sb.table("user_templates").delete().eq("template_id", identifier).eq("user_id", user_id).execute()
+            result = supabase.table("user_templates").delete().eq("template_id", identifier).eq("user_id", user_id).execute()
             if result.data and len(result.data) > 0:
                 return {"success": True}
         except:
