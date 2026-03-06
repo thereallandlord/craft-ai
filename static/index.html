@@ -5654,7 +5654,9 @@
 
         function switchTab(tabId) {
             currentTab = tabId;
-            try { localStorage.setItem('craft_activeTab', tabId); } catch(e) {}
+            if (window.location.hash !== '#' + tabId) {
+                history.replaceState(null, '', '#' + tabId);
+            }
 
             // Close overlay views when switching to a tab
             if (typeof closeAllViews === 'function') closeAllViews();
@@ -8066,6 +8068,10 @@
             // Start auth immediately (don't await — runs in parallel)
             initAuth();
 
+            // Restore tab from URL hash IMMEDIATELY (before any awaits block us)
+            const hash = window.location.hash.slice(1);
+            if (hash) switchTab(hash);
+
             // NEW: Load MargulanGames template by default instead of empty template
             try {
                 const r = await fetch(`${API_URL}/templates/margulangames`);
@@ -8083,17 +8089,13 @@
             await loadFonts();
             render();
             loadTemplatesList();
-            await loadTemplateSelectors();
+            loadTemplateSelectors();
             // Retry if cold start caused first load to fail
-            if (templateCache.length === 0) {
-                setTimeout(() => loadTemplateSelectors(true), 3000);
-            }
+            setTimeout(() => {
+                if (templateCache.length === 0) loadTemplateSelectors(true);
+            }, 5000);
             loadWebhookSettings();
             chatInitTab();
-
-            // Restore last active tab
-            const savedTab = localStorage.getItem('craft_activeTab');
-            if (savedTab) switchTab(savedTab);
 
             // NEW v7.0: Keyboard shortcuts for Undo/Redo
             document.addEventListener('keydown', (e) => {
@@ -9674,14 +9676,11 @@
             const content = document.getElementById('templateGalleryContent');
             if (!content) return;
 
-            // Cache-first: try memory, then localStorage (localStorage may have fuller data)
-            let cached = templateCache;
-            if (!cached.length || !cached.some(t => t.type === 'personal')) {
-                try {
-                    const stored = JSON.parse(localStorage.getItem('templateCacheV3') || '[]');
-                    if (stored.length > cached.length) cached = stored;
-                } catch(e) {}
-            }
+            // Always check localStorage FIRST (survives page refresh, most reliable)
+            let cached = [];
+            try { cached = JSON.parse(localStorage.getItem('templateCacheV3') || '[]'); } catch(e) {}
+            // If in-memory cache has more data, use it instead
+            if (templateCache.length > cached.length) cached = templateCache;
             if (cached.length > 0) {
                 renderGalleryCards(content, cached);
                 // Background refresh
@@ -9886,6 +9885,11 @@
 
         // Initialize on load
         init();
+
+        window.addEventListener('hashchange', () => {
+            const hash = window.location.hash.slice(1);
+            if (hash && hash !== currentTab) switchTab(hash);
+        });
     </script>
 </body>
 </html>
