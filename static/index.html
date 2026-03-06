@@ -8070,6 +8070,7 @@
 
             // Restore tab from URL hash IMMEDIATELY (before any awaits block us)
             const hash = window.location.hash.slice(1);
+            console.log('[Init] hash:', hash, 'currentUser:', currentUser ? currentUser.id : 'null');
             if (hash) switchTab(hash);
 
             // NEW: Load MargulanGames template by default instead of empty template
@@ -9660,9 +9661,16 @@
                 const r = await fetch(`${API_URL}/templates?preview=light${uid ? '&user_id=' + uid : ''}`);
                 if (r.ok) {
                     const templates = (await r.json()).templates || [];
+                    console.log('[Refresh] fetched:', templates.length, 'templates, uid:', uid || 'EMPTY');
                     if (templates.length > 0) {
                         templateCache = templates;
-                        try { localStorage.setItem('templateCacheV3', JSON.stringify(templates)); } catch(e) {}
+                        try {
+                            const data = JSON.stringify(templates);
+                            console.log('[Refresh] saving to localStorage:', data.length, 'chars');
+                            localStorage.setItem('templateCacheV3', data);
+                            const verify = localStorage.getItem('templateCacheV3');
+                            console.log('[Refresh] verified save:', verify ? verify.length + ' chars' : 'FAILED');
+                        } catch(e) { console.error('[Refresh] localStorage SAVE ERROR:', e.name, e.message); }
                     }
                     // Always render after fetch (even empty — replaces spinner with "Нет шаблонов")
                     if (document.getElementById('templateGallery').style.display !== 'none') {
@@ -9678,9 +9686,16 @@
 
             // Always check localStorage FIRST (survives page refresh, most reliable)
             let cached = [];
-            try { cached = JSON.parse(localStorage.getItem('templateCacheV3') || '[]'); } catch(e) {}
+            try {
+                const raw = localStorage.getItem('templateCacheV3');
+                console.log('[Gallery] localStorage raw:', raw ? raw.length + ' chars' : 'NULL');
+                cached = JSON.parse(raw || '[]');
+                console.log('[Gallery] parsed:', cached.length, 'items');
+            } catch(e) { console.error('[Gallery] localStorage read error:', e); }
             // If in-memory cache has more data, use it instead
+            console.log('[Gallery] templateCache in memory:', templateCache.length, 'items');
             if (templateCache.length > cached.length) cached = templateCache;
+            console.log('[Gallery] using:', cached.length, 'items, source:', cached === templateCache ? 'memory' : 'localStorage');
             if (cached.length > 0) {
                 renderGalleryCards(content, cached);
                 // Background refresh

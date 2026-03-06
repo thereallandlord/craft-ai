@@ -817,7 +817,7 @@ async def favicon():
 
 @app.get("/")
 async def index():
-    return FileResponse("static/index.html", headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+    return FileResponse("static/index.html", headers={"Cache-Control": "no-cache"})
 
 
 @app.get("/health")
