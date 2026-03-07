@@ -7914,6 +7914,31 @@
                 }
                 if (tg.enableClosingConfirmation) tg.enableClosingConfirmation();
                 if (tg.disableVerticalSwipes) tg.disableVerticalSwipes();
+                // DEBUG: show diagnostics
+                setTimeout(() => {
+                    const ca = document.querySelector('.content-area');
+                    const vh = document.getElementById('view-home');
+                    const lo = document.getElementById('loginOverlay');
+                    const app = document.querySelector('.app');
+                    const tt = getComputedStyle(document.documentElement).getPropertyValue('--tg-total-top');
+                    const info = [
+                        'v7.9 DEBUG',
+                        'totalTop=' + tt,
+                        'app.h=' + (app ? app.offsetHeight : 'null'),
+                        'ca.h=' + (ca ? ca.offsetHeight : 'null'),
+                        'vh.h=' + (vh ? vh.offsetHeight : 'null'),
+                        'vh.display=' + (vh ? getComputedStyle(vh).display : 'null'),
+                        'vh.class=' + (vh ? vh.className : 'null'),
+                        'login.hidden=' + (lo ? lo.classList.contains('hidden') : 'null'),
+                        'login.display=' + (lo ? getComputedStyle(lo).display : 'null'),
+                        'body.classes=' + document.body.className,
+                    ];
+                    const d = document.createElement('div');
+                    d.style.cssText = 'position:fixed;bottom:60px;left:8px;right:8px;background:rgba(255,0,0,0.9);color:white;z-index:999999;padding:12px;font-size:11px;line-height:1.6;border-radius:8px;word-break:break-all;';
+                    d.textContent = info.join(' | ');
+                    document.body.appendChild(d);
+                    setTimeout(() => d.remove(), 30000);
+                }, 2000);
                 try {
                     const resp = await fetch(`${API_URL}/api/auth/miniapp`, {
                         method: 'POST',
