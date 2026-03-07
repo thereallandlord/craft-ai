@@ -2885,6 +2885,7 @@
             border-radius: 16px;
             margin: 0 8px 8px;
             transition: background 0.15s ease;
+            position: relative;
         }
 
         .ps-user-section:hover {
@@ -2905,6 +2906,43 @@
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+        }
+
+        .ps-user-menu {
+            display: none;
+            position: absolute;
+            bottom: 100%;
+            left: 0;
+            right: 0;
+            background: var(--bg-secondary, #1e1e1e);
+            border: 1px solid var(--border-color, #333);
+            border-radius: 12px;
+            box-shadow: 0 -4px 16px rgba(0,0,0,0.25);
+            padding: 4px;
+            margin-bottom: 4px;
+            flex-direction: column;
+            z-index: 10;
+        }
+        .ps-user-menu.visible {
+            display: flex;
+        }
+        .ps-user-menu-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border: none;
+            background: none;
+            color: var(--text-primary);
+            font-size: 14px;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: background 0.15s ease;
+            text-align: left;
+            width: 100%;
+        }
+        .ps-user-menu-item:hover {
+            background: var(--bg-hover);
         }
 
         /* === Top bar for views === */
@@ -4029,14 +4067,16 @@
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
                     Промпты
                 </button>
-                <button class="ps-nav-item" onclick="openProfile()">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                    Мой профиль
-                </button>
             </div>
             <div class="ps-section-title">Ваши чаты</div>
             <div class="ps-projects" id="psProjectsList"></div>
-            <div class="ps-user-section" id="psUserSection" style="display:none" onclick="openProfile()">
+            <div class="ps-user-section" id="psUserSection" style="display:none" onclick="toggleUserMenu(event)">
+                <div class="ps-user-menu" id="psUserMenu">
+                    <button class="ps-user-menu-item" onclick="event.stopPropagation(); openProfile(); closeUserMenu();">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2a4 4 0 0 0-4 4v2a4 4 0 0 0 8 0V6a4 4 0 0 0-4-4z"/><path d="M20 21v-2a4 4 0 0 0-3-3.87"/><path d="M4 21v-2a4 4 0 0 1 3-3.87"/><circle cx="12" cy="17" r="1"/><path d="M9 17h6"/></svg>
+                        Что знает обо мне ИИ
+                    </button>
+                </div>
                 <img class="ps-user-avatar" id="psUserAvatar" src="" alt="">
                 <span class="ps-user-name" id="psUserName"></span>
             </div>
@@ -5752,6 +5792,29 @@
         }
 
         // --- Admin Prompts ---
+        // === User Menu (popup above avatar) ===
+        function toggleUserMenu(e) {
+            if (e) e.stopPropagation();
+            const menu = document.getElementById('psUserMenu');
+            if (!menu) return;
+            menu.classList.toggle('visible');
+            if (menu.classList.contains('visible')) {
+                setTimeout(() => document.addEventListener('click', _closeUserMenuOutside, { once: true }), 0);
+            }
+        }
+        function closeUserMenu() {
+            const menu = document.getElementById('psUserMenu');
+            if (menu) menu.classList.remove('visible');
+        }
+        function _closeUserMenuOutside(e) {
+            const menu = document.getElementById('psUserMenu');
+            if (menu && !menu.contains(e.target)) {
+                menu.classList.remove('visible');
+            } else if (menu && menu.classList.contains('visible')) {
+                setTimeout(() => document.addEventListener('click', _closeUserMenuOutside, { once: true }), 0);
+            }
+        }
+
         // === Profile View ===
         function openProfile() {
             showView('profile');
