@@ -2328,13 +2328,15 @@
             -webkit-overflow-scrolling: touch;
         }
 
-        /* View overlays — ensure visible above tab pages */
+        /* View overlays — fixed position, independent of parent layout */
         body.tg-miniapp .view-overlay {
-            position: absolute;
-            inset: 0;
+            position: fixed;
+            top: var(--tg-total-top);
+            left: 0;
+            right: 0;
+            bottom: 0;
             z-index: 50;
-            padding-top: 0;
-            padding-bottom: 0;
+            background: var(--bg-primary);
         }
 
         /* Sidebar — safe areas, z-index above header */
