@@ -2269,6 +2269,16 @@
             flex: 1;
             min-width: 0;
         }
+        body.tg-miniapp #scCarouselEditor {
+            overflow-y: auto !important;
+            min-height: 0;
+        }
+        body.tg-miniapp #rtDownloadBtn {
+            display: none;
+        }
+        body.tg-miniapp #rtSendTgBtn {
+            margin-top: 0 !important;
+        }
 
         body.tg-miniapp .tg-header {
             display: block;
@@ -4560,7 +4570,7 @@
                     <div style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:14px;">Загрузка...</div>
                 </div>
                 <!-- Carousel editor (shown for chat_type=carousel) -->
-                <div id="scCarouselEditor" style="display:none;flex:1;overflow:hidden;flex-direction:column;"></div>
+                <div id="scCarouselEditor" style="display:none;flex:1;overflow-y:auto;flex-direction:column;min-height:0;"></div>
                 <div class="sc-action-bar" id="scActionBar" style="display:none;"></div>
                 <div class="sc-input-bar" id="scInputBar">
                     <div class="sc-input-container" id="scInputContainer">
