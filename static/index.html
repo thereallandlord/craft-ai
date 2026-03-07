@@ -2318,15 +2318,25 @@
 
         /* === MOBILE ADAPTATION === */
         @media (max-width: 768px) {
-            .app {
-                flex-direction: column;
-                height: auto;
-                min-height: 100vh;
+            body {
+                overflow: hidden;
+                height: 100vh;
+                position: fixed;
+                width: 100%;
             }
 
-            body {
-                overflow: auto;
+            .app {
+                flex-direction: column;
+                height: 100vh;
+                min-height: unset;
+                overflow: hidden;
             }
+
+            .content-area { overflow: hidden; }
+            #view-home { overflow: hidden; }
+            .home-view { overflow: hidden; }
+            .view-overlay.active { overflow-y: auto; overscroll-behavior: none; }
+            #scCarouselEditor { overflow-y: auto !important; min-height: 0; }
 
             /* Nav bar becomes bottom tab bar */
             .nav-bar {
@@ -2958,11 +2968,11 @@
 
         /* Sidebar font bump for mobile & TG */
         @media (max-width: 768px) {
-            .ps-nav-item { font-size: 18px; padding: 10px 14px; }
-            .ps-section-title { font-size: 14px; }
-            .ps-project-title { font-size: 18px; }
-            .ps-user-name { font-size: 18px; }
-            .ps-user-menu-item { font-size: 18px; }
+            .ps-nav-item { font-size: 16px; padding: 10px 14px; }
+            .ps-section-title { font-size: 13px; }
+            .ps-project-title { font-size: 16px; }
+            .ps-user-name { font-size: 16px; }
+            .ps-user-menu-item { font-size: 16px; }
         }
 
         /* === Top bar for views === */
