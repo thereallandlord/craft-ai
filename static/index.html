@@ -4984,6 +4984,7 @@
         }
 
         function homeCancelRecording() {
+            if (!confirm('Отменить диктовку?')) return;
             if (homeVoiceRecorder && homeVoiceRecorder.state === 'recording') {
                 homeVoiceRecorder.stream.getTracks().forEach(t => t.stop());
                 homeVoiceRecorder.stop();
@@ -6146,6 +6147,7 @@
         }
 
         function scCancelRecording() {
+            if (!confirm('Отменить диктовку?')) return;
             if (scVoiceRecorder && scVoiceRecorder.state === 'recording') {
                 scVoiceRecorder.stream.getTracks().forEach(t => t.stop());
                 scVoiceRecorder.stop();
