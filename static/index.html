@@ -3834,6 +3834,51 @@
             opacity: 0.9;
         }
 
+        /* === Profile View === */
+        .profile-section {
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+        .profile-section-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+        }
+        .profile-section-subtitle {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+        }
+        .profile-summary-text {
+            font-size: 14px;
+            line-height: 1.6;
+            color: var(--text-primary);
+            white-space: pre-wrap;
+        }
+        .profile-summary-empty {
+            color: var(--text-muted);
+            font-style: italic;
+        }
+        .profile-textarea {
+            width: 100%;
+            padding: 12px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 14px;
+            font-family: inherit;
+            resize: vertical;
+            outline: none;
+            box-sizing: border-box;
+        }
+        .profile-textarea:focus {
+            border-color: var(--accent);
+        }
+
         /* === Mobile hamburger === */
         .mobile-hamburger {
             display: none;
@@ -3984,10 +4029,14 @@
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
                     Промпты
                 </button>
+                <button class="ps-nav-item" onclick="openProfile()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    Мой профиль
+                </button>
             </div>
             <div class="ps-section-title">Ваши чаты</div>
             <div class="ps-projects" id="psProjectsList"></div>
-            <div class="ps-user-section" id="psUserSection" style="display:none">
+            <div class="ps-user-section" id="psUserSection" style="display:none" onclick="openProfile()">
                 <img class="ps-user-avatar" id="psUserAvatar" src="" alt="">
                 <span class="ps-user-name" id="psUserName"></span>
             </div>
@@ -4604,6 +4653,40 @@
                     <span class="tv-title">Промпты AI</span>
                 </div>
                 <div class="admin-content" id="adminPromptsList"></div>
+            </div>
+        </div>
+
+        <!-- === PROFILE VIEW (overlay) === -->
+        <div class="view-overlay" id="view-profile">
+            <div class="admin-view">
+                <div class="tv-header">
+                    <button class="sc-back-btn" onclick="goHome()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+                    </button>
+                    <span class="tv-title">Мой профиль</span>
+                </div>
+                <div class="admin-content" id="profileContent">
+                    <div class="profile-section">
+                        <div class="profile-section-title">Что обо мне знает ИИ</div>
+                        <div id="profileSummaryArea">
+                            <div id="profileSummaryText" class="profile-summary-text"></div>
+                            <button class="btn" onclick="editProfileSummary()" id="profileEditBtn" style="margin-top:12px;font-size:13px;">Редактировать</button>
+                        </div>
+                        <div id="profileSummaryEditor" style="display:none;">
+                            <textarea id="profileSummaryInput" class="profile-textarea" rows="6" placeholder="Опишите себя: ниша, аудитория, стиль контента..."></textarea>
+                            <div style="display:flex;gap:8px;margin-top:10px;">
+                                <button class="btn btn-primary" onclick="saveProfileSummary()" style="font-size:13px;">Сохранить</button>
+                                <button class="btn" onclick="cancelEditProfile()" style="font-size:13px;">Отмена</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="profile-section">
+                        <div class="profile-section-title">Добавить информацию</div>
+                        <div class="profile-section-subtitle">Вставьте факты о себе — ИИ будет использовать их при создании контента</div>
+                        <textarea id="profileNewFact" class="profile-textarea" rows="4" placeholder="Например: Моя ниша — фитнес для женщин 25-35 лет. Я веду блог в Instagram на 50к подписчиков. Стиль — дружелюбный и мотивирующий."></textarea>
+                        <button class="btn btn-primary" onclick="saveProfileFact()" style="margin-top:10px;font-size:13px;width:100%;">Сохранить факт</button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -5669,6 +5752,75 @@
         }
 
         // --- Admin Prompts ---
+        // === Profile View ===
+        function openProfile() {
+            showView('profile');
+            const summaryEl = document.getElementById('profileSummaryText');
+            const editorEl = document.getElementById('profileSummaryEditor');
+            const areaEl = document.getElementById('profileSummaryArea');
+            editorEl.style.display = 'none';
+            areaEl.style.display = '';
+            const summary = currentUser && currentUser.profile_summary;
+            if (summary) {
+                summaryEl.textContent = summary;
+                summaryEl.classList.remove('profile-summary-empty');
+            } else {
+                summaryEl.textContent = 'ИИ пока ничего о вас не знает. Добавьте информацию ниже или начните общение — система запомнит автоматически.';
+                summaryEl.classList.add('profile-summary-empty');
+            }
+        }
+
+        function editProfileSummary() {
+            const areaEl = document.getElementById('profileSummaryArea');
+            const editorEl = document.getElementById('profileSummaryEditor');
+            const input = document.getElementById('profileSummaryInput');
+            input.value = (currentUser && currentUser.profile_summary) || '';
+            areaEl.style.display = 'none';
+            editorEl.style.display = '';
+            input.focus();
+        }
+
+        function cancelEditProfile() {
+            document.getElementById('profileSummaryArea').style.display = '';
+            document.getElementById('profileSummaryEditor').style.display = 'none';
+        }
+
+        async function saveProfileSummary() {
+            const input = document.getElementById('profileSummaryInput');
+            const text = input.value.trim();
+            try {
+                await fetch(`${API_URL}/api/user/profile`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: currentUser.id, profile_summary: text })
+                });
+                currentUser.profile_summary = text;
+                localStorage.setItem('craft_user', JSON.stringify(currentUser));
+                showToast('Профиль сохранён', 'success');
+                cancelEditProfile();
+                openProfile();
+            } catch (e) {
+                showToast('Ошибка сохранения', 'error');
+            }
+        }
+
+        async function saveProfileFact() {
+            const textarea = document.getElementById('profileNewFact');
+            const text = textarea.value.trim();
+            if (!text) return;
+            try {
+                await fetch(`${API_URL}/api/ai/save-memory`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: currentUser.id, content: text })
+                });
+                textarea.value = '';
+                showToast('Информация сохранена — ИИ будет использовать её', 'success');
+            } catch (e) {
+                showToast('Ошибка сохранения', 'error');
+            }
+        }
+
         async function openAdminPrompts() {
             showView('admin');
             const container = document.getElementById('adminPromptsList');
