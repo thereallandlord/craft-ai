@@ -4694,13 +4694,33 @@
         let currentProjectId = null;
         let projectsCache = [];
 
+        function _tgApplyViewStyle(el) {
+            if (!document.body.classList.contains('tg-miniapp')) return;
+            const totalTop = getComputedStyle(document.documentElement).getPropertyValue('--tg-total-top') || '0px';
+            el.style.display = 'flex';
+            el.style.flexDirection = 'column';
+            el.style.position = 'fixed';
+            el.style.top = totalTop;
+            el.style.left = '0';
+            el.style.right = '0';
+            el.style.bottom = '0';
+            el.style.zIndex = '50';
+            el.style.background = getComputedStyle(document.documentElement).getPropertyValue('--bg-primary') || '#ffffff';
+        }
+        function _tgClearViewStyle(el) {
+            if (!document.body.classList.contains('tg-miniapp')) return;
+            el.style.cssText = '';
+        }
+
         function showView(viewId) {
             document.querySelectorAll('.view-overlay').forEach(el => {
                 el.classList.remove('active');
+                _tgClearViewStyle(el);
             });
             const el = document.getElementById(`view-${viewId}`);
             if (el) {
                 el.classList.add('active');
+                _tgApplyViewStyle(el);
             }
             closeMobileSidebar();
         }
@@ -4709,6 +4729,7 @@
             scRestoreRtEditor();
             document.querySelectorAll('.view-overlay').forEach(el => {
                 el.classList.remove('active');
+                _tgClearViewStyle(el);
             });
             closeMobileSidebar();
         }
@@ -8024,6 +8045,20 @@
                 }
                 if (tg.enableClosingConfirmation) tg.enableClosingConfirmation();
                 if (tg.disableVerticalSwipes) tg.disableVerticalSwipes();
+                // Force show home view immediately in TG
+                const homeEl = document.getElementById('view-home');
+                if (homeEl) {
+                    homeEl.classList.add('active');
+                    homeEl.style.display = 'flex';
+                    homeEl.style.position = 'fixed';
+                    homeEl.style.top = ((tg.safeAreaInset?.top || 0) + (tg.contentSafeAreaInset?.top || 0)) + 'px';
+                    homeEl.style.left = '0';
+                    homeEl.style.right = '0';
+                    homeEl.style.bottom = '0';
+                    homeEl.style.zIndex = '50';
+                    homeEl.style.background = getComputedStyle(document.documentElement).getPropertyValue('--bg-primary') || '#ffffff';
+                    homeEl.style.flexDirection = 'column';
+                }
                 try {
                     const resp = await fetch(`${API_URL}/api/auth/miniapp`, {
                         method: 'POST',
@@ -8221,11 +8256,7 @@
             const hash = window.location.hash.slice(1);
             if (hash) switchTab(hash);
 
-            // In TG Mini App — ensure home view is shown on initial load
-            const tgApp = window.Telegram && window.Telegram.WebApp;
-            if (tgApp && tgApp.initData && !hash) {
-                showView('home');
-            }
+            // Home view is force-shown in initAuth() for TG Mini App
 
             // NEW: Load MargulanGames template by default instead of empty template
             try {
