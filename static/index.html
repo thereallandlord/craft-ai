@@ -2239,8 +2239,10 @@
         /* === TELEGRAM MINI APP === */
         .tg-header { display: none; }
 
-        body.tg-miniapp {
-            padding-top: var(--tg-total-top);
+        body.tg-miniapp .app {
+            height: calc(100vh - var(--tg-total-top));
+            min-height: unset;
+            margin-top: var(--tg-total-top);
         }
 
         body.tg-miniapp .tg-header {
