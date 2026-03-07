@@ -877,68 +877,38 @@ async def debug_memory_test(user_id: int, message: str = "Я занимаюсь 
         results["memories"] = memories
         results["steps"].append(f"5. Parsed {len(memories)} memories")
 
-        # Try saving one — test without user_id (it's a generated column)
+        # Test all insert methods
         if memories and supabase:
             mem = memories[0]
             embedding = _create_embedding(mem)
             results["has_embedding"] = bool(embedding)
             results["steps"].append(f"6. Created embedding: {bool(embedding)}")
 
-            # First check table columns
+            # Check table structure
             try:
                 test_row = supabase.table("user_memory").select("*").limit(1).execute()
                 if test_row.data:
                     results["table_columns"] = list(test_row.data[0].keys())
+                    results["sample_user_id_value"] = test_row.data[0].get("user_id")
+                    results["sample_user_id_type"] = type(test_row.data[0].get("user_id")).__name__
             except Exception:
                 pass
 
-            # Try with owner_id instead of user_id
-            memory_data = {
-                "owner_id": str(user_id),
-                "content": mem.strip(),
-                "metadata": {"source": "debug_test"},
-            }
-            if embedding:
-                memory_data["embedding"] = embedding
+            # Test each method independently
+            test_methods = [
+                ("user_id_str", {"user_id": str(user_id), "content": f"[test str] {mem.strip()}", "metadata": {"source": "debug_test"}}),
+                ("user_id_int", {"user_id": int(user_id), "content": f"[test int] {mem.strip()}", "metadata": {"source": "debug_test"}}),
+                ("no_user_id", {"content": f"[test none] {mem.strip()}", "metadata": {"source": "debug_test"}}),
+            ]
 
-            try:
-                save_result = supabase.table("user_memory").insert(memory_data).execute()
-                results["saved"] = True
-                results["save_method"] = "owner_id"
-                results["steps"].append("7. Saved with owner_id OK")
-            except Exception as save_err1:
-                results["steps"].append(f"7a. owner_id FAILED: {save_err1}")
-                # Try without user_id at all
-                memory_data2 = {
-                    "content": mem.strip(),
-                    "metadata": {"source": "debug_test"},
-                }
+            for method_name, data in test_methods:
                 if embedding:
-                    memory_data2["embedding"] = embedding
+                    data["embedding"] = embedding
                 try:
-                    save_result = supabase.table("user_memory").insert(memory_data2).execute()
-                    results["saved"] = True
-                    results["save_method"] = "no_user_id"
-                    results["steps"].append("7b. Saved without user_id OK")
-                except Exception as save_err2:
-                    results["steps"].append(f"7b. no_user_id FAILED: {save_err2}")
-                    # Try with user_id as integer
-                    memory_data3 = {
-                        "user_id": int(user_id),
-                        "content": mem.strip(),
-                        "metadata": {"source": "debug_test"},
-                    }
-                    if embedding:
-                        memory_data3["embedding"] = embedding
-                    try:
-                        save_result = supabase.table("user_memory").insert(memory_data3).execute()
-                        results["saved"] = True
-                        results["save_method"] = "user_id_int"
-                        results["steps"].append("7c. Saved with user_id as int OK")
-                    except Exception as save_err3:
-                        results["saved"] = False
-                        results["save_errors"] = [str(save_err1), str(save_err2), str(save_err3)]
-                        results["steps"].append(f"7c. int FAILED: {save_err3}")
+                    supabase.table("user_memory").insert(data).execute()
+                    results["steps"].append(f"7. {method_name}: OK")
+                except Exception as err:
+                    results["steps"].append(f"7. {method_name}: FAILED — {err}")
 
         results["success"] = True
     except Exception as e:
@@ -1645,7 +1615,6 @@ def _extract_and_save_memories_sync(user_id: int, messages: list):
                 continue
             embedding = _create_embedding(mem)
             memory_data = {
-                "user_id": str(user_id),
                 "content": mem.strip(),
                 "metadata": {"source": "auto_extract"},
             }
@@ -2443,7 +2412,6 @@ async def ai_save_memory(request: Request):
             pass
 
     memory_data = {
-        "user_id": str(user_id),
         "content": content,
         "metadata": {"source": "web_chat"},
     }
