@@ -824,9 +824,91 @@ async def index():
 async def health():
     return {
         "status": "healthy",
-        "version": "9.5",
+        "version": "9.6",
         "fonts": os.listdir("fonts") if os.path.exists("fonts") else []
     }
+
+
+@app.get("/api/debug/memory-test")
+async def debug_memory_test(user_id: int, message: str = "Я занимаюсь продажей косметики, моя ниша - органическая косметика"):
+    """Debug endpoint to test memory extraction synchronously."""
+    import json as _json
+    results = {"steps": []}
+    try:
+        results["steps"].append("1. Starting extraction")
+
+        prompt_content, memory_model = get_system_prompt_v3("memory_extract")
+        results["prompt_key"] = "memory_extract"
+        results["model"] = memory_model
+
+        if "ГЕНЕРАЦИЯ ЗАГОЛОВКОВ" in prompt_content or not prompt_content:
+            memory_model = "openai/gpt-4o-mini"
+            prompt_content = None
+            results["steps"].append("2. Using fallback prompt (no memory_extract in DB)")
+        else:
+            results["steps"].append("2. Using DB prompt for memory_extract")
+
+        if not prompt_content:
+            prompt_content = (
+                'Проанализируй последние сообщения диалога. Если есть информация о стиле, '
+                'предпочтениях, бизнесе, нише, аудитории пользователя — верни JSON:\n'
+                '{"memories": ["факт1", "факт2"]}\n'
+                'Если ничего важного — верни:\n{"memories": []}'
+            )
+
+        conversation = f"user: {message}"
+        results["steps"].append(f"3. Calling OpenRouter with model {memory_model}")
+
+        ai_text = _call_openrouter([
+            {"role": "system", "content": prompt_content},
+            {"role": "user", "content": conversation}
+        ], memory_model)
+        results["ai_response"] = ai_text
+        results["steps"].append("4. Got AI response")
+
+        # Parse
+        start = ai_text.find('{')
+        end = ai_text.rfind('}') + 1
+        if start >= 0 and end > start:
+            data = _json.loads(ai_text[start:end])
+            memories = data.get("memories", [])
+        else:
+            memories = []
+        results["memories"] = memories
+        results["steps"].append(f"5. Parsed {len(memories)} memories")
+
+        # Try saving one
+        if memories and supabase:
+            mem = memories[0]
+            embedding = _create_embedding(mem)
+            results["has_embedding"] = bool(embedding)
+            results["steps"].append(f"6. Created embedding: {bool(embedding)}")
+
+            memory_data = {
+                "user_id": str(user_id),
+                "content": mem.strip(),
+                "metadata": {"source": "debug_test"},
+            }
+            if embedding:
+                memory_data["embedding"] = embedding
+
+            try:
+                save_result = supabase.table("user_memory").insert(memory_data).execute()
+                results["saved"] = True
+                results["steps"].append("7. Saved to user_memory OK")
+            except Exception as save_err:
+                results["saved"] = False
+                results["save_error"] = str(save_err)
+                results["steps"].append(f"7. Save FAILED: {save_err}")
+
+        results["success"] = True
+    except Exception as e:
+        import traceback
+        results["error"] = str(e)
+        results["traceback"] = traceback.format_exc()
+        results["success"] = False
+
+    return results
 
 
 @app.get("/fonts")
