@@ -2315,14 +2315,6 @@
         body.tg-miniapp .sidebar-overlay { z-index: 9999; }
         body.tg-miniapp .project-sidebar.mobile-open { z-index: 10001; }
 
-        /* Sidebar font bump for mobile & TG */
-        @media (max-width: 768px) {
-            .ps-nav-item { font-size: 18px; padding: 10px 14px; }
-            .ps-section-title { font-size: 14px; }
-            .ps-project-title { font-size: 18px; }
-            .ps-user-name { font-size: 18px; }
-            .ps-user-menu-item { font-size: 18px; }
-        }
 
         /* === MOBILE ADAPTATION === */
         @media (max-width: 768px) {
@@ -2962,6 +2954,15 @@
         .ps-user-menu-item svg {
             flex-shrink: 0;
             color: #0d0d0d;
+        }
+
+        /* Sidebar font bump for mobile & TG */
+        @media (max-width: 768px) {
+            .ps-nav-item { font-size: 18px; padding: 10px 14px; }
+            .ps-section-title { font-size: 14px; }
+            .ps-project-title { font-size: 18px; }
+            .ps-user-name { font-size: 18px; }
+            .ps-user-menu-item { font-size: 18px; }
         }
 
         /* === Top bar for views === */
