@@ -2239,10 +2239,31 @@
         /* === TELEGRAM MINI APP === */
         .tg-header { display: none; }
 
+        body.tg-miniapp {
+            overflow: hidden;
+            height: 100vh;
+            position: fixed;
+            width: 100%;
+        }
         body.tg-miniapp .app {
             height: calc(100vh - var(--tg-total-top));
             min-height: unset;
             margin-top: var(--tg-total-top);
+            overflow: hidden;
+        }
+        body.tg-miniapp .content-area {
+            overflow: hidden;
+        }
+        body.tg-miniapp .home-view {
+            overflow: hidden;
+        }
+        body.tg-miniapp .view-overlay.active {
+            overflow-y: auto;
+            overscroll-behavior: none;
+        }
+        body.tg-miniapp .home-view {
+            justify-content: center;
+            overflow: hidden;
         }
 
         body.tg-miniapp .tg-header {
