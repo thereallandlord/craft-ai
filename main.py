@@ -824,7 +824,7 @@ async def index():
 async def health():
     return {
         "status": "healthy",
-        "version": "9.2",
+        "version": "9.3",
         "fonts": os.listdir("fonts") if os.path.exists("fonts") else []
     }
 
@@ -1755,6 +1755,12 @@ async def create_topic(request: Request):
 
     # Update topic
     sb.table("projects").update({"active_subchat_id": sub_chat_id}).eq("id", topic_id).execute()
+
+    # Extract memories from user message
+    asyncio.create_task(_extract_and_save_memories(int(user_id), [
+        {"role": "user", "content": message},
+        {"role": "assistant", "content": ai_text}
+    ]))
 
     return {
         "topic": topic_data,
