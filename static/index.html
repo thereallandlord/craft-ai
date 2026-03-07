@@ -2304,8 +2304,12 @@
             display: none !important;
         }
 
-        /* Content area — no bottom nav padding needed */
+        /* Content area — proper sizing for view overlays */
         body.tg-miniapp .content-area {
+            flex: 1;
+            overflow: hidden;
+            position: relative;
+            min-height: 0;
             padding-bottom: 0;
         }
         body.tg-miniapp .tab-page {
@@ -2324,8 +2328,11 @@
             -webkit-overflow-scrolling: touch;
         }
 
-        /* View overlays — no extra padding */
+        /* View overlays — ensure visible above tab pages */
         body.tg-miniapp .view-overlay {
+            position: absolute;
+            inset: 0;
+            z-index: 50;
             padding-top: 0;
             padding-bottom: 0;
         }
@@ -8211,6 +8218,12 @@
             // Restore tab from URL hash IMMEDIATELY (before any awaits block us)
             const hash = window.location.hash.slice(1);
             if (hash) switchTab(hash);
+
+            // In TG Mini App — ensure home view is shown on initial load
+            const tgApp = window.Telegram && window.Telegram.WebApp;
+            if (tgApp && tgApp.initData && !hash) {
+                showView('home');
+            }
 
             // NEW: Load MargulanGames template by default instead of empty template
             try {
