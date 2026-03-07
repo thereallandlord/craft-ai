@@ -2237,150 +2237,46 @@
         }
 
         /* === TELEGRAM MINI APP === */
+        .tg-header { display: none; }
 
-        /* Body — fixed layout, no scroll, no rubber-banding */
         body.tg-miniapp {
-            overflow: hidden !important;
-            height: 100dvh;
-            position: fixed;
-            width: 100%;
-            overscroll-behavior: none;
-        }
-        body.tg-miniapp .app {
-            height: 100dvh;
-            flex-direction: column;
-            overflow: hidden;
             padding-top: var(--tg-total-top);
         }
 
-        /* Sticky header — semi-transparent, under Dynamic Island */
-        .tg-header { display: none; }
         body.tg-miniapp .tg-header {
             display: block;
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
+            top: 0; left: 0; right: 0;
             height: var(--tg-total-top);
             z-index: 10000;
-            background: color-mix(in srgb, var(--bg-primary) 85%, transparent);
-            -webkit-backdrop-filter: blur(20px);
-            backdrop-filter: blur(20px);
+            background: var(--bg-primary);
             border-bottom: 0.5px solid var(--border);
         }
         .tg-header-content {
             position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
+            bottom: 0; left: 0; right: 0;
             height: 44px;
             display: flex;
             align-items: center;
             justify-content: space-between;
             padding: 0 12px;
         }
-        .tg-header-title {
-            font-size: 17px;
-            font-weight: 600;
-            color: var(--text-primary);
-        }
+        .tg-header-title { font-size: 17px; font-weight: 600; color: var(--text-primary); }
         .tg-header-menu {
-            width: 36px;
-            height: 36px;
-            background: none;
-            border: none;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--text-primary);
-            cursor: pointer;
-            border-radius: 8px;
-            -webkit-tap-highlight-color: transparent;
-        }
-        .tg-header-menu:active { background: var(--bg-hover); }
-
-        /* No bottom nav-bar in TG — use sidebar instead */
-        body.tg-miniapp .nav-bar {
-            display: none !important;
+            width: 36px; height: 36px;
+            background: none; border: none;
+            display: flex; align-items: center; justify-content: center;
+            color: var(--text-primary); cursor: pointer; border-radius: 8px;
         }
 
-        /* Content area — proper sizing for view overlays */
-        body.tg-miniapp .content-area {
-            flex: 1;
-            overflow: hidden;
-            position: relative;
-            min-height: 0;
-            padding-bottom: 0;
-        }
-        body.tg-miniapp .tab-page {
-            overflow: hidden;
-        }
-        body.tg-miniapp .tab-page-content {
-            overflow-y: auto;
-            padding-bottom: calc(20px + var(--tg-safe-bottom));
-        }
-
-        /* Prevent rubber-banding on scrollable areas */
-        body.tg-miniapp .chat-messages,
-        body.tg-miniapp .tab-page-content,
-        body.tg-miniapp .slides-list {
-            overscroll-behavior: contain;
-            -webkit-overflow-scrolling: touch;
-        }
-
-        /* View overlays — fixed position, independent of parent layout */
-        body.tg-miniapp .view-overlay {
-            position: fixed;
-            top: var(--tg-total-top);
-            left: 0;
-            right: 0;
-            bottom: 0;
-            z-index: 50;
-            background: var(--bg-primary);
-        }
-
-        /* Sidebar — safe areas, z-index above header */
-        body.tg-miniapp .project-sidebar {
-            padding-top: var(--tg-total-top);
-            padding-bottom: var(--tg-safe-bottom);
-        }
-        body.tg-miniapp .sidebar-overlay {
-            z-index: 9999;
-        }
-        body.tg-miniapp .project-sidebar.mobile-open {
-            z-index: 10001;
-        }
-
-        /* Home view — centered, native feel */
-        body.tg-miniapp .home-view {
-            justify-content: center;
-            padding: 20px 16px;
-            padding-top: 0;
-            overflow: hidden;
-        }
-        body.tg-miniapp .home-input-wrap {
-            margin-bottom: var(--tg-safe-bottom);
-        }
-
-        /* Chat input — safe area bottom */
-        body.tg-miniapp .chat-input-bar {
-            padding-bottom: calc(12px + var(--tg-safe-bottom));
-        }
-
-        /* Ready-text — native feel */
-        body.tg-miniapp #tab-ready-text {
-            overflow: hidden;
-        }
-        body.tg-miniapp #tab-ready-text .tab-page-content {
-            overflow-y: auto;
-            overscroll-behavior: contain;
-        }
-
-        /* Hide nav user in TG (auth is automatic) */
+        body.tg-miniapp .nav-bar { display: none !important; }
         body.tg-miniapp .nav-user { display: none; }
 
-        /* Hide home sidebar toggle (using tg-header menu instead) */
-        body.tg-miniapp .home-view > button:first-child { display: none; }
+        body.tg-miniapp .project-sidebar {
+            padding-top: var(--tg-total-top);
+        }
+        body.tg-miniapp .sidebar-overlay { z-index: 9999; }
+        body.tg-miniapp .project-sidebar.mobile-open { z-index: 10001; }
 
         /* === MOBILE ADAPTATION === */
         @media (max-width: 768px) {
@@ -4694,43 +4590,16 @@
         let currentProjectId = null;
         let projectsCache = [];
 
-        function _tgApplyViewStyle(el) {
-            if (!document.body.classList.contains('tg-miniapp')) return;
-            const totalTop = getComputedStyle(document.documentElement).getPropertyValue('--tg-total-top') || '0px';
-            el.style.display = 'flex';
-            el.style.flexDirection = 'column';
-            el.style.position = 'fixed';
-            el.style.top = totalTop;
-            el.style.left = '0';
-            el.style.right = '0';
-            el.style.bottom = '0';
-            el.style.zIndex = '50';
-            el.style.background = getComputedStyle(document.documentElement).getPropertyValue('--bg-primary') || '#ffffff';
-        }
-        function _tgClearViewStyle(el) {
-            if (!document.body.classList.contains('tg-miniapp')) return;
-            el.style.cssText = '';
-        }
-
         function showView(viewId) {
-            document.querySelectorAll('.view-overlay').forEach(el => {
-                el.classList.remove('active');
-                _tgClearViewStyle(el);
-            });
-            const el = document.getElementById(`view-${viewId}`);
-            if (el) {
-                el.classList.add('active');
-                _tgApplyViewStyle(el);
-            }
+            document.querySelectorAll('.view-overlay').forEach(el => el.classList.remove('active'));
+            const el = document.getElementById('view-' + viewId);
+            if (el) el.classList.add('active');
             closeMobileSidebar();
         }
 
         function closeAllViews() {
             scRestoreRtEditor();
-            document.querySelectorAll('.view-overlay').forEach(el => {
-                el.classList.remove('active');
-                _tgClearViewStyle(el);
-            });
+            document.querySelectorAll('.view-overlay').forEach(el => el.classList.remove('active'));
             closeMobileSidebar();
         }
 
@@ -8026,8 +7895,6 @@
                 tg.ready();
                 tg.expand();
                 document.body.classList.add('tg-miniapp');
-                // Request fullscreen for native app feel
-                try { if (tg.requestFullscreen) tg.requestFullscreen(); } catch(e) {}
                 function tgUpdateInsets() {
                     const root = document.documentElement.style;
                     const sa = tg.safeAreaInset || {};
@@ -8045,20 +7912,6 @@
                 }
                 if (tg.enableClosingConfirmation) tg.enableClosingConfirmation();
                 if (tg.disableVerticalSwipes) tg.disableVerticalSwipes();
-                // Force show home view immediately in TG
-                const homeEl = document.getElementById('view-home');
-                if (homeEl) {
-                    homeEl.classList.add('active');
-                    homeEl.style.display = 'flex';
-                    homeEl.style.position = 'fixed';
-                    homeEl.style.top = ((tg.safeAreaInset?.top || 0) + (tg.contentSafeAreaInset?.top || 0)) + 'px';
-                    homeEl.style.left = '0';
-                    homeEl.style.right = '0';
-                    homeEl.style.bottom = '0';
-                    homeEl.style.zIndex = '50';
-                    homeEl.style.background = getComputedStyle(document.documentElement).getPropertyValue('--bg-primary') || '#ffffff';
-                    homeEl.style.flexDirection = 'column';
-                }
                 try {
                     const resp = await fetch(`${API_URL}/api/auth/miniapp`, {
                         method: 'POST',
@@ -8255,8 +8108,6 @@
             // Restore tab from URL hash IMMEDIATELY (before any awaits block us)
             const hash = window.location.hash.slice(1);
             if (hash) switchTab(hash);
-
-            // Home view is force-shown in initAuth() for TG Mini App
 
             // NEW: Load MargulanGames template by default instead of empty template
             try {
