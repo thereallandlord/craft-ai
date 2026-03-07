@@ -824,100 +824,9 @@ async def index():
 async def health():
     return {
         "status": "healthy",
-        "version": "9.6",
+        "version": "9.7",
         "fonts": os.listdir("fonts") if os.path.exists("fonts") else []
     }
-
-
-@app.get("/api/debug/memory-test")
-async def debug_memory_test(user_id: int, message: str = "Я занимаюсь продажей косметики, моя ниша - органическая косметика"):
-    """Debug endpoint to test memory extraction synchronously."""
-    import json as _json
-    results = {"steps": []}
-    try:
-        results["steps"].append("1. Starting extraction")
-
-        prompt_content, memory_model = get_system_prompt_v3("memory_extract")
-        results["prompt_key"] = "memory_extract"
-        results["model"] = memory_model
-
-        if "ГЕНЕРАЦИЯ ЗАГОЛОВКОВ" in prompt_content or not prompt_content:
-            memory_model = "openai/gpt-4o-mini"
-            prompt_content = None
-            results["steps"].append("2. Using fallback prompt (no memory_extract in DB)")
-        else:
-            results["steps"].append("2. Using DB prompt for memory_extract")
-
-        if not prompt_content:
-            prompt_content = (
-                'Проанализируй последние сообщения диалога. Если есть информация о стиле, '
-                'предпочтениях, бизнесе, нише, аудитории пользователя — верни JSON:\n'
-                '{"memories": ["факт1", "факт2"]}\n'
-                'Если ничего важного — верни:\n{"memories": []}'
-            )
-
-        conversation = f"user: {message}"
-        results["steps"].append(f"3. Calling OpenRouter with model {memory_model}")
-
-        ai_text = _call_openrouter([
-            {"role": "system", "content": prompt_content},
-            {"role": "user", "content": conversation}
-        ], memory_model)
-        results["ai_response"] = ai_text
-        results["steps"].append("4. Got AI response")
-
-        # Parse
-        start = ai_text.find('{')
-        end = ai_text.rfind('}') + 1
-        if start >= 0 and end > start:
-            data = _json.loads(ai_text[start:end])
-            memories = data.get("memories", [])
-        else:
-            memories = []
-        results["memories"] = memories
-        results["steps"].append(f"5. Parsed {len(memories)} memories")
-
-        # Test all insert methods
-        if memories and supabase:
-            mem = memories[0]
-            embedding = _create_embedding(mem)
-            results["has_embedding"] = bool(embedding)
-            results["steps"].append(f"6. Created embedding: {bool(embedding)}")
-
-            # Check table structure
-            try:
-                test_row = supabase.table("user_memory").select("*").limit(1).execute()
-                if test_row.data:
-                    results["table_columns"] = list(test_row.data[0].keys())
-                    results["sample_user_id_value"] = test_row.data[0].get("user_id")
-                    results["sample_user_id_type"] = type(test_row.data[0].get("user_id")).__name__
-            except Exception:
-                pass
-
-            # Test each method independently
-            test_methods = [
-                ("user_id_str", {"user_id": str(user_id), "content": f"[test str] {mem.strip()}", "metadata": {"source": "debug_test"}}),
-                ("user_id_int", {"user_id": int(user_id), "content": f"[test int] {mem.strip()}", "metadata": {"source": "debug_test"}}),
-                ("no_user_id", {"content": f"[test none] {mem.strip()}", "metadata": {"source": "debug_test"}}),
-            ]
-
-            for method_name, data in test_methods:
-                if embedding:
-                    data["embedding"] = embedding
-                try:
-                    supabase.table("user_memory").insert(data).execute()
-                    results["steps"].append(f"7. {method_name}: OK")
-                except Exception as err:
-                    results["steps"].append(f"7. {method_name}: FAILED — {err}")
-
-        results["success"] = True
-    except Exception as e:
-        import traceback
-        results["error"] = str(e)
-        results["traceback"] = traceback.format_exc()
-        results["success"] = False
-
-    return results
 
 
 @app.get("/fonts")
@@ -1615,6 +1524,7 @@ def _extract_and_save_memories_sync(user_id: int, messages: list):
                 continue
             embedding = _create_embedding(mem)
             memory_data = {
+                "user_id": str(user_id),
                 "content": mem.strip(),
                 "metadata": {"source": "auto_extract"},
             }
@@ -2412,6 +2322,7 @@ async def ai_save_memory(request: Request):
             pass
 
     memory_data = {
+        "user_id": str(user_id),
         "content": content,
         "metadata": {"source": "web_chat"},
     }
