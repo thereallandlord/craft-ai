@@ -824,7 +824,7 @@ async def index():
 async def health():
     return {
         "status": "healthy",
-        "version": "9.4",
+        "version": "9.5",
         "fonts": os.listdir("fonts") if os.path.exists("fonts") else []
     }
 
@@ -1469,8 +1469,9 @@ def get_relevant_memories(user_id: int, query: str, limit: int = 5) -> list:
         return []
 
 
-async def _extract_and_save_memories(user_id: int, messages: list):
-    """Async task: extract important facts from conversation and save to memory."""
+def _extract_and_save_memories_sync(user_id: int, messages: list):
+    """Background thread: extract important facts from conversation and save to memory."""
+    import json as _json
     print(f"[Memory] Starting extraction for user {user_id}, {len(messages)} messages")
     if not OPENROUTER_API_KEY or not supabase:
         print(f"[Memory] Skipped — OPENROUTER_API_KEY={bool(OPENROUTER_API_KEY)}, supabase={bool(supabase)}")
@@ -1478,7 +1479,6 @@ async def _extract_and_save_memories(user_id: int, messages: list):
     try:
         # Load memory_extract prompt from DB
         prompt_content, memory_model = get_system_prompt_v3("memory_extract")
-        # If got a fallback (headlines prompt), use our own
         if "ГЕНЕРАЦИЯ ЗАГОЛОВКОВ" in prompt_content or not prompt_content:
             memory_model = "openai/gpt-4o-mini"
             prompt_content = None
@@ -1490,20 +1490,16 @@ async def _extract_and_save_memories(user_id: int, messages: list):
                 'Если ничего важного — верни:\n{"memories": []}'
             )
 
-        # Take last 6 messages for analysis
         recent = messages[-6:] if len(messages) > 6 else messages
         conversation = "\n".join(f"{m['role']}: {m['content']}" for m in recent if m.get('content'))
 
-        ai_messages = [
+        ai_text = _call_openrouter([
             {"role": "system", "content": prompt_content},
             {"role": "user", "content": conversation}
-        ]
-
-        ai_text = _call_openrouter(ai_messages, memory_model)
+        ], memory_model)
         print(f"[Memory] AI response: {ai_text[:200]}")
 
-        # Parse JSON response
-        import json as _json
+        # Parse JSON
         try:
             start = ai_text.find('{')
             end = ai_text.rfind('}') + 1
@@ -1522,7 +1518,6 @@ async def _extract_and_save_memories(user_id: int, messages: list):
 
         print(f"[Memory] Extracted {len(memories)} memories: {memories}")
 
-        # Save each memory with embedding
         saved = 0
         for mem in memories:
             if not mem or len(mem.strip()) < 5:
@@ -1543,14 +1538,14 @@ async def _extract_and_save_memories(user_id: int, messages: list):
 
         print(f"[Memory] Saved {saved} memories for user {user_id}")
 
-        # Update memory_count and maybe auto-summarize
+        # Update memory_count and auto-summarize
         try:
             user = supabase.table("users").select("memory_count").eq("user_id", str(user_id)).single().execute()
             new_count = (user.data.get("memory_count") or 0) + saved if user.data else saved
             supabase.table("users").update({"memory_count": new_count}).eq("user_id", str(user_id)).execute()
 
             if saved > 0:
-                await _auto_summarize_profile(user_id)
+                _auto_summarize_profile_sync(user_id)
                 print(f"[Memory] Auto-summarized profile for user {user_id}")
         except Exception as count_err:
             print(f"[Memory] Count update error: {count_err}")
@@ -1560,8 +1555,8 @@ async def _extract_and_save_memories(user_id: int, messages: list):
         print(f"Memory extraction error: {e}\n{traceback.format_exc()}")
 
 
-async def _auto_summarize_profile(user_id: int):
-    """Summarize all memories into a profile summary."""
+def _auto_summarize_profile_sync(user_id: int):
+    """Summarize all memories into a profile summary (sync)."""
     if not supabase or not OPENROUTER_API_KEY:
         return
     try:
@@ -1581,8 +1576,16 @@ async def _auto_summarize_profile(user_id: int):
         ], profile_model)
 
         supabase.table("users").update({"profile_summary": summary}).eq("user_id", str(user_id)).execute()
+        print(f"[Memory] Profile summary updated for user {user_id}")
     except Exception as e:
         print(f"Profile summarize error: {e}")
+
+
+def _run_memory_extraction(user_id: int, messages: list):
+    """Launch memory extraction in a background thread."""
+    import threading
+    t = threading.Thread(target=_extract_and_save_memories_sync, args=(user_id, messages), daemon=True)
+    t.start()
 
 
 # === v3: Prompt loading from DB with cache ===
@@ -1771,10 +1774,10 @@ async def create_topic(request: Request):
     sb.table("projects").update({"active_subchat_id": sub_chat_id}).eq("id", topic_id).execute()
 
     # Extract memories from user message
-    asyncio.create_task(_extract_and_save_memories(int(user_id), [
+    _run_memory_extraction(int(user_id), [
         {"role": "user", "content": message},
         {"role": "assistant", "content": ai_text}
-    ]))
+    ])
 
     return {
         "topic": topic_data,
@@ -2047,7 +2050,7 @@ async def ai_chat(request: Request):
             if user_message:
                 all_msgs.append({"role": "user", "content": user_message})
             all_msgs.append({"role": "assistant", "content": ai_text})
-            asyncio.create_task(_extract_and_save_memories(int(user_id), all_msgs))
+            _run_memory_extraction(int(user_id), all_msgs)
         except Exception:
             pass
 
