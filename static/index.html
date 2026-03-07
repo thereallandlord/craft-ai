@@ -2254,16 +2254,20 @@
         body.tg-miniapp .content-area {
             overflow: hidden;
         }
-        body.tg-miniapp .home-view {
-            overflow: hidden;
-        }
         body.tg-miniapp .view-overlay.active {
             overflow-y: auto;
             overscroll-behavior: none;
         }
-        body.tg-miniapp .home-view {
-            justify-content: center;
+        body.tg-miniapp #view-home {
             overflow: hidden;
+        }
+        body.tg-miniapp .home-view {
+            overflow: hidden;
+        }
+        body.tg-miniapp .sc-recording-ui {
+            overflow: hidden;
+            flex: 1;
+            min-width: 0;
         }
 
         body.tg-miniapp .tg-header {
@@ -4931,7 +4935,8 @@
             const confirmBtn = document.getElementById('homeRecConfirm');
 
             let dots = '';
-            for (let i = 0; i < 60; i++) {
+            const dotCount = document.body.classList.contains('tg-miniapp') ? 25 : 60;
+            for (let i = 0; i < dotCount; i++) {
                 dots += `<div class="sc-waveform-dot" style="animation-delay:${(i * 0.05)}s"></div>`;
             }
             recUI.innerHTML = dots;
@@ -6093,7 +6098,8 @@
 
             // Generate waveform dots
             let dots = '';
-            for (let i = 0; i < 60; i++) {
+            const dotCount = document.body.classList.contains('tg-miniapp') ? 25 : 60;
+            for (let i = 0; i < dotCount; i++) {
                 dots += `<div class="sc-waveform-dot" style="animation-delay:${(i * 0.05)}s"></div>`;
             }
             recUI.innerHTML = dots;
