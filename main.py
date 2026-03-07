@@ -824,7 +824,7 @@ async def index():
 async def health():
     return {
         "status": "healthy",
-        "version": "9.1",
+        "version": "9.2",
         "fonts": os.listdir("fonts") if os.path.exists("fonts") else []
     }
 
@@ -1712,9 +1712,20 @@ async def create_topic(request: Request):
 
     # 4. Call AI
     system_prompt, prompt_model = get_system_prompt_v3("headlines")
-    user_context = get_user_context(int(user_id))
+    user_context = get_user_context(int(user_id), query=message)
     if user_context:
         system_prompt += f"\n\nКонтекст о пользователе:\n{user_context}"
+        system_prompt += "\n\nИспользуй контекст о пользователе, чтобы предлагать идеи, максимально релевантные его нише, продукту и целевой аудитории. Персонализируй заголовки под его бизнес и стиль."
+    else:
+        system_prompt += """
+
+ВАЖНО: Ты пока ничего не знаешь об этом пользователе — его нише, продукте, целевой аудитории.
+Сначала ответь на запрос пользователя (предложи заголовки, если он дал тему).
+Потом ОБЯЗАТЕЛЬНО добавь в конце сообщения дружелюбную рекомендацию:
+— Расскажи, что ты можешь запоминать информацию о пользователе (нишу, продукт, аудиторию, tone of voice)
+— Предложи наговорить голосовым сообщением (через кнопку диктовки 🎙️) всё о себе: чем занимается, кто его клиенты, какой продукт, какой стиль общения
+— Скажи, что чем больше ты узнаешь, тем точнее и качественнее будут идеи и тексты каруселей
+— Будь кратким, 2-3 предложения максимум"""
 
     ai_messages = [
         {"role": "system", "content": system_prompt},
