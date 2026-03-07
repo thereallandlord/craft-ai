@@ -2253,7 +2253,7 @@
             padding-top: var(--tg-total-top);
         }
 
-        /* Sticky header — semi-transparent, sits under Dynamic Island */
+        /* Sticky header — semi-transparent, under Dynamic Island */
         .tg-header { display: none; }
         body.tg-miniapp .tg-header {
             display: block;
@@ -2276,53 +2276,44 @@
             height: 44px;
             display: flex;
             align-items: center;
-            justify-content: center;
-            padding: 0 60px; /* Avoid TG close button (left) + 3-dot menu (right) */
+            justify-content: space-between;
+            padding: 0 12px;
         }
         .tg-header-title {
             font-size: 17px;
             font-weight: 600;
             color: var(--text-primary);
         }
-
-        /* Bottom nav-bar — visible in TG with safe area */
-        body.tg-miniapp .nav-bar {
-            display: flex !important;
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            width: 100%;
-            height: calc(56px + var(--tg-safe-bottom));
-            flex-direction: row;
-            justify-content: space-around;
-            padding: 4px 8px;
-            padding-bottom: var(--tg-safe-bottom);
-            gap: 0;
-            z-index: 9999;
-            border-right: none;
-            border-top: 1px solid var(--border);
-            background: color-mix(in srgb, var(--bg-secondary) 90%, transparent);
-            -webkit-backdrop-filter: blur(20px);
-            backdrop-filter: blur(20px);
+        .tg-header-menu {
+            width: 36px;
+            height: 36px;
+            background: none;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-primary);
+            cursor: pointer;
+            border-radius: 8px;
+            -webkit-tap-highlight-color: transparent;
         }
-        body.tg-miniapp .nav-brand,
-        body.tg-miniapp .nav-divider,
-        body.tg-miniapp .nav-spacer { display: none; }
-        body.tg-miniapp .nav-item { width: 36px; height: 36px; font-size: 16px; }
-        body.tg-miniapp .nav-item svg { width: 18px; height: 18px; }
-        body.tg-miniapp .nav-item .nav-tooltip { display: none !important; }
+        .tg-header-menu:active { background: var(--bg-hover); }
 
-        /* Content area — space for bottom nav */
+        /* No bottom nav-bar in TG — use sidebar instead */
+        body.tg-miniapp .nav-bar {
+            display: none !important;
+        }
+
+        /* Content area — no bottom nav padding needed */
         body.tg-miniapp .content-area {
-            padding-bottom: calc(56px + var(--tg-safe-bottom));
+            padding-bottom: 0;
         }
         body.tg-miniapp .tab-page {
             overflow: hidden;
         }
         body.tg-miniapp .tab-page-content {
             overflow-y: auto;
-            padding-bottom: calc(80px + var(--tg-safe-bottom));
+            padding-bottom: calc(20px + var(--tg-safe-bottom));
         }
 
         /* Prevent rubber-banding on scrollable areas */
@@ -2333,14 +2324,54 @@
             -webkit-overflow-scrolling: touch;
         }
 
-        /* View overlays */
+        /* View overlays — no extra padding */
         body.tg-miniapp .view-overlay {
             padding-top: 0;
-            padding-bottom: calc(56px + var(--tg-safe-bottom));
+            padding-bottom: 0;
         }
 
-        /* Nav user section — hide in TG (auth is automatic) */
+        /* Sidebar — safe areas, z-index above header */
+        body.tg-miniapp .project-sidebar {
+            padding-top: var(--tg-total-top);
+            padding-bottom: var(--tg-safe-bottom);
+        }
+        body.tg-miniapp .sidebar-overlay {
+            z-index: 9999;
+        }
+        body.tg-miniapp .project-sidebar.mobile-open {
+            z-index: 10001;
+        }
+
+        /* Home view — centered, native feel */
+        body.tg-miniapp .home-view {
+            justify-content: center;
+            padding: 20px 16px;
+            padding-top: 0;
+            overflow: hidden;
+        }
+        body.tg-miniapp .home-input-wrap {
+            margin-bottom: var(--tg-safe-bottom);
+        }
+
+        /* Chat input — safe area bottom */
+        body.tg-miniapp .chat-input-bar {
+            padding-bottom: calc(12px + var(--tg-safe-bottom));
+        }
+
+        /* Ready-text — native feel */
+        body.tg-miniapp #tab-ready-text {
+            overflow: hidden;
+        }
+        body.tg-miniapp #tab-ready-text .tab-page-content {
+            overflow-y: auto;
+            overscroll-behavior: contain;
+        }
+
+        /* Hide nav user in TG (auth is automatic) */
         body.tg-miniapp .nav-user { display: none; }
+
+        /* Hide home sidebar toggle (using tg-header menu instead) */
+        body.tg-miniapp .home-view > button:first-child { display: none; }
 
         /* === MOBILE ADAPTATION === */
         @media (max-width: 768px) {
@@ -3972,7 +4003,11 @@
         <!-- Telegram Mini App Header -->
         <div class="tg-header" id="tgHeader">
             <div class="tg-header-content">
+                <button class="tg-header-menu" onclick="toggleSidebar()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                </button>
                 <span class="tg-header-title">Craft AI</span>
+                <div style="width:36px"></div>
             </div>
         </div>
 

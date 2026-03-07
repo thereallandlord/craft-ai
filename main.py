@@ -824,7 +824,7 @@ async def index():
 async def health():
     return {
         "status": "healthy",
-        "version": "7.3",
+        "version": "7.4",
         "fonts": os.listdir("fonts") if os.path.exists("fonts") else []
     }
 
