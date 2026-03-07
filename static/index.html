@@ -5845,13 +5845,27 @@
         }
 
         // === Profile View ===
-        function openProfile() {
+        async function openProfile() {
             showView('profile');
             const summaryEl = document.getElementById('profileSummaryText');
             const editorEl = document.getElementById('profileSummaryEditor');
             const areaEl = document.getElementById('profileSummaryArea');
             editorEl.style.display = 'none';
             areaEl.style.display = '';
+            summaryEl.textContent = 'Загрузка...';
+            summaryEl.classList.add('profile-summary-empty');
+
+            // Fetch fresh profile from server
+            try {
+                const resp = await fetch(`${API_URL}/api/user/profile?user_id=${currentUser.id}`);
+                if (resp.ok) {
+                    const data = await resp.json();
+                    if (data.profile_summary) {
+                        currentUser.profile_summary = data.profile_summary;
+                    }
+                }
+            } catch(e) {}
+
             const summary = currentUser && currentUser.profile_summary;
             if (summary) {
                 summaryEl.textContent = summary;
