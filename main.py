@@ -2478,9 +2478,9 @@ async def list_prompts(user_id: int):
         raise HTTPException(status_code=403, detail="Admin access required")
     sb = require_supabase()
     result = sb.table("system_prompts").select("*").order("prompt_key").execute()
-    if not result.data:
-        # Seed default prompts if table is empty
-        defaults = [
+    # Seed missing default prompts
+    existing_keys = {row["prompt_key"] for row in (result.data or [])}
+    defaults = [
             {"prompt_key": "headlines", "title": "Генератор заголовков", "description": "Генерирует 5-7 вариантов заголовков для карусели",
              "model": "google/gemini-2.5-flash",
              "content": """# РОЛЬ: Генератор вирусных заголовков для Instagram
@@ -2868,7 +2868,9 @@ TITLE - это первая строка/фраза если:
 ГЛАВНОЕ: Сохрани ВЕСЬ текст пользователя БЕЗ ИЗМЕНЕНИЙ!""",
              "variables": []},
         ]
-        for d in defaults:
+    missing = [d for d in defaults if d["prompt_key"] not in existing_keys]
+    if missing:
+        for d in missing:
             try:
                 sb.table("system_prompts").insert(d).execute()
             except Exception:
