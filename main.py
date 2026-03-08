@@ -708,7 +708,7 @@ class SlideRenderer:
                     # Manual emoji rendering — bypass pilmoji text layout
                     seg_font = bold_font if seg.get('bold') else font
                     seg_ascent = seg_font.getmetrics()[0]
-                    emoji_y = curr_y + (seg_ascent - font_size) // 2
+                    emoji_y = curr_y
                     for cluster in grapheme.graphemes(seg['text']):
                         if _has_emoji(cluster):
                             try:
