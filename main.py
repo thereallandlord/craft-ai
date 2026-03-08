@@ -18,8 +18,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 from PIL import Image, ImageDraw, ImageFont
-from pillow_heif import register_heif_opener
-register_heif_opener()
+try:
+    from pillow_heif import register_heif_opener
+    register_heif_opener()
+except ImportError:
+    pass
 import requests
 import base64
 import json
@@ -50,7 +53,8 @@ def _get_emoji_image(char: str, size: int):
                 _emoji_img_cache[key] = img
             else:
                 _emoji_img_cache[key] = None
-        except Exception:
+        except Exception as e:
+            print(f"Emoji fetch error for {repr(char)}: {e}")
             _emoji_img_cache[key] = None
     return _emoji_img_cache[key]
 
@@ -707,9 +711,12 @@ class SlideRenderer:
                     emoji_y = curr_y + (seg_ascent - font_size) // 2
                     for cluster in grapheme.graphemes(seg['text']):
                         if _has_emoji(cluster):
-                            emoji_img = _get_emoji_image(cluster, font_size)
-                            if emoji_img:
-                                canvas.paste(emoji_img, (curr_x, emoji_y), emoji_img)
+                            try:
+                                emoji_img = _get_emoji_image(cluster, font_size)
+                                if emoji_img:
+                                    canvas.paste(emoji_img, (int(curr_x), int(emoji_y)), emoji_img)
+                            except Exception as e:
+                                print(f"Emoji paste error: {e}")
                             curr_x += font_size + int(letter_spacing)
                         else:
                             draw.text((curr_x, curr_y), cluster, font=seg_font, fill=col)
