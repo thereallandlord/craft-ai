@@ -31,8 +31,28 @@ import arabic_reshaper
 from bidi.algorithm import get_display
 import re
 import uuid
-from pilmoji import Pilmoji
 from pilmoji.source import AppleEmojiSource
+
+# Apple emoji source + image cache for manual emoji rendering
+_emoji_source = AppleEmojiSource()
+_emoji_img_cache: dict = {}
+
+def _get_emoji_image(char: str, size: int):
+    """Fetch and cache resized Apple emoji image."""
+    key = (char, size)
+    if key not in _emoji_img_cache:
+        try:
+            stream = _emoji_source.get_emoji(char)
+            if stream:
+                from PIL import Image as _Img
+                img = _Img.open(stream).convert('RGBA')
+                img = img.resize((size, size), _Img.Resampling.LANCZOS)
+                _emoji_img_cache[key] = img
+            else:
+                _emoji_img_cache[key] = None
+        except Exception:
+            _emoji_img_cache[key] = None
+    return _emoji_img_cache[key]
 
 # Emoji detection regex
 _EMOJI_RE = re.compile(
@@ -551,7 +571,7 @@ class SlideRenderer:
             total_width = 0
             for cluster in grapheme.graphemes(text):
                 if _has_emoji(cluster):
-                    total_width += int((font_size or 48) * 1.1) + letter_spacing
+                    total_width += (font_size or 48) + letter_spacing
                 else:
                     bbox = draw.textbbox((0, 0), cluster, font=font)
                     total_width += (bbox[2] - bbox[0]) + letter_spacing
@@ -681,17 +701,22 @@ class SlideRenderer:
                 seg_has_emoji = _has_emoji(seg['text'])
 
                 if seg_has_emoji:
-                    # Pilmoji handles emoji rendering — skip font fallback, no baseline offset
+                    # Manual emoji rendering — bypass pilmoji text layout
                     seg_font = bold_font if seg.get('bold') else font
-                    _, descent = seg_font.getmetrics()
-                    emoji_y_adj = -descent
-                    with Pilmoji(canvas, source=AppleEmojiSource) as pmj:
-                        pmj.text((curr_x, curr_y), seg['text'],
-                                 font=seg_font, fill=col,
-                                 emoji_scale_factor=1.0,
-                                 emoji_position_offset=(0, emoji_y_adj))
-                    seg_w = self.get_text_width(seg['text'], seg_font, letter_spacing, draw, font_size)
-                    curr_x += seg_w
+                    seg_ascent = seg_font.getmetrics()[0]
+                    emoji_y = curr_y + (seg_ascent - font_size) // 2
+                    for cluster in grapheme.graphemes(seg['text']):
+                        if _has_emoji(cluster):
+                            emoji_img = _get_emoji_image(cluster, font_size)
+                            if emoji_img:
+                                canvas.paste(emoji_img, (curr_x, emoji_y), emoji_img)
+                            curr_x += font_size + int(letter_spacing)
+                        else:
+                            draw.text((curr_x, curr_y), cluster, font=seg_font, fill=col)
+                            bbox = draw.textbbox((0, 0), cluster, font=seg_font)
+                            curr_x += (bbox[2] - bbox[0]) + int(letter_spacing)
+                    if letter_spacing != 0:
+                        curr_x -= int(letter_spacing)
                 else:
                     seg_font = bold_font if seg.get('bold') else font
                     # Font fallback for Unicode/Arabic/special chars
