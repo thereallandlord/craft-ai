@@ -29,6 +29,32 @@ import arabic_reshaper
 from bidi.algorithm import get_display
 import re
 import uuid
+from pilmoji import Pilmoji
+
+# Emoji detection regex
+_EMOJI_RE = re.compile(
+    "["
+    "\U0001F600-\U0001F64F"  # emoticons
+    "\U0001F300-\U0001F5FF"  # symbols & pictographs
+    "\U0001F680-\U0001F6FF"  # transport & map
+    "\U0001F1E0-\U0001F1FF"  # flags
+    "\U0001F900-\U0001F9FF"  # supplemental symbols
+    "\U0001FA00-\U0001FA6F"  # chess symbols
+    "\U0001FA70-\U0001FAFF"  # symbols extended-A
+    "\U00002702-\U000027B0"  # dingbats
+    "\U00002600-\U000026FF"  # misc symbols
+    "\U0000FE00-\U0000FE0F"  # variation selectors
+    "\U0000200D"             # zero width joiner
+    "\U00002640\U00002642"   # gender symbols
+    "\U000023CF-\U000023FF"  # misc technical
+    "\U00002B50\U00002B55"   # stars
+    "\U0000203C\U00002049"   # exclamation marks
+    "\U000000A9\U000000AE"   # copyright/registered
+    "]+"
+)
+
+def _has_emoji(text: str) -> bool:
+    return bool(_EMOJI_RE.search(text))
 import hashlib
 import asyncio
 import hmac
@@ -515,18 +541,26 @@ class SlideRenderer:
             else:
                 canvas.paste(img, (x, y))
 
-    def get_text_width(self, text: str, font, letter_spacing: int, draw) -> int:
-        """Calculate text width with letter spacing"""
-        if letter_spacing == 0 or self._contains_arabic(text):
+    def get_text_width(self, text: str, font, letter_spacing: int, draw, font_size: int = 0) -> int:
+        """Calculate text width with letter spacing, accounting for emoji."""
+        if _has_emoji(text):
+            # For emoji text: measure non-emoji parts + estimate emoji width
+            total_width = 0
+            for cluster in grapheme.graphemes(text):
+                if _has_emoji(cluster):
+                    total_width += int((font_size or 48) * 1.1) + letter_spacing
+                else:
+                    bbox = draw.textbbox((0, 0), cluster, font=font)
+                    total_width += (bbox[2] - bbox[0]) + letter_spacing
+            return total_width - letter_spacing if total_width > 0 else 0
+        elif letter_spacing == 0 or self._contains_arabic(text):
             bbox = draw.textbbox((0, 0), text, font=font)
             return bbox[2] - bbox[0]
         else:
-            # Calculate width by grapheme clusters with spacing
             total_width = 0
             for cluster in grapheme.graphemes(text):
                 bbox = draw.textbbox((0, 0), cluster, font=font)
                 total_width += (bbox[2] - bbox[0]) + letter_spacing
-            # Remove last letter spacing
             return total_width - letter_spacing if total_width > 0 else 0
 
     def draw_text_element(self, canvas: Image.Image, el: dict, settings: dict, slide_num: int, total_slides: int, username_override: str = None):
@@ -604,7 +638,7 @@ class SlideRenderer:
                     if not word:
                         continue
                     test = ' '.join(current_words + [word])
-                    test_width = self.get_text_width(test, font, letter_spacing, draw)
+                    test_width = self.get_text_width(test, font, letter_spacing, draw, font_size)
                     if max_width and test_width > max_width and current_words:
                         lines.append(current_segs)
                         current_words, current_segs = [word], [{'text': word, 'hl': seg['hl'], 'color': seg.get('color')}]
@@ -627,7 +661,7 @@ class SlideRenderer:
 
             line_text = ''.join(s['text'] for s in line_segs)
             line_font = self.select_font_for_text(line_text, font, font_size, font_weight)
-            line_w = self.get_text_width(line_text, line_font, letter_spacing, draw)
+            line_w = self.get_text_width(line_text, line_font, letter_spacing, draw, font_size)
 
             curr_x = x - line_w if align == 'right' else (x - line_w // 2 if align == 'center' else x)
 
@@ -649,12 +683,33 @@ class SlideRenderer:
                 seg_ascent = seg_font.getmetrics()[0]
                 y_offset = primary_ascent - seg_ascent if seg_font != font else 0
 
+                seg_has_emoji = _has_emoji(seg['text'])
+
                 if letter_spacing != 0 and not self._contains_arabic(seg['text']):
                     # Grapheme-cluster rendering with letter-spacing (skip for Arabic)
                     for cluster in grapheme.graphemes(seg['text']):
-                        draw.text((curr_x, curr_y + y_offset), cluster, font=seg_font, fill=col)
-                        bbox = draw.textbbox((0, 0), cluster, font=seg_font)
-                        curr_x += (bbox[2] - bbox[0]) + letter_spacing
+                        if _has_emoji(cluster):
+                            with Pilmoji(canvas) as pmj:
+                                pmj.text((curr_x, curr_y + y_offset), cluster, font=seg_font, fill=col, emoji_scale_factor=0.95)
+                            # Estimate emoji width as ~font_size
+                            curr_x += font_size + letter_spacing
+                        else:
+                            draw.text((curr_x, curr_y + y_offset), cluster, font=seg_font, fill=col)
+                            bbox = draw.textbbox((0, 0), cluster, font=seg_font)
+                            curr_x += (bbox[2] - bbox[0]) + letter_spacing
+                elif seg_has_emoji:
+                    # Emoji rendering via pilmoji
+                    with Pilmoji(canvas) as pmj:
+                        pmj.text((curr_x, curr_y + y_offset), seg['text'], font=seg_font, fill=col, emoji_scale_factor=0.95)
+                    # Estimate width: measure non-emoji text + count emoji * font_size
+                    text_no_emoji = _EMOJI_RE.sub('', seg['text'])
+                    if text_no_emoji.strip():
+                        bbox = draw.textbbox((0, 0), text_no_emoji, font=seg_font)
+                        text_w = bbox[2] - bbox[0]
+                    else:
+                        text_w = 0
+                    emoji_count = len(_EMOJI_RE.findall(seg['text']))
+                    curr_x += text_w + int(emoji_count * font_size * 1.1)
                 else:
                     # Whole-string rendering (no letter-spacing, or Arabic text)
                     draw.text((curr_x, curr_y + y_offset), seg['text'], font=seg_font, fill=col)
@@ -725,7 +780,7 @@ class SlideRenderer:
                         continue
                     test = ' '.join(current_words + [word])
                     # Use helper function that accounts for letter spacing
-                    test_width = self.get_text_width(test, font, letter_spacing, draw)
+                    test_width = self.get_text_width(test, font, letter_spacing, draw, font_size)
                     if max_width and test_width > max_width and current_words:
                         lines.append(current_segs)
                         current_words, current_segs = [word], [{'text': word, 'hl': seg['hl']}]
@@ -830,7 +885,7 @@ async def index():
 async def health():
     return {
         "status": "healthy",
-        "version": "10.0",
+        "version": "10.1",
         "fonts": os.listdir("fonts") if os.path.exists("fonts") else []
     }
 

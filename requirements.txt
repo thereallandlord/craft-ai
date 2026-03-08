@@ -10,3 +10,4 @@ openai
 arabic-reshaper
 python-bidi
 grapheme
+pilmoji
