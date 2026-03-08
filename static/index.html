@@ -5622,8 +5622,22 @@
                 return;
             }
 
-            // 2. Parse text
-            rtParsedData = parseCarouselText(slidesText);
+            // 2. Parse text via AI API, fallback to local
+            try {
+                const r = await fetch(`${API_URL}/api/format-text`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: slidesText })
+                });
+                if (r.ok) {
+                    const data = await r.json();
+                    rtParsedData = data.slides || [];
+                } else {
+                    rtParsedData = parseCarouselText(slidesText);
+                }
+            } catch (e) {
+                rtParsedData = parseCarouselText(slidesText);
+            }
             if (rtParsedData.length === 0) {
                 container.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-muted);">Не удалось распарсить текст.</div>';
                 return;
@@ -7405,33 +7419,28 @@
                 return;
             }
 
-            // Try n8n FORMAT CAROUSEL TEXT webhook first
-            if (webhookSettings.format) {
-                const btn = document.getElementById('rtGenerateBtn');
-                btn.disabled = true;
-                btn.innerHTML = '<span class="spinner"></span> Разбиваем текст...';
-                try {
-                    const r = await fetch(webhookSettings.format, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ user_text: text })
-                    });
-                    if (r.ok) {
-                        const data = await r.json();
-                        // n8n returns [{TITLE, DESCRIPTION}]
-                        rtParsedData = Array.isArray(data) ? data : (data.slides || []);
-                    } else {
-                        throw new Error('Webhook error');
-                    }
-                } catch (e) {
-                    showToast('Ошибка n8n, парсим локально', 'error');
-                    rtParsedData = parseCarouselText(text);
+            // Use AI format-text API to parse slides, fallback to local parsing
+            const btn = document.getElementById('rtGenerateBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> Разбиваем текст...';
+            try {
+                const r = await fetch(`${API_URL}/api/format-text`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: text })
+                });
+                if (r.ok) {
+                    const data = await r.json();
+                    rtParsedData = data.slides || [];
+                } else {
+                    throw new Error('API error');
                 }
-                btn.disabled = false;
-                btn.textContent = 'Создать карусель';
-            } else {
+            } catch (e) {
+                console.warn('Format text API failed, using local parser:', e);
                 rtParsedData = parseCarouselText(text);
             }
+            btn.disabled = false;
+            btn.textContent = 'Создать карусель';
 
             if (rtParsedData.length === 0) {
                 showToast('Не удалось разбить текст на слайды', 'error');

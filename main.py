@@ -1710,7 +1710,8 @@ def get_system_prompt_v3(chat_type: str, has_slides: bool = False, variables: di
         'headlines': SYSTEM_PROMPT_DRAFT,
         'text': SYSTEM_PROMPT_HEADLINES,
         'editing': SYSTEM_PROMPT_TEXT_READY,
-        'carousel': "Ты — AI помощник по дизайну каруселей. Помоги пользователю выбрать визуальное оформление."
+        'carousel': "Ты — AI помощник по дизайну каруселей. Помоги пользователю выбрать визуальное оформление.",
+        'format_text': None  # loaded from file in /api/format-text
     }
 
     prompt_data = _prompt_cache.get(prompt_key)
@@ -1755,6 +1756,49 @@ def _parse_headlines(text: str) -> list:
         if match:
             headlines.append(match.group(1).strip())
     return headlines
+
+
+# === Format Text API (carousel text parser) ===
+
+@app.post("/api/format-text")
+async def format_text(request: Request):
+    """Parse raw user text into structured carousel slides (TITLE + DESCRIPTION)."""
+    if not OPENROUTER_API_KEY:
+        raise HTTPException(status_code=500, detail="OPENROUTER_API_KEY not configured")
+
+    body = await request.json()
+    user_text = body.get("text", "").strip()
+    if not user_text:
+        raise HTTPException(status_code=400, detail="text is required")
+
+    # Load prompt from file
+    prompt_path = os.path.join(os.path.dirname(__file__), "prompts", "format_carousel_text.txt")
+    try:
+        with open(prompt_path, "r", encoding="utf-8") as f:
+            system_prompt = f.read()
+    except FileNotFoundError:
+        raise HTTPException(status_code=500, detail="Format text prompt file not found")
+
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_text + "\n\nReturn ONLY valid JSON (no markdown, no ```json blocks)."}
+    ]
+
+    try:
+        result = _call_openrouter(messages, "openai/gpt-4o-mini", temperature=0.3)
+        # Strip markdown code block wrapper if present
+        result = result.strip()
+        if result.startswith("```"):
+            result = re.sub(r'^```(?:json)?\s*', '', result)
+            result = re.sub(r'\s*```$', '', result)
+        slides = json.loads(result)
+        if not isinstance(slides, list):
+            slides = [slides]
+        return {"success": True, "slides": slides}
+    except json.JSONDecodeError as e:
+        raise HTTPException(status_code=500, detail=f"Failed to parse AI response as JSON: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Format text error: {str(e)}")
 
 
 # === v3: Topics API ===
