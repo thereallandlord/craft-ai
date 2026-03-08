@@ -681,7 +681,8 @@ class SlideRenderer:
                 if seg_has_emoji:
                     # Pilmoji handles emoji rendering — skip font fallback, no baseline offset
                     seg_font = bold_font if seg.get('bold') else font
-                    emoji_y_adj = int(font_size * -0.15)
+                    _, descent = seg_font.getmetrics()
+                    emoji_y_adj = -descent
                     with Pilmoji(canvas, source=AppleEmojiSource) as pmj:
                         pmj.text((curr_x, curr_y), seg['text'],
                                  font=seg_font, fill=col,
