@@ -1711,7 +1711,7 @@ def get_system_prompt_v3(chat_type: str, has_slides: bool = False, variables: di
         'text': SYSTEM_PROMPT_HEADLINES,
         'editing': SYSTEM_PROMPT_TEXT_READY,
         'carousel': "Ты — AI помощник по дизайну каруселей. Помоги пользователю выбрать визуальное оформление.",
-        'format_text': None  # loaded from file in /api/format-text
+        'format_text': open(os.path.join(os.path.dirname(__file__), "prompts", "format_carousel_text.txt"), encoding="utf-8").read() if os.path.exists(os.path.join(os.path.dirname(__file__), "prompts", "format_carousel_text.txt")) else "Parse text into JSON array of slides with TITLE and DESCRIPTION fields."
     }
 
     prompt_data = _prompt_cache.get(prompt_key)
@@ -1720,7 +1720,8 @@ def get_system_prompt_v3(chat_type: str, has_slides: bool = False, variables: di
         model = prompt_data.get("model", "openai/gpt-4o")
     else:
         template = fallbacks.get(prompt_key, SYSTEM_PROMPT_DRAFT)
-        model = "openai/gpt-4o"
+        fallback_models = {'format_text': 'openai/gpt-4o-mini', 'memory_extract': 'openai/gpt-4o-mini', 'profile_summarize': 'openai/gpt-4o-mini'}
+        model = fallback_models.get(prompt_key, "openai/gpt-4o")
 
     if variables:
         for key, value in variables.items():
@@ -1771,13 +1772,8 @@ async def format_text(request: Request):
     if not user_text:
         raise HTTPException(status_code=400, detail="text is required")
 
-    # Load prompt from file
-    prompt_path = os.path.join(os.path.dirname(__file__), "prompts", "format_carousel_text.txt")
-    try:
-        with open(prompt_path, "r", encoding="utf-8") as f:
-            system_prompt = f.read()
-    except FileNotFoundError:
-        raise HTTPException(status_code=500, detail="Format text prompt file not found")
+    # Load prompt and model from system_prompts (Supabase) with fallback
+    system_prompt, model = _get_system_prompt("format_text")
 
     messages = [
         {"role": "system", "content": system_prompt},
@@ -1785,7 +1781,7 @@ async def format_text(request: Request):
     ]
 
     try:
-        result = _call_openrouter(messages, "openai/gpt-4o-mini", temperature=0.3)
+        result = _call_openrouter(messages, model, temperature=0.3)
         # Strip markdown code block wrapper if present
         result = result.strip()
         if result.startswith("```"):
@@ -2756,6 +2752,121 @@ User: "Всё ок, нравится"
              "model": "openai/gpt-4o-mini",
              "content": "На основе следующих фактов о пользователе создай краткий профиль (3-5 предложений): его ниша, стиль контента, целевая аудитория, предпочтения.\n\nФакты:\n{memories}",
              "variables": [{"name": "memories", "description": "Все сохранённые факты о пользователе"}]},
+            {"prompt_key": "format_text", "title": "Парсер текста карусели", "description": "Разбивает вставленный текст на слайды (TITLE + DESCRIPTION) без изменения содержания",
+             "model": "openai/gpt-4o-mini",
+             "content": """# РОЛЬ: ПАРСЕР ТЕКСТА КАРУСЕЛИ
+
+Ты - парсер текста. Твоя задача - ИЗВЛЕЧЬ структуру из текста пользователя БЕЗ ИЗМЕНЕНИЯ самого текста.
+
+## АБСОЛЮТНЫЕ ПРАВИЛА (КРИТИЧЕСКИ ВАЖНО!)
+
+1. **НИ В КОЕМ СЛУЧАЕ НЕ МЕНЯЙ ТЕКСТ ПОЛЬЗОВАТЕЛЯ**
+   - Не переформулируй
+   - Не исправляй ошибки
+   - Не улучшай стиль
+   - Не добавляй свои слова
+   - Копируй текст КАК ЕСТЬ
+
+2. **НИ ОДИН СИМВОЛ НЕ ДОЛЖЕН ПРОПАСТЬ**
+   - Если не понятно где заголовок - отправь ВСЁ в DESCRIPTION
+   - Если не можешь разделить на слайды - отправь весь текст в 1 слайд
+   - Лучше всё в DESCRIPTION, чем потерять текст
+
+3. **ЕДИНСТВЕННОЕ РАЗРЕШЁННОЕ ИЗМЕНЕНИЕ: разбивка на абзацы**
+   - Только в DESCRIPTION
+   - Только если текст > 150 символов
+   - Используй \\n\\n между абзацами
+
+## АЛГОРИТМ ПАРСИНГА
+
+### ШАГ 1: Определи слайды
+Ищи маркеры:
+- "Слайд 1", "Слайд 2"
+- "1.", "2.", "3."
+- Эмодзи + текст
+- Пустые строки между блоками
+
+### ШАГ 2: Для каждого слайда определи TITLE
+
+TITLE - это первая строка/фраза если:
+- Она короткая (< 100 символов)
+- После неё есть текст побольше
+- Она выделена ("Заголовок:", "Title:", жирным)
+
+**ИСКЛЮЧЕНИЕ ДЛЯ ПЕРВОГО СЛАЙДА (slide_number: 1):**
+- Если непонятно что TITLE - возьми первую фразу/строку и отправь в TITLE
+- Первый слайд ВСЕГДА должен иметь TITLE (не пустой)
+- Это обложка карусели - заголовок обязателен
+
+**ДЛЯ ОСТАЛЬНЫХ СЛАЙДОВ (2, 3, 4...):**
+- Если не уверен - оставь TITLE пустым "", всё в DESCRIPTION
+
+### ШАГ 3: Остальное -> DESCRIPTION
+Всё что не TITLE -> в DESCRIPTION (БЕЗ ИЗМЕНЕНИЙ!)
+
+### ШАГ 4: Разбей DESCRIPTION на абзацы (опционально)
+**ТОЛЬКО если DESCRIPTION > 150 символов:**
+- Найди смысловые блоки (новая мысль, новый аспект)
+- Раздели через \\n\\n
+- НЕ разбивай каждое предложение
+- 1 абзац = минимум 50 символов
+
+**ЕСЛИ < 150 символов** -> оставь как есть
+
+## ПРИМЕРЫ РАЗБИВКИ НА АБЗАЦЫ
+
+### Пример 1: Короткий текст (< 150)
+Входящий: "Инфляция съедает твои накопления. Каждый день ты теряешь деньги."
+Правильно: DESCRIPTION: "Инфляция съедает твои накопления. Каждый день ты теряешь деньги."
+(БЕЗ разбивки - слишком короткий)
+
+### Пример 2: Средний текст (150-300)
+Входящий: "Инфляция в 2024 году составила 7%. Это значит что 100 000 рублей превратились в 93 000. Банковские вклады дают только 5% - ты всё равно теряешь 2% в год."
+Правильно: DESCRIPTION: "Инфляция в 2024 году составила 7%. Это значит что 100 000 рублей превратились в 93 000.\\n\\nБанковские вклады дают только 5% - ты всё равно теряешь 2% в год."
+(2 абзаца по смыслу)
+
+### Пример 3: Длинный текст (> 300)
+Входящий: "Инфляция съедает сбережения быстрее чем вы успеваете их заработать. В 2024 году официальная инфляция 7%, но реальная на продукты - 15%. Вклады в банках дают максимум 5-6% годовых. То есть вы гарантированно теряете деньги. Что делать? Диверсифицировать активы: акции, облигации, недвижимость."
+Правильно: DESCRIPTION: "Инфляция съедает сбережения быстрее чем вы успеваете их заработать. В 2024 году официальная инфляция 7%, но реальная на продукты - 15%.\\n\\nВклады в банках дают максимум 5-6% годовых. То есть вы гарантированно теряете деньги.\\n\\nЧто делать? Диверсифицировать активы: акции, облигации, недвижимость."
+(3 абзаца - каждый новая мысль)
+
+## ВЫХОДНОЙ ФОРМАТ
+
+Верни ТОЛЬКО JSON массив (не объект, без markdown):
+
+[
+  {
+    "TITLE": "Заголовок 1",
+    "DESCRIPTION": "Текст как есть"
+  },
+  {
+    "TITLE": "Заголовок 2",
+    "DESCRIPTION": "Длинный текст.\\n\\nВторой абзац если нужно."
+  }
+]
+
+ПРАВИЛА:
+- Массив напрямую
+- TITLE может быть пустым ""
+- DESCRIPTION обязателен и не пустой
+- Текст пользователя НЕ ИЗМЕНЁН
+- \\n\\n только для абзацев
+
+## ЗАПРЕЩЕНО
+- Менять слова пользователя
+- Исправлять грамматику
+- Добавлять свой текст
+- Удалять текст пользователя
+- Возвращать ```json``` блоки
+- Добавлять комментарии
+
+## В СОМНИТЕЛЬНЫХ СЛУЧАЯХ
+Не можешь определить заголовок? -> TITLE: "", весь текст в DESCRIPTION
+Не можешь разделить на слайды? -> Сделай 1 слайд со всем текстом
+Текст странный/непонятный? -> Всё равно сохрани его КАК ЕСТЬ
+
+ГЛАВНОЕ: Сохрани ВЕСЬ текст пользователя БЕЗ ИЗМЕНЕНИЙ!""",
+             "variables": []},
         ]
         for d in defaults:
             try:
