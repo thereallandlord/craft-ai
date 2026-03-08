@@ -6859,13 +6859,16 @@
                 const ah = el.autoHeight || 'none';
                 yOffsets[el.id] = accOffset;
                 if (ah === 'none') return;
-                const content = (el.content || '').replace(/\{#[0-9a-fA-F]{3,8}:([^}]+)\}/g, '$1').replace(/\*([^*]+)\*/g, '$1');
+                const rawContent = el._wrappedContent || el.content || '';
+                const content = rawContent.replace(/\{#[0-9a-fA-F]{3,8}:([^}]+)\}/g, '$1').replace(/\*([^*]+)\*/g, '$1');
                 const fontSize = el.fontSize || 24;
                 const lh = el.lineHeight || 1.2;
                 const mw = el.maxWidth || 0;
-                // Measure line count using Canvas measureText for accuracy
                 let lineCount = 1;
-                if (mw > 0 && content.length > 0) {
+                if (el._wrappedContent) {
+                    // Server already calculated line breaks — just count \n
+                    lineCount = (content.match(/\n/g) || []).length + 1;
+                } else if (mw > 0 && content.length > 0) {
                     _measureCtx.font = `${el.fontWeight||400} ${fontSize}px '${el.fontFamily||'Inter'}', sans-serif`;
                     _measureCtx.letterSpacing = `${el.letterSpacing||0}px`;
                     const rawLines = content.split('\n');
@@ -6910,13 +6913,15 @@
                     const shape = el.shape === 'circle' ? '50%' : `${el.borderRadius||0}px`;
                     inner += `<div style="position:absolute;left:${el.x}px;top:${el.y}px;width:${el.width||200}px;height:${el.height||200}px;border-radius:${shape};${el.photo?`background-image:url(${el.photo});background-size:cover;background-position:center;`:'background:#333;'}"></div>`;
                 } else {
-                    let content = el.content || '';
+                    const hasWrapped = !!el._wrappedContent;
+                    let content = (hasWrapped ? el._wrappedContent : el.content) || '';
                     content = content.replace(/\{(#[0-9a-fA-F]{3,8}):([^}]+)\}/g, '<span style="color:$1">$2</span>');
                     const hc = el.highlightColor || '#c8ff00';
                     content = content.replace(/\*([^*]+)\*/g, `<span style="color:${hc}">$1</span>`).replace(/\n/g, '<br>');
-                    const wS = el.maxWidth ? `width:${el.maxWidth}px;` : '';
+                    const wS = hasWrapped ? '' : (el.maxWidth ? `width:${el.maxWidth}px;` : '');
+                    const wrapCSS = hasWrapped ? '' : 'word-wrap:break-word;overflow-wrap:break-word;';
                     const tS = el.align==='right' ? 'transform:translateX(-100%);' : (el.align==='center' ? 'transform:translateX(-50%);' : '');
-                    inner += `<div style="position:absolute;left:${el.x}px;top:${(el.y||0) + yOff}px;font-family:'${el.fontFamily||'Inter'}',sans-serif;font-size:${el.fontSize||24}px;font-weight:${el.fontWeight||400};color:${el.color||'#000'};opacity:${(el.opacity||100)/100};line-height:${el.lineHeight||1.2};${wS}${tS}word-wrap:break-word;overflow-wrap:break-word;letter-spacing:${el.letterSpacing||0}px;">${content}</div>`;
+                    inner += `<div style="position:absolute;left:${el.x}px;top:${(el.y||0) + yOff}px;font-family:'${el.fontFamily||'Inter'}',sans-serif;font-size:${el.fontSize||24}px;font-weight:${el.fontWeight||400};color:${el.color||'#000'};opacity:${(el.opacity||100)/100};line-height:${el.lineHeight||1.2};${wS}${tS}${wrapCSS}letter-spacing:${el.letterSpacing||0}px;">${content}</div>`;
                 }
             });
             // Wrap in a full-size div scaled down via CSS transform
@@ -6951,8 +6956,64 @@
             });
             const ac = cards[rtActiveSlideIndex];
             if (ac) ac.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
-            // Attach scroll listener to detect swipe and sync active slide
             rtAttachStripScrollListener(strip);
+            // Async: get server-calculated word-wrap and re-render for accuracy
+            rtApplyServerWrap(cw);
+        }
+
+        async function rtApplyServerWrap(cw) {
+            // Collect all text elements from all slides
+            const elements = [];
+            rtSlides.forEach((slide, si) => {
+                (slide.elements || []).forEach(el => {
+                    if (el.type !== 'photo' && el.content && el.maxWidth) {
+                        elements.push({
+                            _slideIdx: si, _elId: el.id,
+                            id: el.id, content: el.content,
+                            fontFamily: el.fontFamily || 'Inter',
+                            fontSize: el.fontSize || 24,
+                            fontWeight: el.fontWeight || 400,
+                            maxWidth: el.maxWidth,
+                            letterSpacing: el.letterSpacing || 0,
+                        });
+                    }
+                });
+            });
+            if (elements.length === 0) return;
+            try {
+                const r = await fetch(`${API_URL}/api/wrap-text`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({elements: elements})
+                });
+                if (!r.ok) return;
+                const results = await r.json();
+                // Apply wrapped content to elements
+                let changed = false;
+                results.forEach((res, i) => {
+                    const meta = elements[i];
+                    const slide = rtSlides[meta._slideIdx];
+                    const el = (slide.elements || []).find(e => e.id === meta._elId);
+                    if (!el) return;
+                    if (res.wrapped !== el.content) {
+                        if (el._wrappedContent !== res.wrapped) changed = true;
+                        el._wrappedContent = res.wrapped;
+                    } else if (el._wrappedContent) {
+                        delete el._wrappedContent;
+                        changed = true;
+                    }
+                });
+                if (changed) {
+                    // Re-render previews with server-wrapped content
+                    const strip = document.getElementById('rtPreviewStrip');
+                    if (!strip) return;
+                    const cards = strip.querySelectorAll('.rt-preview-card');
+                    cards.forEach((card, i) => {
+                        const inner = card.querySelector('.rt-preview-card-inner');
+                        if (inner) inner.innerHTML = rtRenderMiniPreview(rtSlides[i], cw);
+                    });
+                }
+            } catch(e) { /* ignore — CSS word-wrap fallback is fine */ }
         }
 
         let rtScrollTimer = null;
@@ -6982,12 +7043,16 @@
             }, 80);
         }
 
+        let _rtWrapDebounce = null;
         function rtRenderSinglePreview(index) {
             const cards = document.querySelectorAll('#rtPreviewStrip .rt-preview-card');
             if (cards[index]) {
                 const inner = cards[index].querySelector('.rt-preview-card-inner');
                 const cw = cards[index].offsetWidth || rtGetCardWidth();
                 if (inner) inner.innerHTML = rtRenderMiniPreview(rtSlides[index], cw);
+                // Debounced re-wrap from server after edits
+                clearTimeout(_rtWrapDebounce);
+                _rtWrapDebounce = setTimeout(() => rtApplyServerWrap(cw), 500);
             }
         }
 

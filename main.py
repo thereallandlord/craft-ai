@@ -821,6 +821,107 @@ class SlideRenderer:
 
         return len(lines)
 
+    def wrap_text_for_preview(self, content: str, font_family: str = 'Inter', font_size: int = 48,
+                               font_weight: str = '400', max_width: int = None, letter_spacing: float = 0) -> str:
+        """Return content with \\n inserted at PIL's word-wrap points, preserving markup."""
+        if not content or not max_width:
+            return content
+
+        font = self.get_font(font_family, font_size, font_weight)
+        temp_img = Image.new('RGB', (1, 1))
+        draw = ImageDraw.Draw(temp_img)
+
+        # Strip markup for measurement, track markup positions for reconstruction
+        # Work with raw content: split by \n first, then word-wrap each paragraph
+        paragraphs = content.split('\n')
+        wrapped_paragraphs = []
+
+        for para in paragraphs:
+            if not para.strip():
+                wrapped_paragraphs.append(para)
+                continue
+
+            # Strip markup for width measurement
+            plain = re.sub(r'\{#[0-9a-fA-F]{3,8}:([^}]+)\}', r'\1', para)
+            plain = re.sub(r'\*([^*]+)\*', r'\1', plain)
+
+            # Word-wrap the plain text
+            words = plain.split(' ')
+            plain_lines = []
+            current_words = []
+            for word in words:
+                if not word:
+                    continue
+                test = ' '.join(current_words + [word])
+                test_width = self.get_text_width(test, font, letter_spacing, draw, font_size)
+                if test_width > max_width and current_words:
+                    plain_lines.append(' '.join(current_words))
+                    current_words = [word]
+                else:
+                    current_words.append(word)
+            if current_words:
+                plain_lines.append(' '.join(current_words))
+
+            if len(plain_lines) <= 1:
+                wrapped_paragraphs.append(para)
+                continue
+
+            # Map plain line breaks back to original paragraph (with markup)
+            # Strategy: consume words from original para matching plain_lines
+            result_lines = []
+            raw_idx = 0
+            for pline in plain_lines:
+                pline_words = pline.split(' ')
+                target_word_count = len(pline_words)
+                # Consume target_word_count plain words from para, keeping markup
+                line_chars = []
+                words_consumed = 0
+                while words_consumed < target_word_count and raw_idx < len(para):
+                    # Check for markup at current position
+                    color_m = re.match(r'\{(#[0-9a-fA-F]{3,8}):([^}]+)\}', para[raw_idx:])
+                    bold_m = re.match(r'\*([^*]+)\*', para[raw_idx:])
+                    if color_m:
+                        line_chars.append(color_m.group(0))
+                        # Count plain words inside this markup
+                        inner = color_m.group(2)
+                        inner_words = [w for w in inner.split(' ') if w]
+                        words_consumed += len(inner_words)
+                        raw_idx += len(color_m.group(0))
+                    elif bold_m:
+                        line_chars.append(bold_m.group(0))
+                        inner = bold_m.group(1)
+                        inner_words = [w for w in inner.split(' ') if w]
+                        words_consumed += len(inner_words)
+                        raw_idx += len(bold_m.group(0))
+                    elif para[raw_idx] == ' ':
+                        line_chars.append(' ')
+                        raw_idx += 1
+                    else:
+                        # Regular character — find end of word
+                        word_end = raw_idx
+                        while word_end < len(para) and para[word_end] != ' ' and para[word_end] not in '{*':
+                            word_end += 1
+                        line_chars.append(para[raw_idx:word_end])
+                        words_consumed += 1
+                        raw_idx = word_end
+                # Skip trailing space between lines
+                if raw_idx < len(para) and para[raw_idx] == ' ':
+                    raw_idx += 1
+                result_lines.append(''.join(line_chars).strip())
+
+            # Append any remaining content
+            if raw_idx < len(para):
+                remaining = para[raw_idx:].strip()
+                if remaining:
+                    if result_lines:
+                        result_lines[-1] += ' ' + remaining
+                    else:
+                        result_lines.append(remaining)
+
+            wrapped_paragraphs.append('\n'.join(result_lines))
+
+        return '\n'.join(wrapped_paragraphs)
+
     def render_slide(self, slide: dict, settings: dict, slide_num: int, total_slides: int, username_override: str = None) -> Image.Image:
         canvas = self.create_background(slide.get('background', {}))
 
@@ -1800,6 +1901,26 @@ async def format_text(request: Request):
     except Exception as e:
         print(f"[format-text] ERROR: {e}")
         raise HTTPException(status_code=500, detail=f"Format text error: {str(e)}")
+
+
+@app.post("/api/wrap-text")
+async def wrap_text(request: Request):
+    """Calculate PIL word-wrap for text elements and return wrapped content."""
+    body = await request.json()
+    elements = body.get("elements", [])
+    results = []
+    for el in elements:
+        content = el.get("content", "")
+        wrapped = renderer.wrap_text_for_preview(
+            content,
+            font_family=el.get("fontFamily", "Inter"),
+            font_size=int(el.get("fontSize", 48)),
+            font_weight=str(el.get("fontWeight", "400")),
+            max_width=int(el.get("maxWidth")) if el.get("maxWidth") else None,
+            letter_spacing=float(el.get("letterSpacing", 0))
+        )
+        results.append({"id": el.get("id", ""), "wrapped": wrapped})
+    return results
 
 
 @app.post("/api/debug/text-width")
