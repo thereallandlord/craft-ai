@@ -685,31 +685,30 @@ class SlideRenderer:
 
                 seg_has_emoji = _has_emoji(seg['text'])
 
-                if letter_spacing != 0 and not self._contains_arabic(seg['text']):
-                    # Grapheme-cluster rendering with letter-spacing (skip for Arabic)
+                if seg_has_emoji:
+                    # Use pilmoji for any text containing emoji
+                    with Pilmoji(canvas) as pmj:
+                        pmj.text((curr_x, curr_y + y_offset), seg['text'], font=seg_font, fill=col,
+                                 emoji_scale_factor=1.0, emoji_position_offset=(0, int(font_size * 0.1)))
+                    # Calculate width: per-cluster for accuracy
+                    seg_w = 0
                     for cluster in grapheme.graphemes(seg['text']):
                         if _has_emoji(cluster):
-                            with Pilmoji(canvas) as pmj:
-                                pmj.text((curr_x, curr_y + y_offset), cluster, font=seg_font, fill=col, emoji_scale_factor=0.95)
-                            # Estimate emoji width as ~font_size
-                            curr_x += font_size + letter_spacing
+                            seg_w += int(font_size * 1.15)
                         else:
-                            draw.text((curr_x, curr_y + y_offset), cluster, font=seg_font, fill=col)
                             bbox = draw.textbbox((0, 0), cluster, font=seg_font)
-                            curr_x += (bbox[2] - bbox[0]) + letter_spacing
-                elif seg_has_emoji:
-                    # Emoji rendering via pilmoji
-                    with Pilmoji(canvas) as pmj:
-                        pmj.text((curr_x, curr_y + y_offset), seg['text'], font=seg_font, fill=col, emoji_scale_factor=0.95)
-                    # Estimate width: measure non-emoji text + count emoji * font_size
-                    text_no_emoji = _EMOJI_RE.sub('', seg['text'])
-                    if text_no_emoji.strip():
-                        bbox = draw.textbbox((0, 0), text_no_emoji, font=seg_font)
-                        text_w = bbox[2] - bbox[0]
-                    else:
-                        text_w = 0
-                    emoji_count = len(_EMOJI_RE.findall(seg['text']))
-                    curr_x += text_w + int(emoji_count * font_size * 1.1)
+                            seg_w += (bbox[2] - bbox[0])
+                        if letter_spacing != 0:
+                            seg_w += letter_spacing
+                    if letter_spacing != 0 and seg_w > 0:
+                        seg_w -= letter_spacing
+                    curr_x += seg_w
+                elif letter_spacing != 0 and not self._contains_arabic(seg['text']):
+                    # Grapheme-cluster rendering with letter-spacing (skip for Arabic)
+                    for cluster in grapheme.graphemes(seg['text']):
+                        draw.text((curr_x, curr_y + y_offset), cluster, font=seg_font, fill=col)
+                        bbox = draw.textbbox((0, 0), cluster, font=seg_font)
+                        curr_x += (bbox[2] - bbox[0]) + letter_spacing
                 else:
                     # Whole-string rendering (no letter-spacing, or Arabic text)
                     draw.text((curr_x, curr_y + y_offset), seg['text'], font=seg_font, fill=col)
