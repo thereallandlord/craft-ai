@@ -30,6 +30,7 @@ from bidi.algorithm import get_display
 import re
 import uuid
 from pilmoji import Pilmoji
+from pilmoji.source import AppleEmojiSource
 
 # Emoji detection regex
 _EMOJI_RE = re.compile(
@@ -688,7 +689,7 @@ class SlideRenderer:
                 if seg_has_emoji:
                     # Use pilmoji for entire segment — it handles mixed text+emoji
                     emoji_y_adj = int(font_size * -0.15)
-                    with Pilmoji(canvas) as pmj:
+                    with Pilmoji(canvas, source=AppleEmojiSource) as pmj:
                         pmj.text((curr_x, curr_y + y_offset), seg['text'],
                                  font=seg_font, fill=col,
                                  emoji_scale_factor=1.15,
