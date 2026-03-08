@@ -812,12 +812,18 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.get("/favicon.ico")
 async def favicon():
-    return FileResponse("static/favicon.ico", media_type="image/x-icon")
+    return FileResponse("static/favicon.ico", media_type="image/x-icon", headers={
+        "Cache-Control": "no-cache, must-revalidate"
+    })
 
 
 @app.get("/")
 async def index():
-    return FileResponse("static/index.html", headers={"Cache-Control": "no-cache"})
+    return FileResponse("static/index.html", headers={
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0"
+    })
 
 
 @app.get("/health")
