@@ -686,31 +686,21 @@ class SlideRenderer:
                 seg_has_emoji = _has_emoji(seg['text'])
 
                 if seg_has_emoji:
-                    # Use pilmoji for any text containing emoji
+                    # Use pilmoji for entire segment — it handles mixed text+emoji
+                    emoji_y_adj = int(font_size * -0.15)
                     with Pilmoji(canvas) as pmj:
-                        pmj.text((curr_x, curr_y + y_offset), seg['text'], font=seg_font, fill=col,
-                                 emoji_scale_factor=1.0, emoji_position_offset=(0, int(font_size * 0.1)))
-                    # Calculate width: per-cluster for accuracy
-                    seg_w = 0
-                    for cluster in grapheme.graphemes(seg['text']):
-                        if _has_emoji(cluster):
-                            seg_w += int(font_size * 1.15)
-                        else:
-                            bbox = draw.textbbox((0, 0), cluster, font=seg_font)
-                            seg_w += (bbox[2] - bbox[0])
-                        if letter_spacing != 0:
-                            seg_w += letter_spacing
-                    if letter_spacing != 0 and seg_w > 0:
-                        seg_w -= letter_spacing
+                        pmj.text((curr_x, curr_y + y_offset), seg['text'],
+                                 font=seg_font, fill=col,
+                                 emoji_scale_factor=1.15,
+                                 emoji_position_offset=(0, emoji_y_adj))
+                    seg_w = self.get_text_width(seg['text'], seg_font, letter_spacing, draw, font_size)
                     curr_x += seg_w
                 elif letter_spacing != 0 and not self._contains_arabic(seg['text']):
-                    # Grapheme-cluster rendering with letter-spacing (skip for Arabic)
                     for cluster in grapheme.graphemes(seg['text']):
                         draw.text((curr_x, curr_y + y_offset), cluster, font=seg_font, fill=col)
                         bbox = draw.textbbox((0, 0), cluster, font=seg_font)
                         curr_x += (bbox[2] - bbox[0]) + letter_spacing
                 else:
-                    # Whole-string rendering (no letter-spacing, or Arabic text)
                     draw.text((curr_x, curr_y + y_offset), seg['text'], font=seg_font, fill=col)
                     bbox = draw.textbbox((0, 0), seg['text'], font=seg_font)
                     curr_x += bbox[2] - bbox[0]
