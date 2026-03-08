@@ -2239,6 +2239,59 @@
         /* === TELEGRAM MINI APP === */
         .tg-header { display: none; }
 
+        /* Force mobile layout on touch devices even in "Request Desktop Site" mode */
+        @media (hover: none) and (pointer: coarse) and (max-width: 1200px) {
+            body:not(.tg-miniapp) {
+                overflow: hidden;
+                height: 100vh;
+                position: fixed;
+                width: 100%;
+            }
+            body:not(.tg-miniapp) .app {
+                flex-direction: column;
+                height: 100vh;
+                min-height: unset;
+                overflow: hidden;
+            }
+            body:not(.tg-miniapp) .content-area { overflow: hidden; }
+            body:not(.tg-miniapp) #view-home { overflow: hidden; }
+            body:not(.tg-miniapp) .home-view { overflow: hidden; }
+            body:not(.tg-miniapp) .view-overlay.active { overflow-y: auto; overscroll-behavior: none; }
+            body:not(.tg-miniapp) .nav-bar {
+                position: fixed;
+                bottom: 0; left: 0; right: 0;
+                width: 100%; height: 56px;
+                flex-direction: row;
+                justify-content: space-around;
+                padding: 4px 8px; gap: 0;
+                z-index: 9999;
+                border-right: none;
+                border-top: 1px solid var(--border);
+                background: var(--bg-secondary);
+            }
+            body:not(.tg-miniapp) .nav-brand,
+            body:not(.tg-miniapp) .nav-divider,
+            body:not(.tg-miniapp) .nav-spacer { display: none; }
+            body:not(.tg-miniapp) .nav-item { width: 36px; height: 36px; }
+            body:not(.tg-miniapp) .nav-item .nav-tooltip { display: none !important; }
+            body:not(.tg-miniapp) .project-sidebar {
+                position: fixed; left: 0; top: 0; bottom: 0;
+                transform: translateX(-100%);
+                width: 280px; z-index: 10000;
+                transition: transform 0.2s ease;
+            }
+            body:not(.tg-miniapp) .project-sidebar.mobile-open {
+                transform: translateX(0);
+            }
+            body:not(.tg-miniapp) .sidebar-overlay {
+                display: none;
+                position: fixed; inset: 0;
+                background: rgba(0,0,0,0.4);
+                z-index: 9999;
+            }
+            body:not(.tg-miniapp) .sidebar-overlay.active { display: block; }
+        }
+
         body.tg-miniapp {
             overflow: hidden;
             height: 100vh;
