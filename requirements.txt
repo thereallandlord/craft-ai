@@ -11,3 +11,4 @@ arabic-reshaper
 python-bidi
 grapheme
 pilmoji
+pillow-heif

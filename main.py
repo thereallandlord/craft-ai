@@ -18,6 +18,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 from PIL import Image, ImageDraw, ImageFont
+from pillow_heif import register_heif_opener
+register_heif_opener()
 import requests
 import base64
 import json
