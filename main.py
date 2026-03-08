@@ -1773,7 +1773,8 @@ async def format_text(request: Request):
         raise HTTPException(status_code=400, detail="text is required")
 
     # Load prompt and model from system_prompts (Supabase) with fallback
-    system_prompt, model = _get_system_prompt("format_text")
+    system_prompt, model = get_system_prompt_v3("format_text")
+    print(f"[format-text] Using model: {model}, prompt length: {len(system_prompt)} chars")
 
     messages = [
         {"role": "system", "content": system_prompt},
@@ -1790,10 +1791,13 @@ async def format_text(request: Request):
         slides = json.loads(result)
         if not isinstance(slides, list):
             slides = [slides]
+        print(f"[format-text] OK — parsed {len(slides)} slides")
         return {"success": True, "slides": slides}
     except json.JSONDecodeError as e:
+        print(f"[format-text] ERROR JSON parse: {e}\nRaw response: {result[:500]}")
         raise HTTPException(status_code=500, detail=f"Failed to parse AI response as JSON: {str(e)}")
     except Exception as e:
+        print(f"[format-text] ERROR: {e}")
         raise HTTPException(status_code=500, detail=f"Format text error: {str(e)}")
 
 
@@ -2907,13 +2911,32 @@ TITLE - это первая строка/фраза если:
 ГЛАВНОЕ: Сохрани ВЕСЬ текст пользователя БЕЗ ИЗМЕНЕНИЙ!""",
              "variables": []},
         ]
-    missing = [d for d in defaults if d["prompt_key"] not in existing_keys]
-    if missing:
-        for d in missing:
+    # Upsert: insert missing, update existing defaults that haven't been manually edited
+    defaults_by_key = {d["prompt_key"]: d for d in defaults}
+    changed = False
+    for d in defaults:
+        if d["prompt_key"] not in existing_keys:
+            # New prompt — insert
             try:
                 sb.table("system_prompts").insert(d).execute()
+                changed = True
             except Exception:
-                pass  # Skip if already exists
+                pass
+        else:
+            # Existing prompt — update content/model from defaults if not manually edited
+            existing = next((r for r in (result.data or []) if r["prompt_key"] == d["prompt_key"]), None)
+            if existing and existing.get("updated_by") is None:
+                try:
+                    sb.table("system_prompts").update({
+                        "content": d["content"],
+                        "model": d["model"],
+                        "title": d["title"],
+                        "description": d.get("description", ""),
+                    }).eq("prompt_key", d["prompt_key"]).execute()
+                    changed = True
+                except Exception:
+                    pass
+    if changed:
         result = sb.table("system_prompts").select("*").order("prompt_key").execute()
     return result.data or []
 

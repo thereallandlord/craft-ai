@@ -7435,6 +7435,7 @@
                 }
             } catch (e) {
                 console.warn('Format text API failed, using local parser:', e);
+                showToast('AI недоступен, парсим локально', 'error');
                 rtParsedData = parseCarouselText(text);
             }
             btn.disabled = false;
