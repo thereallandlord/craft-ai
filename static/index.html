@@ -6846,6 +6846,7 @@
             const yOffsets = {};
             const textEls = elements.filter(e => e.type !== 'photo').sort((a,b) => (a.y||0) - (b.y||0));
             let accOffset = 0;
+            const _measureCtx = document.createElement('canvas').getContext('2d');
             textEls.forEach(el => {
                 const ah = el.autoHeight || 'none';
                 yOffsets[el.id] = accOffset;
@@ -6854,17 +6855,27 @@
                 const fontSize = el.fontSize || 24;
                 const lh = el.lineHeight || 1.2;
                 const mw = el.maxWidth || 0;
-                // Estimate line count: measure with a hidden span
+                // Measure line count using Canvas measureText for accuracy
                 let lineCount = 1;
                 if (mw > 0 && content.length > 0) {
-                    const lines = content.split('\n');
+                    _measureCtx.font = `${el.fontWeight||400} ${fontSize}px '${el.fontFamily||'Inter'}', sans-serif`;
+                    _measureCtx.letterSpacing = `${el.letterSpacing||0}px`;
+                    const rawLines = content.split('\n');
                     lineCount = 0;
-                    lines.forEach(line => {
+                    rawLines.forEach(line => {
                         if (!line.trim()) { lineCount++; return; }
-                        // Approximate: avg char width ≈ fontSize * 0.55 for proportional fonts
-                        const avgCharW = fontSize * 0.55;
-                        const charsPerLine = Math.max(1, Math.floor(mw / avgCharW));
-                        lineCount += Math.max(1, Math.ceil(line.length / charsPerLine));
+                        const words = line.split(' ');
+                        let cur = '';
+                        for (const word of words) {
+                            const test = cur ? cur + ' ' + word : word;
+                            if (_measureCtx.measureText(test).width > mw && cur) {
+                                lineCount++;
+                                cur = word;
+                            } else {
+                                cur = test;
+                            }
+                        }
+                        if (cur) lineCount++;
                     });
                 } else {
                     lineCount = (content.match(/\n/g) || []).length + 1;
