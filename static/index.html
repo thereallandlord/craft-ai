@@ -6902,73 +6902,13 @@
                     const shape = el.shape === 'circle' ? '50%' : `${el.borderRadius||0}px`;
                     inner += `<div style="position:absolute;left:${el.x}px;top:${el.y}px;width:${el.width||200}px;height:${el.height||200}px;border-radius:${shape};${el.photo?`background-image:url(${el.photo});background-size:cover;background-position:center;`:'background:#333;'}"></div>`;
                 } else {
-                    let rawContent = el.content || '';
-                    const mw = el.maxWidth || 0;
-                    // Manual word-wrap matching server PIL algorithm: split by words, measure with Canvas
-                    if (mw > 0 && rawContent.length > 0) {
-                        _measureCtx.font = `${el.fontWeight||400} ${el.fontSize||24}px '${el.fontFamily||'Inter'}', sans-serif`;
-                        _measureCtx.letterSpacing = `${el.letterSpacing||0}px`;
-                        // Strip markup for measuring, but track positions for reconstruction
-                        const plain = rawContent.replace(/\{#[0-9a-fA-F]{3,8}:([^}]+)\}/g, '$1').replace(/\*([^*]+)\*/g, '$1');
-                        const wrappedPlain = [];
-                        plain.split('\n').forEach(line => {
-                            if (!line) { wrappedPlain.push(''); return; }
-                            const words = line.split(' ');
-                            let cur = '';
-                            for (const word of words) {
-                                if (!word) continue;
-                                const test = cur ? cur + ' ' + word : word;
-                                if (_measureCtx.measureText(test).width > mw && cur) {
-                                    wrappedPlain.push(cur);
-                                    cur = word;
-                                } else {
-                                    cur = test;
-                                }
-                            }
-                            if (cur) wrappedPlain.push(cur);
-                        });
-                        // Now rebuild rawContent with \n at the same word boundaries
-                        // Map plain text line breaks back to rawContent
-                        let rebuilt = '';
-                        let plainIdx = 0;
-                        let rawIdx = 0;
-                        for (let li = 0; li < wrappedPlain.length; li++) {
-                            if (li > 0) rebuilt += '\n';
-                            const pLine = wrappedPlain[li];
-                            // Consume characters from rawContent matching pLine length in plain text
-                            let consumed = 0;
-                            while (consumed < pLine.length && rawIdx < rawContent.length) {
-                                // Check if we're at a markup start
-                                const colorMatch = rawContent.slice(rawIdx).match(/^\{(#[0-9a-fA-F]{3,8}):([^}]+)\}/);
-                                const boldMatch = rawContent.slice(rawIdx).match(/^\*([^*]+)\*/);
-                                if (colorMatch) {
-                                    rebuilt += colorMatch[0];
-                                    rawIdx += colorMatch[0].length;
-                                    consumed += colorMatch[2].length;
-                                } else if (boldMatch) {
-                                    rebuilt += boldMatch[0];
-                                    rawIdx += boldMatch[0].length;
-                                    consumed += boldMatch[1].length;
-                                } else {
-                                    rebuilt += rawContent[rawIdx];
-                                    if (rawContent[rawIdx] !== '\n') consumed++;
-                                    rawIdx++;
-                                }
-                            }
-                            // Skip original \n in raw if present
-                            if (rawIdx < rawContent.length && rawContent[rawIdx] === '\n') rawIdx++;
-                        }
-                        // Append any remaining raw content
-                        if (rawIdx < rawContent.length) rebuilt += rawContent.slice(rawIdx);
-                        rawContent = rebuilt;
-                    }
-                    // Apply HTML markup
-                    let content = rawContent;
+                    let content = el.content || '';
                     content = content.replace(/\{(#[0-9a-fA-F]{3,8}):([^}]+)\}/g, '<span style="color:$1">$2</span>');
                     const hc = el.highlightColor || '#c8ff00';
                     content = content.replace(/\*([^*]+)\*/g, `<span style="color:${hc}">$1</span>`).replace(/\n/g, '<br>');
+                    const wS = el.maxWidth ? `width:${el.maxWidth}px;` : '';
                     const tS = el.align==='right' ? 'transform:translateX(-100%);' : (el.align==='center' ? 'transform:translateX(-50%);' : '');
-                    inner += `<div style="position:absolute;left:${el.x}px;top:${(el.y||0) + yOff}px;font-family:'${el.fontFamily||'Inter'}',sans-serif;font-size:${el.fontSize||24}px;font-weight:${el.fontWeight||400};color:${el.color||'#000'};opacity:${(el.opacity||100)/100};line-height:${el.lineHeight||1.2};white-space:pre-wrap;letter-spacing:${el.letterSpacing||0}px;${tS}">${content}</div>`;
+                    inner += `<div style="position:absolute;left:${el.x}px;top:${(el.y||0) + yOff}px;font-family:'${el.fontFamily||'Inter'}',sans-serif;font-size:${el.fontSize||24}px;font-weight:${el.fontWeight||400};color:${el.color||'#000'};opacity:${(el.opacity||100)/100};line-height:${el.lineHeight||1.2};${wS}${tS}word-wrap:break-word;overflow-wrap:break-word;letter-spacing:${el.letterSpacing||0}px;">${content}</div>`;
                 }
             });
             // Wrap in a full-size div scaled down via CSS transform

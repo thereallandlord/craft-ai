@@ -1801,6 +1801,58 @@ async def format_text(request: Request):
         raise HTTPException(status_code=500, detail=f"Format text error: {str(e)}")
 
 
+@app.post("/api/debug/text-width")
+async def debug_text_width(request: Request):
+    """Debug: measure text width with PIL to compare with browser Canvas measureText."""
+    body = await request.json()
+    text = body.get("text", "")
+    font_family = body.get("fontFamily", "Inter")
+    font_size = int(body.get("fontSize", 48))
+    font_weight = str(body.get("fontWeight", "700"))
+    letter_spacing = float(body.get("letterSpacing", 0))
+    max_width = int(body.get("maxWidth", 984)) if body.get("maxWidth") else None
+
+    font = renderer.get_font(font_family, font_size, font_weight)
+    temp_img = Image.new('RGB', (1, 1))
+    draw = ImageDraw.Draw(temp_img)
+
+    # Measure full text width
+    full_width = renderer.get_text_width(text, font, letter_spacing, draw, font_size)
+
+    # Also measure word-by-word wrapping
+    words = text.split(' ')
+    lines = []
+    current_words = []
+    for word in words:
+        if not word:
+            continue
+        test = ' '.join(current_words + [word])
+        w = renderer.get_text_width(test, font, letter_spacing, draw, font_size)
+        if max_width and w > max_width and current_words:
+            lines.append(' '.join(current_words))
+            current_words = [word]
+        else:
+            current_words.append(word)
+    if current_words:
+        lines.append(' '.join(current_words))
+
+    # Measure each word
+    word_widths = {}
+    for word in set(words):
+        if word:
+            word_widths[word] = renderer.get_text_width(word, font, letter_spacing, draw, font_size)
+
+    return {
+        "full_width": full_width,
+        "max_width": max_width,
+        "lines_count": len(lines),
+        "lines": lines,
+        "line_widths": [renderer.get_text_width(l, font, letter_spacing, draw, font_size) for l in lines],
+        "word_widths": word_widths,
+        "font": f"{font_weight} {font_size}px {font_family}",
+    }
+
+
 # === v3: Topics API ===
 
 @app.get("/api/topics")
