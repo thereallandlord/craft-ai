@@ -676,35 +676,37 @@ class SlideRenderer:
                     col = hl_color
                 else:
                     col = base_color
-                seg_font = bold_font if seg.get('bold') else font
-                # Font fallback for Unicode/Arabic/special chars
-                seg_font = self.select_font_for_text(seg['text'], seg_font, font_size, font_weight)
-
-                # Baseline alignment: adjust Y when fallback font has different ascent
-                seg_ascent = seg_font.getmetrics()[0]
-                y_offset = primary_ascent - seg_ascent if seg_font != font else 0
-
                 seg_has_emoji = _has_emoji(seg['text'])
 
                 if seg_has_emoji:
-                    # Use pilmoji for entire segment — it handles mixed text+emoji
+                    # Pilmoji handles emoji rendering — skip font fallback, no baseline offset
+                    seg_font = bold_font if seg.get('bold') else font
                     emoji_y_adj = int(font_size * -0.15)
                     with Pilmoji(canvas, source=AppleEmojiSource) as pmj:
-                        pmj.text((curr_x, curr_y + y_offset), seg['text'],
+                        pmj.text((curr_x, curr_y), seg['text'],
                                  font=seg_font, fill=col,
-                                 emoji_scale_factor=1.15,
+                                 emoji_scale_factor=1.0,
                                  emoji_position_offset=(0, emoji_y_adj))
                     seg_w = self.get_text_width(seg['text'], seg_font, letter_spacing, draw, font_size)
                     curr_x += seg_w
-                elif letter_spacing != 0 and not self._contains_arabic(seg['text']):
-                    for cluster in grapheme.graphemes(seg['text']):
-                        draw.text((curr_x, curr_y + y_offset), cluster, font=seg_font, fill=col)
-                        bbox = draw.textbbox((0, 0), cluster, font=seg_font)
-                        curr_x += (bbox[2] - bbox[0]) + letter_spacing
                 else:
-                    draw.text((curr_x, curr_y + y_offset), seg['text'], font=seg_font, fill=col)
-                    bbox = draw.textbbox((0, 0), seg['text'], font=seg_font)
-                    curr_x += bbox[2] - bbox[0]
+                    seg_font = bold_font if seg.get('bold') else font
+                    # Font fallback for Unicode/Arabic/special chars
+                    seg_font = self.select_font_for_text(seg['text'], seg_font, font_size, font_weight)
+                    # Baseline alignment: adjust Y when fallback font has different ascent
+                    seg_ascent = seg_font.getmetrics()[0]
+                    y_offset = primary_ascent - seg_ascent if seg_font != font else 0
+
+                if not seg_has_emoji:
+                    if letter_spacing != 0 and not self._contains_arabic(seg['text']):
+                        for cluster in grapheme.graphemes(seg['text']):
+                            draw.text((curr_x, curr_y + y_offset), cluster, font=seg_font, fill=col)
+                            bbox = draw.textbbox((0, 0), cluster, font=seg_font)
+                            curr_x += (bbox[2] - bbox[0]) + letter_spacing
+                    else:
+                        draw.text((curr_x, curr_y + y_offset), seg['text'], font=seg_font, fill=col)
+                        bbox = draw.textbbox((0, 0), seg['text'], font=seg_font)
+                        curr_x += bbox[2] - bbox[0]
 
             curr_y += int(font_size * line_height)
 
