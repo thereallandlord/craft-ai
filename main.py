@@ -889,6 +889,7 @@ class SlideRenderer:
 
 renderer = SlideRenderer()
 
+app.mount("/fonts", StaticFiles(directory="fonts"), name="fonts")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
