@@ -7275,7 +7275,7 @@
                         </div>`).join('')}
                     </div>
                     <div style="margin-top:12px;">
-                        <label class="form-label" style="font-size:12px;">Затемнение: ${bg.overlay||0}%</label>
+                        <label class="form-label" style="font-size:12px;">Затемнение: <span id="rtOverlayVal">${bg.overlay||0}</span>%</label>
                         <input type="range" min="0" max="100" value="${bg.overlay||0}" oninput="rtSetBgOverlay(${i},this.value)" style="width:100%;">
                     </div>`;
             }
@@ -7285,7 +7285,7 @@
 
         function rtSetBgType(i, type) { rtSlides[i].background.type = type; rtRenderSinglePreview(i); rtRenderBgPanel(); }
         function rtSetBgColor(i, color) { rtSlides[i].background.color = color; rtSlides[i].background.type = 'color'; rtRenderSinglePreview(i); }
-        function rtSetBgOverlay(i, val) { rtSlides[i].background.overlay = parseInt(val); rtRenderSinglePreview(i); }
+        function rtSetBgOverlay(i, val) { rtSlides[i].background.overlay = parseInt(val); rtRenderSinglePreview(i); const lbl = document.getElementById('rtOverlayVal'); if (lbl) lbl.textContent = val; }
         function rtSetBgPhotoFile(i, input) {
             const file = input.files[0]; if (!file) return;
             const reader = new FileReader();
