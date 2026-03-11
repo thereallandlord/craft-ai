@@ -1200,7 +1200,7 @@ async def toggle_system_template(identifier: str, user_id: str = ""):
     """Toggle is_system on a template. Admin only."""
     if not supabase or not user_id:
         raise HTTPException(status_code=400, detail="user_id required")
-    if str(user_id) not in ADMIN_TELEGRAM_IDS:
+    if str(user_id) not in get_admin_ids():
         raise HTTPException(status_code=403, detail="Admin access required")
     try:
         result = supabase.table("user_templates").select("id,is_system").eq("template_id", identifier).execute()
@@ -1223,7 +1223,7 @@ async def delete_template(identifier: str, user_id: str = ""):
         raise HTTPException(status_code=400, detail="user_id required")
     try:
         # Admin can delete any template, regular user only their own
-        if str(user_id) in ADMIN_TELEGRAM_IDS:
+        if str(user_id) in get_admin_ids():
             result = supabase.table("user_templates").delete().eq("template_id", identifier).execute()
         else:
             result = supabase.table("user_templates").delete().eq("template_id", identifier).eq("user_id", user_id).execute()
@@ -1242,7 +1242,7 @@ async def migrate_filesystem_templates(user_id: str = ""):
 
     if not supabase or not user_id:
         raise HTTPException(status_code=400, detail="user_id required")
-    if str(user_id) not in ADMIN_TELEGRAM_IDS:
+    if str(user_id) not in get_admin_ids():
         raise HTTPException(status_code=403, detail="Admin access required")
 
     migrated = []
@@ -2678,8 +2678,7 @@ def require_supabase():
 @app.get("/api/admin/prompts")
 async def list_prompts(user_id: int):
     """List all system prompts. Admin only. Seeds defaults if empty."""
-    if str(user_id) not in ADMIN_TELEGRAM_IDS:
-        raise HTTPException(status_code=403, detail="Admin access required")
+    _check_admin(user_id)
     sb = require_supabase()
     result = sb.table("system_prompts").select("*").order("prompt_key").execute()
     # Seed missing default prompts
@@ -3045,7 +3044,7 @@ async def update_prompt(prompt_key: str, request: Request):
     sb = require_supabase()
     body = await request.json()
     user_id = body.get("user_id")
-    if not user_id or str(user_id) not in ADMIN_TELEGRAM_IDS:
+    if not user_id or str(user_id) not in get_admin_ids():
         raise HTTPException(status_code=403, detail="Admin access required")
 
     allowed_fields = {"title", "description", "content", "variables", "is_active", "model"}
@@ -3072,7 +3071,7 @@ async def create_prompt(request: Request):
     sb = require_supabase()
     body = await request.json()
     user_id = body.get("user_id")
-    if not user_id or str(user_id) not in ADMIN_TELEGRAM_IDS:
+    if not user_id or str(user_id) not in get_admin_ids():
         raise HTTPException(status_code=403, detail="Admin access required")
 
     prompt_key = body.get("prompt_key")
@@ -3097,58 +3096,78 @@ async def create_prompt(request: Request):
 
 # === Admin: AI Logs & Dialogs ===
 
+def _check_admin(user_id):
+    """Check admin access. Uses dynamic env var read."""
+    admins = get_admin_ids()
+    if str(user_id) not in admins:
+        print(f"[admin] Access denied: user_id={user_id}, admins={admins}")
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+
 @app.get("/api/admin/logs")
 async def list_ai_logs(user_id: int, limit: int = 100, offset: int = 0,
                        filter_user_id: int = None, filter_endpoint: str = None):
     """List AI call logs. Admin only."""
-    if str(user_id) not in ADMIN_TELEGRAM_IDS:
-        raise HTTPException(status_code=403, detail="Admin access required")
-    sb = require_supabase()
-    q = sb.table("ai_logs").select("id,user_id,endpoint,prompt_key,model,input_tokens,output_tokens,total_tokens,response_time_ms,status,error_message,topic_id,sub_chat_id,created_at").order("created_at", desc=True)
-    if filter_user_id:
-        q = q.eq("user_id", filter_user_id)
-    if filter_endpoint:
-        q = q.eq("endpoint", filter_endpoint)
-    q = q.range(offset, offset + limit - 1)
-    result = q.execute()
-    return result.data or []
+    _check_admin(user_id)
+    try:
+        sb = require_supabase()
+        q = sb.table("ai_logs").select("*").order("created_at", desc=True)
+        if filter_user_id:
+            q = q.eq("user_id", filter_user_id)
+        if filter_endpoint:
+            q = q.eq("endpoint", filter_endpoint)
+        q = q.range(offset, offset + limit - 1)
+        result = q.execute()
+        return result.data or []
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[admin/logs] Error: {e}")
+        raise HTTPException(status_code=500, detail=f"Ошибка загрузки логов: {str(e)}")
 
 
 @app.get("/api/admin/logs/{log_id}")
 async def get_ai_log_detail(log_id: str, user_id: int):
     """Get full AI log detail. Admin only."""
-    if str(user_id) not in ADMIN_TELEGRAM_IDS:
-        raise HTTPException(status_code=403, detail="Admin access required")
-    sb = require_supabase()
-    result = sb.table("ai_logs").select("*").eq("id", log_id).single().execute()
-    if not result.data:
-        raise HTTPException(status_code=404, detail="Log not found")
-    return result.data
+    _check_admin(user_id)
+    try:
+        sb = require_supabase()
+        result = sb.table("ai_logs").select("*").eq("id", log_id).single().execute()
+        if not result.data:
+            raise HTTPException(status_code=404, detail="Log not found")
+        return result.data
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[admin/logs/{log_id}] Error: {e}")
+        raise HTTPException(status_code=500, detail=f"Ошибка: {str(e)}")
 
 
 @app.get("/api/admin/users")
 async def list_admin_users(user_id: int):
     """List all users with stats. Admin only."""
-    if str(user_id) not in ADMIN_TELEGRAM_IDS:
-        raise HTTPException(status_code=403, detail="Admin access required")
-    sb = require_supabase()
-    users = sb.table("users").select("user_id,instagram_usernames,profile_summary,memory_count,created_at").order("created_at", desc=True).execute()
-    # Get topic counts per user (exact count, no row limit issues)
-    users_data = users.data or []
-    for u in users_data:
-        cnt = sb.table("projects").select("id", count="exact").eq("user_id", u["user_id"]).execute()
-        u["topic_count"] = cnt.count if cnt.count else 0
-    return users_data
+    _check_admin(user_id)
+    try:
+        sb = require_supabase()
+        users = sb.table("users").select("user_id,instagram_usernames,profile_summary,memory_count,created_at").order("created_at", desc=True).execute()
+        users_data = users.data or []
+        for u in users_data:
+            cnt = sb.table("projects").select("id", count="exact").eq("user_id", u["user_id"]).execute()
+            u["topic_count"] = cnt.count if cnt.count else 0
+        return users_data
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[admin/users] Error: {e}")
+        raise HTTPException(status_code=500, detail=f"Ошибка: {str(e)}")
 
 
 @app.get("/api/admin/users/{target_user_id}/topics")
 async def list_user_topics(target_user_id: int, user_id: int):
     """List all topics for a specific user. Admin only."""
-    if str(user_id) not in ADMIN_TELEGRAM_IDS:
-        raise HTTPException(status_code=403, detail="Admin access required")
+    _check_admin(user_id)
     sb = require_supabase()
     result = sb.table("projects").select("id,title,idea_text,status,created_at,updated_at").eq("user_id", target_user_id).order("updated_at", desc=True).execute()
-    # Get message counts
     for topic in (result.data or []):
         msgs = sb.table("project_messages").select("id", count="exact").eq("project_id", topic["id"]).execute()
         topic["message_count"] = msgs.count if msgs.count else 0
@@ -3158,10 +3177,9 @@ async def list_user_topics(target_user_id: int, user_id: int):
 @app.get("/api/admin/topics/{topic_id}/messages")
 async def list_topic_messages(topic_id: str, user_id: int):
     """Get all messages for a topic (all sub-chats). Admin only."""
-    if str(user_id) not in ADMIN_TELEGRAM_IDS:
-        raise HTTPException(status_code=403, detail="Admin access required")
+    _check_admin(user_id)
     sb = require_supabase()
-    result = sb.table("project_messages").select("id,role,content,message_type,message_data,sub_chat_id,created_at").eq("project_id", topic_id).order("created_at").execute()
+    result = sb.table("project_messages").select("*").eq("project_id", topic_id).order("created_at").execute()
     return result.data or []
 
 
@@ -3312,7 +3330,8 @@ async def update_user_settings(request: Request):
 # === Telegram Auth ===
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_BOT_USERNAME = os.getenv("TELEGRAM_BOT_USERNAME", "")
-ADMIN_TELEGRAM_IDS = [x.strip() for x in os.getenv("ADMIN_TELEGRAM_IDS", "").split(",") if x.strip()]
+def get_admin_ids():
+    return [x.strip() for x in os.getenv("ADMIN_TELEGRAM_IDS", "").split(",") if x.strip()]
 CLUB_CHAT_ID = "-1002841247853"
 
 
@@ -3396,7 +3415,7 @@ async def auth_telegram(data: dict):
 
     user_id = int(data.get("id", 0))
     is_club_member = check_club_membership(user_id)
-    is_admin = str(user_id) in ADMIN_TELEGRAM_IDS
+    is_admin = str(user_id) in get_admin_ids()
 
     # Upsert user in Supabase
     sb_user = upsert_user_to_supabase(
@@ -3462,7 +3481,7 @@ async def auth_miniapp(request: Request):
         raise HTTPException(status_code=401, detail=str(e))
     user_id = data["user"].get("id", 0)
     is_club_member = check_club_membership(user_id)
-    is_admin = str(user_id) in ADMIN_TELEGRAM_IDS
+    is_admin = str(user_id) in get_admin_ids()
 
     # Upsert user in Supabase
     sb_user = upsert_user_to_supabase(

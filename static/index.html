@@ -6060,7 +6060,11 @@
             c.innerHTML = '<div style="padding:20px;color:var(--text-muted)">Загрузка...</div>';
             try {
                 const r = await fetch(`${API_URL}/api/admin/users?user_id=${currentUser.id}`);
-                if (!r.ok) { c.innerHTML = '<div style="padding:20px;color:#ef4444">Нет доступа</div>'; return; }
+                if (!r.ok) {
+                    const err = await r.text().catch(() => '');
+                    c.innerHTML = `<div style="padding:20px;color:#ef4444">${r.status === 403 ? 'Нет доступа' : 'Ошибка: ' + (err || r.status)}</div>`;
+                    return;
+                }
                 const users = await r.json();
                 if (!users.length) { c.innerHTML = '<div style="padding:20px;color:var(--text-muted)">Пользователей нет</div>'; return; }
                 c.innerHTML = users.map(u => `
