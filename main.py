@@ -88,18 +88,46 @@ import hmac
 import time
 import numpy as np
 from supabase import create_client, Client as SupabaseClient
+import psycopg2
+import psycopg2.extras
 
 app = FastAPI(title="Carousel Studio", version="7.0")
 
 # === Supabase ===
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
+DATABASE_URL = os.getenv("DATABASE_URL", "")
 supabase: SupabaseClient | None = None
 if SUPABASE_URL and SUPABASE_SERVICE_KEY:
     supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
     print("✅ Supabase connected")
 else:
     print("⚠️ Supabase not configured (SUPABASE_URL / SUPABASE_SERVICE_KEY missing)")
+if DATABASE_URL:
+    print("✅ DATABASE_URL configured (direct PG)")
+else:
+    print("⚠️ DATABASE_URL not set — ai_logs will not work")
+
+
+def _pg_query(query, params=None, fetchone=False):
+    """Execute SQL directly via psycopg2, bypassing PostgREST."""
+    conn = psycopg2.connect(DATABASE_URL)
+    try:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(query, params)
+            if cur.description:
+                if fetchone:
+                    row = cur.fetchone()
+                    conn.commit()
+                    return dict(row) if row else None
+                else:
+                    rows = cur.fetchall()
+                    conn.commit()
+                    return [dict(r) for r in rows]
+            conn.commit()
+            return None
+    finally:
+        conn.close()
 
 app.add_middleware(
     CORSMiddleware,
@@ -1878,28 +1906,35 @@ def _log_ai_call(user_id, endpoint, prompt_key, model, system_prompt,
                  user_context, messages, user_message, ai_response,
                  usage, status="success", error_message=None,
                  topic_id=None, sub_chat_id=None):
-    """Log AI call to ai_logs table. Non-blocking, never raises."""
+    """Log AI call to ai_logs table via direct PG. Non-blocking, never raises."""
+    if not DATABASE_URL:
+        return
     try:
-        sb = require_supabase()
-        sb.rpc("insert_ai_log", {
-            "p_user_id": int(user_id) if user_id else None,
-            "p_endpoint": endpoint,
-            "p_prompt_key": prompt_key,
-            "p_model": model,
-            "p_system_prompt": (system_prompt or "")[:5000],
-            "p_user_context": (user_context or "")[:2000] or None,
-            "p_messages": json.dumps(messages[-5:]) if messages else None,
-            "p_user_message": (user_message or "")[:2000] or None,
-            "p_ai_response": (ai_response or "")[:5000],
-            "p_input_tokens": usage.get("input_tokens", 0) if usage else 0,
-            "p_output_tokens": usage.get("output_tokens", 0) if usage else 0,
-            "p_total_tokens": usage.get("total_tokens", 0) if usage else 0,
-            "p_response_time_ms": usage.get("response_time_ms", 0) if usage else 0,
-            "p_status": status,
-            "p_error_message": error_message,
-            "p_topic_id": str(topic_id) if topic_id else None,
-            "p_sub_chat_id": str(sub_chat_id) if sub_chat_id else None,
-        }).execute()
+        _pg_query("""
+            INSERT INTO ai_logs (user_id, endpoint, prompt_key, model, system_prompt,
+                user_context, messages, user_message, ai_response,
+                input_tokens, output_tokens, total_tokens, response_time_ms,
+                status, error_message, topic_id, sub_chat_id)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+        """, [
+            int(user_id) if user_id else None,
+            endpoint,
+            prompt_key,
+            model,
+            (system_prompt or "")[:5000],
+            (user_context or "")[:2000] or None,
+            json.dumps(messages[-5:]) if messages else None,
+            (user_message or "")[:2000] or None,
+            (ai_response or "")[:5000],
+            usage.get("input_tokens", 0) if usage else 0,
+            usage.get("output_tokens", 0) if usage else 0,
+            usage.get("total_tokens", 0) if usage else 0,
+            usage.get("response_time_ms", 0) if usage else 0,
+            status,
+            error_message,
+            str(topic_id) if topic_id else None,
+            str(sub_chat_id) if sub_chat_id else None,
+        ])
     except Exception as e:
         print(f"[ai_logs] Failed to log: {e}")
 
@@ -3124,18 +3159,21 @@ async def list_ai_logs(request: Request, limit: int = 100, offset: int = 0,
                        filter_user_id: int = None, filter_endpoint: str = None):
     """List AI call logs. Admin only."""
     _check_admin_token(request)
+    if not DATABASE_URL:
+        raise HTTPException(status_code=500, detail="DATABASE_URL not configured")
     try:
-        sb = require_supabase()
-        params = {"p_limit": limit, "p_offset": offset}
+        query = "SELECT * FROM ai_logs WHERE 1=1"
+        params = []
         if filter_user_id:
-            params["p_user_id"] = filter_user_id
+            query += " AND user_id = %s"
+            params.append(filter_user_id)
         if filter_endpoint:
-            params["p_endpoint"] = filter_endpoint
-        result = sb.rpc("get_ai_logs", params).execute()
-        data = result.data
-        if isinstance(data, str):
-            data = json.loads(data)
-        return data if isinstance(data, list) else []
+            query += " AND endpoint = %s"
+            params.append(filter_endpoint)
+        query += " ORDER BY created_at DESC LIMIT %s OFFSET %s"
+        params.extend([limit, offset])
+        rows = _pg_query(query, params)
+        return rows or []
     except HTTPException:
         raise
     except Exception as e:
@@ -3147,17 +3185,13 @@ async def list_ai_logs(request: Request, limit: int = 100, offset: int = 0,
 async def get_ai_log_detail(log_id: str, request: Request):
     """Get full AI log detail. Admin only."""
     _check_admin_token(request)
+    if not DATABASE_URL:
+        raise HTTPException(status_code=500, detail="DATABASE_URL not configured")
     try:
-        sb = require_supabase()
-        result = sb.rpc("get_ai_log_detail", {"p_id": str(log_id)}).execute()
-        data = result.data
-        if isinstance(data, str):
-            data = json.loads(data)
-        if isinstance(data, list):
-            data = data[0] if data else None
-        if not data:
+        row = _pg_query("SELECT * FROM ai_logs WHERE id = %s", [log_id], fetchone=True)
+        if not row:
             raise HTTPException(status_code=404, detail="Log not found")
-        return data
+        return row
     except HTTPException:
         raise
     except Exception as e:

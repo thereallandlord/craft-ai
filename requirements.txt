@@ -12,3 +12,4 @@ python-bidi
 grapheme
 pilmoji
 pillow-heif
+psycopg2-binary
