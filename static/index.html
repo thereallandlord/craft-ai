@@ -7104,7 +7104,7 @@
             if (titleEl) {
                 const cleanTitle = rtStripColorMarkup(titleEl.content);
                 h += `<label class="form-label" style="font-size:12px;">Заголовок</label>
-                    <input type="text" class="form-input" id="rtEditTitle" value="${escapeHtml(cleanTitle)}" oninput="rtUpdateTextClean(${i},'TITLE',this.value)" placeholder="Заголовок" style="caret-color:var(--accent);">
+                    <textarea class="form-textarea" id="rtEditTitle" style="min-height:48px;caret-color:var(--accent);" oninput="rtUpdateTextClean(${i},'TITLE',this.value)" placeholder="Заголовок">${escapeHtml(cleanTitle)}</textarea>
                     <div style="display:flex;gap:6px;align-items:center;margin:6px 0;">
                         <button class="rt-color-btn" onclick="rtOpenColorPicker(${i},'title')">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4" fill="${lastColor}" stroke="none"/></svg>
