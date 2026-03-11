@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Craft AI — Админ</title>
+    <link rel="icon" href="/favicon.ico" sizes="any">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f9f9f9;
+            --bg-tertiary: #f4f4f4;
+            --bg-hover: #ececec;
+            --border: #e5e5e5;
+            --text-primary: #0d0d0d;
+            --text-secondary: #6e6e6e;
+            --text-muted: #9a9a9a;
+            --accent: #0d0d0d;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        /* Login */
+        .login-container {
+            display: flex; align-items: center; justify-content: center;
+            min-height: 100vh; padding: 20px;
+        }
+        .login-box {
+            width: 100%; max-width: 360px; text-align: center;
+        }
+        .login-box h1 { font-size: 24px; font-weight: 700; margin-bottom: 8px; }
+        .login-box p { font-size: 14px; color: var(--text-muted); margin-bottom: 24px; }
+        .login-input {
+            width: 100%; padding: 12px 16px; border: 1px solid var(--border);
+            border-radius: 12px; font-size: 15px; outline: none; background: var(--bg-secondary);
+        }
+        .login-input:focus { border-color: var(--accent); }
+        .login-btn {
+            width: 100%; padding: 12px; margin-top: 12px; background: var(--accent);
+            color: #fff; border: none; border-radius: 12px; font-size: 15px;
+            font-weight: 600; cursor: pointer;
+        }
+        .login-btn:hover { opacity: 0.9; }
+        .login-error { color: #ef4444; font-size: 13px; margin-top: 8px; display: none; }
+
+        /* Layout */
+        .app { display: none; flex-direction: column; min-height: 100vh; }
+        .header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 12px 20px; border-bottom: 1px solid var(--border);
+        }
+        .header h1 { font-size: 18px; font-weight: 700; }
+        .header-logout {
+            font-size: 13px; color: var(--text-muted); cursor: pointer;
+            background: none; border: none;
+        }
+        .header-logout:hover { color: var(--text-primary); }
+
+        /* Tabs */
+        .tabs {
+            display: flex; border-bottom: 1px solid var(--border); padding: 0 20px;
+        }
+        .tab {
+            padding: 12px 16px; font-size: 14px; font-weight: 500;
+            color: var(--text-muted); cursor: pointer; border: none;
+            background: none; border-bottom: 2px solid transparent;
+        }
+        .tab:hover { color: var(--text-primary); }
+        .tab.active { color: var(--text-primary); border-bottom-color: var(--accent); }
+
+        /* Content */
+        .content { flex: 1; overflow-y: auto; }
+        .panel { display: none; padding: 20px; max-width: 960px; margin: 0 auto; width: 100%; }
+        .panel.active { display: block; }
+
+        /* Cards */
+        .card {
+            border: 1px solid var(--border); border-radius: 12px;
+            padding: 16px; margin-bottom: 16px;
+        }
+        .card-clickable { cursor: pointer; }
+        .card-clickable:hover { background: var(--bg-secondary); }
+        .card-title { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+        .card-subtitle { font-size: 12px; color: var(--text-muted); margin-bottom: 12px; }
+
+        /* Form */
+        .textarea {
+            width: 100%; min-height: 200px; padding: 12px;
+            background: var(--bg-secondary); border: 1px solid var(--border);
+            border-radius: 8px; color: var(--text-primary); font-size: 13px;
+            font-family: monospace; resize: vertical; outline: none;
+        }
+        .textarea:focus { border-color: var(--accent); }
+        .select {
+            padding: 6px 10px; font-size: 13px; border: 1px solid var(--border);
+            border-radius: 8px; background: var(--bg-secondary); outline: none; flex: 1;
+        }
+        .btn {
+            padding: 8px 16px; background: var(--accent); color: #fff;
+            border: none; border-radius: 8px; font-size: 13px; cursor: pointer; margin-top: 8px;
+        }
+        .btn:hover { opacity: 0.9; }
+        .btn-back {
+            background: none; border: none; color: var(--accent);
+            font-size: 13px; cursor: pointer; padding: 10px 0; display: block;
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed; top: 20px; right: 20px; padding: 10px 16px;
+            border-radius: 8px; font-size: 13px; color: #fff; z-index: 999;
+            opacity: 0; transition: opacity .3s;
+        }
+        .toast.show { opacity: 1; }
+        .toast.success { background: #22c55e; }
+        .toast.error { background: #ef4444; }
+
+        /* Log table */
+        .log-header {
+            display: flex; gap: 8px; padding: 8px 12px; font-size: 11px;
+            font-weight: 600; color: var(--text-muted); border-bottom: 1px solid var(--border);
+        }
+        .log-row {
+            display: flex; gap: 8px; padding: 8px 12px; font-size: 12px;
+            align-items: center; cursor: pointer; border-radius: 8px; margin: 2px 0;
+        }
+        .log-row:hover { background: var(--bg-secondary); }
+
+        /* Chat */
+        .msg { display: flex; margin: 4px 0; }
+        .msg-bubble {
+            max-width: 85%; padding: 8px 12px; border-radius: 12px;
+            font-size: 13px; line-height: 1.4;
+        }
+        .msg-user { justify-content: flex-end; }
+        .msg-user .msg-bubble { background: var(--accent); color: #000; }
+        .msg-ai .msg-bubble { background: var(--bg-secondary); color: var(--text-primary); }
+        .msg-time { font-size: 10px; opacity: 0.6; margin-top: 4px; text-align: right; }
+
+        .loading { padding: 20px; color: var(--text-muted); text-align: center; }
+        .error { padding: 20px; color: #ef4444; text-align: center; }
+    </style>
+</head>
+<body>
+    <!-- Login -->
+    <div class="login-container" id="loginView">
+        <div class="login-box">
+            <h1>Craft AI</h1>
+            <p>Панель администратора</p>
+            <input type="password" class="login-input" id="passwordInput" placeholder="Пароль" onkeydown="if(event.key==='Enter')doLogin()">
+            <button class="login-btn" onclick="doLogin()">Войти</button>
+            <div class="login-error" id="loginError">Неверный пароль</div>
+        </div>
+    </div>
+
+    <!-- App -->
+    <div class="app" id="appView">
+        <div class="header">
+            <h1>Craft AI — Админ</h1>
+            <button class="header-logout" onclick="doLogout()">Выйти</button>
+        </div>
+        <div class="tabs">
+            <button class="tab active" data-tab="prompts" onclick="switchTab('prompts')">Промпты</button>
+            <button class="tab" data-tab="dialogs" onclick="switchTab('dialogs')">Диалоги</button>
+            <button class="tab" data-tab="logs" onclick="switchTab('logs')">AI Логи</button>
+        </div>
+        <div class="content">
+            <div class="panel active" id="panel-prompts"></div>
+            <div class="panel" id="panel-dialogs"></div>
+            <div class="panel" id="panel-logs"></div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        const API_URL = window.location.origin;
+        let adminToken = sessionStorage.getItem('admin_token') || '';
+
+        function escapeHtml(s) {
+            if (!s) return '';
+            return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+
+        function showToast(msg, type = 'success') {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.className = 'toast ' + type + ' show';
+            setTimeout(() => t.className = 'toast', 2500);
+        }
+
+        function api(url, opts = {}) {
+            opts.headers = opts.headers || {};
+            opts.headers['X-Admin-Token'] = adminToken;
+            if (opts.body && typeof opts.body === 'object' && !(opts.body instanceof FormData)) {
+                opts.headers['Content-Type'] = 'application/json';
+                opts.body = JSON.stringify(opts.body);
+            }
+            return fetch(API_URL + url, opts);
+        }
+
+        // === Auth ===
+        async function doLogin() {
+            const pw = document.getElementById('passwordInput').value;
+            if (!pw) return;
+            try {
+                const r = await fetch(API_URL + '/api/admin/login', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({password: pw})
+                });
+                if (r.ok) {
+                    adminToken = pw;
+                    sessionStorage.setItem('admin_token', pw);
+                    showApp();
+                } else {
+                    document.getElementById('loginError').style.display = 'block';
+                }
+            } catch(e) {
+                document.getElementById('loginError').style.display = 'block';
+            }
+        }
+
+        function doLogout() {
+            adminToken = '';
+            sessionStorage.removeItem('admin_token');
+            document.getElementById('appView').style.display = 'none';
+            document.getElementById('loginView').style.display = 'flex';
+        }
+
+        function showApp() {
+            document.getElementById('loginView').style.display = 'none';
+            document.getElementById('appView').style.display = 'flex';
+            loadPrompts();
+        }
+
+        // === Tabs ===
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tabId));
+            document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + tabId));
+            if (tabId === 'prompts') loadPrompts();
+            if (tabId === 'dialogs') loadDialogs();
+            if (tabId === 'logs') loadLogs();
+        }
+
+        // === Промпты ===
+        async function loadPrompts() {
+            const c = document.getElementById('panel-prompts');
+            c.innerHTML = '<div class="loading">Загрузка...</div>';
+            try {
+                const r = await api('/api/admin/prompts');
+                if (!r.ok) { c.innerHTML = '<div class="error">Ошибка загрузки</div>'; return; }
+                const prompts = await r.json();
+                if (!prompts.length) { c.innerHTML = '<div class="loading">Нет промптов</div>'; return; }
+                const models = [
+                    {value: 'openai/gpt-4o', label: 'GPT-4o'},
+                    {value: 'openai/gpt-4o-mini', label: 'GPT-4o Mini'},
+                    {value: 'google/gemini-2.5-pro', label: 'Gemini 2.5 Pro'},
+                    {value: 'google/gemini-2.5-flash', label: 'Gemini 2.5 Flash'},
+                    {value: 'anthropic/claude-sonnet-4.5', label: 'Claude Sonnet 4.5'},
+                ];
+                c.innerHTML = prompts.map(p => {
+                    const cur = p.model || 'openai/gpt-4o';
+                    const opts = models.map(m => `<option value="${m.value}" ${m.value===cur?'selected':''}>${m.label}</option>`).join('');
+                    return `<div class="card" data-key="${p.prompt_key}">
+                        <div class="card-title">${escapeHtml(p.title)}</div>
+                        <div class="card-subtitle">${p.prompt_key}${p.description ? ' — ' + escapeHtml(p.description) : ''}</div>
+                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                            <label style="font-size:12px;color:var(--text-muted);font-weight:500;white-space:nowrap;">Модель:</label>
+                            <select class="select" id="model-${p.prompt_key}">${opts}</select>
+                        </div>
+                        <textarea class="textarea" id="prompt-${p.prompt_key}">${escapeHtml(p.content)}</textarea>
+                        <button class="btn" onclick="savePrompt('${p.prompt_key}')">Сохранить</button>
+                    </div>`;
+                }).join('');
+            } catch(e) { c.innerHTML = '<div class="error">Ошибка</div>'; }
+        }
+
+        async function savePrompt(key) {
+            const content = document.getElementById('prompt-' + key)?.value;
+            const model = document.getElementById('model-' + key)?.value;
+            if (!content) return;
+            try {
+                const r = await api('/api/admin/prompts/' + key, {method:'PUT', body:{content, model}});
+                showToast(r.ok ? 'Сохранено' : 'Ошибка', r.ok ? 'success' : 'error');
+            } catch(e) { showToast('Ошибка', 'error'); }
+        }
+
+        // === Диалоги ===
+        async function loadDialogs() {
+            const c = document.getElementById('panel-dialogs');
+            c.innerHTML = '<div class="loading">Загрузка...</div>';
+            try {
+                const r = await api('/api/admin/users');
+                if (!r.ok) { c.innerHTML = '<div class="error">Ошибка: ' + (await r.text().catch(()=>'')) + '</div>'; return; }
+                const users = await r.json();
+                if (!users.length) { c.innerHTML = '<div class="loading">Пользователей нет</div>'; return; }
+                c.innerHTML = users.map(u => `
+                    <div class="card card-clickable" onclick="loadUserTopics(${u.user_id})">
+                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                            <div>
+                                <div style="font-weight:600;font-size:14px;">ID: ${u.user_id}</div>
+                                <div style="font-size:12px;color:var(--text-muted)">${u.instagram_usernames ? '@' + (Array.isArray(u.instagram_usernames) ? u.instagram_usernames[0] : u.instagram_usernames) : 'Нет Instagram'}</div>
+                            </div>
+                            <div style="text-align:right;">
+                                <div style="font-size:13px;font-weight:500;">${u.topic_count || 0} топиков</div>
+                                <div style="font-size:11px;color:var(--text-muted)">${u.memory_count || 0} фактов</div>
+                            </div>
+                        </div>
+                        ${u.profile_summary ? `<div style="font-size:11px;color:var(--text-muted);margin-top:6px;line-height:1.4;">${escapeHtml(u.profile_summary).substring(0,150)}...</div>` : ''}
+                    </div>
+                `).join('');
+            } catch(e) { c.innerHTML = '<div class="error">Ошибка загрузки</div>'; }
+        }
+
+        async function loadUserTopics(userId) {
+            const c = document.getElementById('panel-dialogs');
+            c.innerHTML = '<div class="loading">Загрузка...</div>';
+            try {
+                const r = await api('/api/admin/users/' + userId + '/topics');
+                if (!r.ok) return;
+                const topics = await r.json();
+                let h = `<button class="btn-back" onclick="loadDialogs()">← Назад к пользователям</button>
+                    <div style="padding:4px 0 12px;font-size:12px;color:var(--text-muted);">Пользователь ${userId} — ${topics.length} топиков</div>`;
+                h += topics.map(t => `
+                    <div class="card card-clickable" onclick="loadTopicChat('${t.id}', ${userId})">
+                        <div style="display:flex;justify-content:space-between;">
+                            <div style="font-weight:500;font-size:13px;">${escapeHtml((t.title || t.idea_text || 'Без названия')).substring(0,60)}</div>
+                            <div style="font-size:11px;color:var(--text-muted);">${t.message_count} сообщ.</div>
+                        </div>
+                        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">${new Date(t.created_at).toLocaleString('ru-RU')}</div>
+                    </div>
+                `).join('');
+                c.innerHTML = h;
+            } catch(e) { c.innerHTML = '<div class="error">Ошибка</div>'; }
+        }
+
+        async function loadTopicChat(topicId, userId) {
+            const c = document.getElementById('panel-dialogs');
+            c.innerHTML = '<div class="loading">Загрузка...</div>';
+            try {
+                const r = await api('/api/admin/topics/' + topicId + '/messages');
+                if (!r.ok) return;
+                const msgs = await r.json();
+                let h = `<button class="btn-back" onclick="loadUserTopics(${userId})">← Назад к топикам</button>
+                    <div style="padding:4px 0 12px;font-size:12px;color:var(--text-muted);">${msgs.length} сообщений</div>`;
+                msgs.forEach(m => {
+                    const isUser = m.role === 'user';
+                    const cls = isUser ? 'msg-user' : 'msg-ai';
+                    const content = escapeHtml(m.content || '').substring(0, 1000).replace(/\n/g, '<br>');
+                    const time = new Date(m.created_at).toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'});
+                    h += `<div class="msg ${cls}"><div class="msg-bubble">${content}<div class="msg-time">${time} · ${m.message_type || 'text'}</div></div></div>`;
+                });
+                c.innerHTML = h;
+            } catch(e) { c.innerHTML = '<div class="error">Ошибка</div>'; }
+        }
+
+        // === AI Логи ===
+        async function loadLogs() {
+            const c = document.getElementById('panel-logs');
+            c.innerHTML = '<div class="loading">Загрузка...</div>';
+            try {
+                const r = await api('/api/admin/logs?limit=200');
+                if (!r.ok) {
+                    const err = await r.text().catch(()=>'');
+                    c.innerHTML = '<div class="error">Ошибка: ' + (err || r.status) + '</div>';
+                    return;
+                }
+                const logs = await r.json();
+                if (!logs.length) { c.innerHTML = '<div class="loading">Логов пока нет</div>'; return; }
+                let h = '<div class="log-header"><div style="width:70px;">Время</div><div style="width:60px;">User</div><div style="flex:1;">Endpoint</div><div style="width:80px;">Модель</div><div style="width:50px;">Токены</div><div style="width:50px;">Время</div><div style="width:50px;">Статус</div></div>';
+                logs.forEach(l => {
+                    const t = new Date(l.created_at);
+                    const time = t.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
+                    const date = t.toLocaleDateString('ru-RU',{day:'2-digit',month:'2-digit'});
+                    const model = (l.model||'').replace('openai/','').replace('google/','').replace('anthropic/','').substring(0,12);
+                    const color = l.status === 'success' ? '#22c55e' : '#ef4444';
+                    h += `<div class="log-row" onclick="loadLogDetail('${l.id}')">
+                        <div style="width:70px;color:var(--text-muted);">${date} ${time}</div>
+                        <div style="width:60px;">${l.user_id||'—'}</div>
+                        <div style="flex:1;font-weight:500;">${l.endpoint||''}<span style="color:var(--text-muted);font-weight:400;margin-left:4px;">${l.prompt_key||''}</span></div>
+                        <div style="width:80px;color:var(--text-muted);">${model}</div>
+                        <div style="width:50px;">${l.total_tokens||0}</div>
+                        <div style="width:50px;color:var(--text-muted);">${l.response_time_ms||0}ms</div>
+                        <div style="width:50px;"><span style="color:${color};">●</span></div>
+                    </div>`;
+                });
+                c.innerHTML = h;
+            } catch(e) { c.innerHTML = '<div class="error">Ошибка загрузки</div>'; }
+        }
+
+        async function loadLogDetail(logId) {
+            const c = document.getElementById('panel-logs');
+            c.innerHTML = '<div class="loading">Загрузка...</div>';
+            try {
+                const r = await api('/api/admin/logs/' + logId);
+                if (!r.ok) return;
+                const l = await r.json();
+                const t = new Date(l.created_at).toLocaleString('ru-RU');
+                let h = `<button class="btn-back" onclick="loadLogs()">← Назад к логам</button>
+                    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px;">
+                        <div><span style="font-size:11px;color:var(--text-muted);">Время:</span> <span style="font-size:13px;">${t}</span></div>
+                        <div><span style="font-size:11px;color:var(--text-muted);">User:</span> <span style="font-size:13px;">${l.user_id||'—'}</span></div>
+                        <div><span style="font-size:11px;color:var(--text-muted);">Endpoint:</span> <span style="font-size:13px;font-weight:600;">${l.endpoint}</span></div>
+                        <div><span style="font-size:11px;color:var(--text-muted);">Модель:</span> <span style="font-size:13px;">${l.model||'—'}</span></div>
+                        <div><span style="font-size:11px;color:var(--text-muted);">Токены:</span> <span style="font-size:13px;">${l.input_tokens||0} → ${l.output_tokens||0} (${l.total_tokens||0})</span></div>
+                        <div><span style="font-size:11px;color:var(--text-muted);">Время:</span> <span style="font-size:13px;">${l.response_time_ms||0}ms</span></div>
+                    </div>`;
+                [{t:'Системный промпт',c:l.system_prompt},{t:'User Context',c:l.user_context},{t:'История сообщений',c:l.messages?JSON.stringify(l.messages,null,2):null},{t:'Запрос пользователя',c:l.user_message},{t:'Ответ AI',c:l.ai_response},{t:'Ошибка',c:l.error_message}].forEach(s => {
+                    if (!s.c) return;
+                    h += `<details style="margin-bottom:8px;"><summary style="cursor:pointer;font-size:13px;font-weight:600;padding:8px 0;">${s.t}</summary><pre style="font-size:12px;line-height:1.5;white-space:pre-wrap;word-break:break-word;padding:12px;background:var(--bg-secondary);border-radius:8px;max-height:400px;overflow-y:auto;">${escapeHtml(s.c)}</pre></details>`;
+                });
+                c.innerHTML = h;
+            } catch(e) { c.innerHTML = '<div class="error">Ошибка</div>'; }
+        }
+
+        // Init
+        if (adminToken) {
+            api('/api/admin/prompts').then(r => {
+                if (r.ok) showApp();
+                else doLogout();
+            }).catch(() => doLogout());
+        }
+    </script>
+</body>
+</html>

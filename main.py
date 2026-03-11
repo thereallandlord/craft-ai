@@ -1010,6 +1010,25 @@ async def index():
     })
 
 
+@app.get("/admin")
+async def admin_page():
+    return FileResponse("static/admin.html", headers={
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0"
+    })
+
+
+@app.post("/api/admin/login")
+async def admin_login(request: Request):
+    body = await request.json()
+    pw = body.get("password", "")
+    expected = os.getenv("ADMIN_PASSWORD", "")
+    if not expected or pw != expected:
+        raise HTTPException(status_code=403, detail="Wrong password")
+    return {"ok": True}
+
+
 @app.get("/health")
 async def health():
     return {
@@ -2676,9 +2695,9 @@ def require_supabase():
 # === v3: Admin Prompts CRUD ===
 
 @app.get("/api/admin/prompts")
-async def list_prompts(user_id: int):
+async def list_prompts(request: Request):
     """List all system prompts. Admin only. Seeds defaults if empty."""
-    _check_admin(user_id)
+    _check_admin_token(request)
     sb = require_supabase()
     result = sb.table("system_prompts").select("*").order("prompt_key").execute()
     # Seed missing default prompts
@@ -3040,19 +3059,17 @@ TITLE - это первая строка/фраза если:
 @app.put("/api/admin/prompts/{prompt_key}")
 async def update_prompt(prompt_key: str, request: Request):
     """Update a system prompt. Admin only."""
+    _check_admin_token(request)
     global _prompt_cache, _prompt_cache_time
     sb = require_supabase()
     body = await request.json()
-    user_id = body.get("user_id")
-    if not user_id or str(user_id) not in get_admin_ids():
-        raise HTTPException(status_code=403, detail="Admin access required")
 
     allowed_fields = {"title", "description", "content", "variables", "is_active", "model"}
     update_data = {k: v for k, v in body.items() if k in allowed_fields}
     if not update_data:
         raise HTTPException(status_code=400, detail="No valid fields to update")
 
-    update_data["updated_by"] = int(user_id)
+    update_data["updated_by"] = 0
     result = sb.table("system_prompts").update(update_data).eq("prompt_key", prompt_key).execute()
     if not result.data:
         raise HTTPException(status_code=404, detail="Prompt not found")
@@ -3067,12 +3084,10 @@ async def update_prompt(prompt_key: str, request: Request):
 @app.post("/api/admin/prompts")
 async def create_prompt(request: Request):
     """Create a new system prompt. Admin only."""
+    _check_admin_token(request)
     global _prompt_cache, _prompt_cache_time
     sb = require_supabase()
     body = await request.json()
-    user_id = body.get("user_id")
-    if not user_id or str(user_id) not in get_admin_ids():
-        raise HTTPException(status_code=403, detail="Admin access required")
 
     prompt_key = body.get("prompt_key")
     title = body.get("title")
@@ -3096,19 +3111,19 @@ async def create_prompt(request: Request):
 
 # === Admin: AI Logs & Dialogs ===
 
-def _check_admin(user_id):
-    """Check admin access. Uses dynamic env var read."""
-    admins = get_admin_ids()
-    if str(user_id) not in admins:
-        print(f"[admin] Access denied: user_id={user_id}, admins={admins}")
+def _check_admin_token(request: Request):
+    """Check admin access via X-Admin-Token header."""
+    token = request.headers.get("X-Admin-Token", "")
+    expected = os.getenv("ADMIN_PASSWORD", "")
+    if not expected or token != expected:
         raise HTTPException(status_code=403, detail="Admin access required")
 
 
 @app.get("/api/admin/logs")
-async def list_ai_logs(user_id: int, limit: int = 100, offset: int = 0,
+async def list_ai_logs(request: Request, limit: int = 100, offset: int = 0,
                        filter_user_id: int = None, filter_endpoint: str = None):
     """List AI call logs. Admin only."""
-    _check_admin(user_id)
+    _check_admin_token(request)
     try:
         sb = require_supabase()
         q = sb.table("ai_logs").select("*").order("created_at", desc=True)
@@ -3127,9 +3142,9 @@ async def list_ai_logs(user_id: int, limit: int = 100, offset: int = 0,
 
 
 @app.get("/api/admin/logs/{log_id}")
-async def get_ai_log_detail(log_id: str, user_id: int):
+async def get_ai_log_detail(log_id: str, request: Request):
     """Get full AI log detail. Admin only."""
-    _check_admin(user_id)
+    _check_admin_token(request)
     try:
         sb = require_supabase()
         result = sb.table("ai_logs").select("*").eq("id", log_id).single().execute()
@@ -3144,9 +3159,9 @@ async def get_ai_log_detail(log_id: str, user_id: int):
 
 
 @app.get("/api/admin/users")
-async def list_admin_users(user_id: int):
+async def list_admin_users(request: Request):
     """List all users with stats. Admin only."""
-    _check_admin(user_id)
+    _check_admin_token(request)
     try:
         sb = require_supabase()
         users = sb.table("users").select("user_id,instagram_usernames,profile_summary,memory_count,created_at").order("created_at", desc=True).execute()
@@ -3163,9 +3178,9 @@ async def list_admin_users(user_id: int):
 
 
 @app.get("/api/admin/users/{target_user_id}/topics")
-async def list_user_topics(target_user_id: int, user_id: int):
+async def list_user_topics(target_user_id: int, request: Request):
     """List all topics for a specific user. Admin only."""
-    _check_admin(user_id)
+    _check_admin_token(request)
     sb = require_supabase()
     result = sb.table("projects").select("id,title,idea_text,status,created_at,updated_at").eq("user_id", target_user_id).order("updated_at", desc=True).execute()
     for topic in (result.data or []):
@@ -3175,9 +3190,9 @@ async def list_user_topics(target_user_id: int, user_id: int):
 
 
 @app.get("/api/admin/topics/{topic_id}/messages")
-async def list_topic_messages(topic_id: str, user_id: int):
+async def list_topic_messages(topic_id: str, request: Request):
     """Get all messages for a topic (all sub-chats). Admin only."""
-    _check_admin(user_id)
+    _check_admin_token(request)
     sb = require_supabase()
     result = sb.table("project_messages").select("*").eq("project_id", topic_id).order("created_at").execute()
     return result.data or []
