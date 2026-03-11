@@ -1881,24 +1881,24 @@ def _log_ai_call(user_id, endpoint, prompt_key, model, system_prompt,
     """Log AI call to ai_logs table. Non-blocking, never raises."""
     try:
         sb = require_supabase()
-        sb.table("ai_logs").insert({
-            "user_id": int(user_id) if user_id else None,
-            "endpoint": endpoint,
-            "prompt_key": prompt_key,
-            "model": model,
-            "system_prompt": (system_prompt or "")[:5000],
-            "user_context": (user_context or "")[:2000] or None,
-            "messages": messages[-5:] if messages else None,
-            "user_message": (user_message or "")[:2000] or None,
-            "ai_response": (ai_response or "")[:5000],
-            "input_tokens": usage.get("input_tokens", 0) if usage else 0,
-            "output_tokens": usage.get("output_tokens", 0) if usage else 0,
-            "total_tokens": usage.get("total_tokens", 0) if usage else 0,
-            "response_time_ms": usage.get("response_time_ms", 0) if usage else 0,
-            "status": status,
-            "error_message": error_message,
-            "topic_id": str(topic_id) if topic_id else None,
-            "sub_chat_id": str(sub_chat_id) if sub_chat_id else None,
+        sb.rpc("insert_ai_log", {
+            "p_user_id": int(user_id) if user_id else None,
+            "p_endpoint": endpoint,
+            "p_prompt_key": prompt_key,
+            "p_model": model,
+            "p_system_prompt": (system_prompt or "")[:5000],
+            "p_user_context": (user_context or "")[:2000] or None,
+            "p_messages": json.dumps(messages[-5:]) if messages else None,
+            "p_user_message": (user_message or "")[:2000] or None,
+            "p_ai_response": (ai_response or "")[:5000],
+            "p_input_tokens": usage.get("input_tokens", 0) if usage else 0,
+            "p_output_tokens": usage.get("output_tokens", 0) if usage else 0,
+            "p_total_tokens": usage.get("total_tokens", 0) if usage else 0,
+            "p_response_time_ms": usage.get("response_time_ms", 0) if usage else 0,
+            "p_status": status,
+            "p_error_message": error_message,
+            "p_topic_id": str(topic_id) if topic_id else None,
+            "p_sub_chat_id": str(sub_chat_id) if sub_chat_id else None,
         }).execute()
     except Exception as e:
         print(f"[ai_logs] Failed to log: {e}")
@@ -3126,13 +3126,12 @@ async def list_ai_logs(request: Request, limit: int = 100, offset: int = 0,
     _check_admin_token(request)
     try:
         sb = require_supabase()
-        q = sb.table("ai_logs").select("*").order("created_at", desc=True)
+        params = {"p_limit": limit, "p_offset": offset}
         if filter_user_id:
-            q = q.eq("user_id", filter_user_id)
+            params["p_user_id"] = filter_user_id
         if filter_endpoint:
-            q = q.eq("endpoint", filter_endpoint)
-        q = q.range(offset, offset + limit - 1)
-        result = q.execute()
+            params["p_endpoint"] = filter_endpoint
+        result = sb.rpc("get_ai_logs", params).execute()
         return result.data or []
     except HTTPException:
         raise
@@ -3147,10 +3146,11 @@ async def get_ai_log_detail(log_id: str, request: Request):
     _check_admin_token(request)
     try:
         sb = require_supabase()
-        result = sb.table("ai_logs").select("*").eq("id", log_id).single().execute()
-        if not result.data:
+        result = sb.rpc("get_ai_log_detail", {"p_id": str(log_id)}).execute()
+        data = result.data
+        if not data:
             raise HTTPException(status_code=404, detail="Log not found")
-        return result.data
+        return data[0] if isinstance(data, list) else data
     except HTTPException:
         raise
     except Exception as e:
@@ -3167,8 +3167,11 @@ async def list_admin_users(request: Request):
         users = sb.table("users").select("user_id,instagram_usernames,profile_summary,memory_count,created_at").order("created_at", desc=True).execute()
         users_data = users.data or []
         for u in users_data:
-            cnt = sb.table("projects").select("id", count="exact").eq("user_id", u["user_id"]).execute()
-            u["topic_count"] = cnt.count if cnt.count else 0
+            try:
+                cnt = sb.table("projects").select("id", count="exact").eq("user_id", u["user_id"]).execute()
+                u["topic_count"] = cnt.count if cnt.count else 0
+            except Exception:
+                u["topic_count"] = 0
         return users_data
     except HTTPException:
         raise
