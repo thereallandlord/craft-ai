@@ -4103,6 +4103,14 @@
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
                     Промпты
                 </button>
+                <button class="ps-nav-item" id="psDialogsBtn" style="display:none" onclick="openAdminDialogs()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    Диалоги
+                </button>
+                <button class="ps-nav-item" id="psLogsBtn" style="display:none" onclick="openAdminLogs()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                    AI Логи
+                </button>
             </div>
             <div class="ps-section-title">Ваши чаты</div>
             <div class="ps-projects" id="psProjectsList"></div>
@@ -4738,6 +4746,32 @@
                     <span class="tv-title">Промпты AI</span>
                 </div>
                 <div class="admin-content" id="adminPromptsList"></div>
+            </div>
+        </div>
+
+        <!-- === DIALOGS VIEW (overlay) === -->
+        <div class="view-overlay" id="view-dialogs">
+            <div class="admin-view">
+                <div class="tv-header">
+                    <button class="sc-back-btn" onclick="goHome()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+                    </button>
+                    <span class="tv-title">Диалоги пользователей</span>
+                </div>
+                <div class="admin-content" id="adminDialogsList"></div>
+            </div>
+        </div>
+
+        <!-- === AI LOGS VIEW (overlay) === -->
+        <div class="view-overlay" id="view-logs">
+            <div class="admin-view">
+                <div class="tv-header">
+                    <button class="sc-back-btn" onclick="goHome()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+                    </button>
+                    <span class="tv-title">AI Логи</span>
+                </div>
+                <div class="admin-content" id="adminLogsList"></div>
             </div>
         </div>
 
@@ -6017,6 +6051,161 @@
                     showToast('Ошибка сохранения', 'error');
                 }
             } catch(e) { showToast('Ошибка', 'error'); }
+        }
+
+        // === Admin: Dialogs ===
+        async function openAdminDialogs() {
+            showView('dialogs');
+            const c = document.getElementById('adminDialogsList');
+            c.innerHTML = '<div style="padding:20px;color:var(--text-muted)">Загрузка...</div>';
+            try {
+                const r = await fetch(`${API_URL}/api/admin/users?user_id=${currentUser.id}`);
+                if (!r.ok) { c.innerHTML = '<div style="padding:20px;color:#ef4444">Нет доступа</div>'; return; }
+                const users = await r.json();
+                if (!users.length) { c.innerHTML = '<div style="padding:20px;color:var(--text-muted)">Пользователей нет</div>'; return; }
+                c.innerHTML = users.map(u => `
+                    <div class="admin-prompt-card" style="cursor:pointer;padding:12px 16px;" onclick="openUserTopics(${u.user_id})">
+                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                            <div>
+                                <div style="font-weight:600;font-size:14px;">ID: ${u.user_id}</div>
+                                <div style="font-size:12px;color:var(--text-muted)">${u.instagram_usernames ? '@' + (Array.isArray(u.instagram_usernames) ? u.instagram_usernames[0] : u.instagram_usernames) : 'Нет Instagram'}</div>
+                            </div>
+                            <div style="text-align:right;">
+                                <div style="font-size:13px;font-weight:500;">${u.topic_count || 0} топиков</div>
+                                <div style="font-size:11px;color:var(--text-muted)">${u.memory_count || 0} фактов</div>
+                            </div>
+                        </div>
+                        ${u.profile_summary ? `<div style="font-size:11px;color:var(--text-muted);margin-top:6px;line-height:1.4;">${escapeHtml(u.profile_summary).substring(0,150)}...</div>` : ''}
+                    </div>
+                `).join('');
+            } catch(e) { c.innerHTML = '<div style="padding:20px;color:#ef4444">Ошибка загрузки</div>'; }
+        }
+
+        async function openUserTopics(targetUserId) {
+            const c = document.getElementById('adminDialogsList');
+            c.innerHTML = '<div style="padding:20px;color:var(--text-muted)">Загрузка...</div>';
+            try {
+                const r = await fetch(`${API_URL}/api/admin/users/${targetUserId}/topics?user_id=${currentUser.id}`);
+                if (!r.ok) return;
+                const topics = await r.json();
+                let h = `<div class="admin-prompt-card" style="cursor:pointer;padding:10px 16px;" onclick="openAdminDialogs()">
+                    <span style="font-size:13px;color:var(--accent);">← Назад к пользователям</span>
+                </div>
+                <div style="padding:8px 16px;font-size:12px;color:var(--text-muted);">Пользователь ${targetUserId} — ${topics.length} топиков</div>`;
+                h += topics.map(t => `
+                    <div class="admin-prompt-card" style="cursor:pointer;padding:12px 16px;" onclick="openTopicChat('${t.id}')">
+                        <div style="display:flex;justify-content:space-between;">
+                            <div style="font-weight:500;font-size:13px;">${escapeHtml(t.title || t.idea_text || 'Без названия').substring(0,60)}</div>
+                            <div style="font-size:11px;color:var(--text-muted);">${t.message_count} сообщ.</div>
+                        </div>
+                        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">${new Date(t.created_at).toLocaleString('ru-RU')}</div>
+                    </div>
+                `).join('');
+                c.innerHTML = h;
+            } catch(e) { c.innerHTML = '<div style="padding:20px;color:#ef4444">Ошибка</div>'; }
+        }
+
+        async function openTopicChat(topicId) {
+            const c = document.getElementById('adminDialogsList');
+            c.innerHTML = '<div style="padding:20px;color:var(--text-muted)">Загрузка...</div>';
+            try {
+                const r = await fetch(`${API_URL}/api/admin/topics/${topicId}/messages?user_id=${currentUser.id}`);
+                if (!r.ok) return;
+                const msgs = await r.json();
+                let h = `<div class="admin-prompt-card" style="cursor:pointer;padding:10px 16px;" onclick="openAdminDialogs()">
+                    <span style="font-size:13px;color:var(--accent);">← Назад</span>
+                </div>
+                <div style="padding:8px 16px;font-size:12px;color:var(--text-muted);">${msgs.length} сообщений</div>`;
+                h += '<div style="padding:0 8px;">';
+                msgs.forEach(m => {
+                    const isUser = m.role === 'user';
+                    const bg = isUser ? 'var(--accent)' : 'var(--bg-secondary)';
+                    const color = isUser ? '#000' : 'var(--text-primary)';
+                    const align = isUser ? 'flex-end' : 'flex-start';
+                    const content = escapeHtml(m.content || '').substring(0, 1000).replace(/\n/g, '<br>');
+                    const time = new Date(m.created_at).toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'});
+                    h += `<div style="display:flex;justify-content:${align};margin:4px 0;">
+                        <div style="max-width:85%;padding:8px 12px;border-radius:12px;background:${bg};color:${color};font-size:13px;line-height:1.4;">
+                            ${content}
+                            <div style="font-size:10px;opacity:0.6;margin-top:4px;text-align:right;">${time} · ${m.message_type || 'text'}</div>
+                        </div>
+                    </div>`;
+                });
+                h += '</div>';
+                c.innerHTML = h;
+            } catch(e) { c.innerHTML = '<div style="padding:20px;color:#ef4444">Ошибка</div>'; }
+        }
+
+        // === Admin: AI Logs ===
+        async function openAdminLogs() {
+            showView('logs');
+            const c = document.getElementById('adminLogsList');
+            c.innerHTML = '<div style="padding:20px;color:var(--text-muted)">Загрузка...</div>';
+            try {
+                const r = await fetch(`${API_URL}/api/admin/logs?user_id=${currentUser.id}&limit=200`);
+                if (!r.ok) { c.innerHTML = '<div style="padding:20px;color:#ef4444">Нет доступа</div>'; return; }
+                const logs = await r.json();
+                if (!logs.length) { c.innerHTML = '<div style="padding:20px;color:var(--text-muted)">Логов пока нет</div>'; return; }
+                let h = '<div style="padding:8px 12px;display:flex;gap:8px;font-size:11px;font-weight:600;color:var(--text-muted);border-bottom:1px solid var(--border);">' +
+                    '<div style="width:70px;">Время</div><div style="width:60px;">User</div><div style="flex:1;">Endpoint</div><div style="width:80px;">Модель</div><div style="width:50px;">Токены</div><div style="width:50px;">Время</div><div style="width:50px;">Статус</div></div>';
+                logs.forEach(l => {
+                    const t = new Date(l.created_at);
+                    const time = t.toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'});
+                    const date = t.toLocaleDateString('ru-RU', {day:'2-digit',month:'2-digit'});
+                    const modelShort = (l.model || '').replace('openai/','').replace('google/','').replace('anthropic/','').substring(0,12);
+                    const statusColor = l.status === 'success' ? '#22c55e' : '#ef4444';
+                    h += `<div class="admin-prompt-card" style="cursor:pointer;padding:8px 12px;margin:2px 0;font-size:12px;display:flex;gap:8px;align-items:center;" onclick="openLogDetail('${l.id}')">
+                        <div style="width:70px;color:var(--text-muted);">${date} ${time}</div>
+                        <div style="width:60px;">${l.user_id || '—'}</div>
+                        <div style="flex:1;font-weight:500;">${l.endpoint || ''}<span style="color:var(--text-muted);font-weight:400;margin-left:4px;">${l.prompt_key || ''}</span></div>
+                        <div style="width:80px;color:var(--text-muted);">${modelShort}</div>
+                        <div style="width:50px;">${l.total_tokens || 0}</div>
+                        <div style="width:50px;color:var(--text-muted);">${l.response_time_ms || 0}ms</div>
+                        <div style="width:50px;"><span style="color:${statusColor};">●</span></div>
+                    </div>`;
+                });
+                c.innerHTML = h;
+            } catch(e) { c.innerHTML = '<div style="padding:20px;color:#ef4444">Ошибка загрузки</div>'; }
+        }
+
+        async function openLogDetail(logId) {
+            const c = document.getElementById('adminLogsList');
+            c.innerHTML = '<div style="padding:20px;color:var(--text-muted)">Загрузка...</div>';
+            try {
+                const r = await fetch(`${API_URL}/api/admin/logs/${logId}?user_id=${currentUser.id}`);
+                if (!r.ok) return;
+                const l = await r.json();
+                const t = new Date(l.created_at).toLocaleString('ru-RU');
+                let h = `<div class="admin-prompt-card" style="cursor:pointer;padding:10px 16px;" onclick="openAdminLogs()">
+                    <span style="font-size:13px;color:var(--accent);">← Назад к логам</span>
+                </div>`;
+                h += `<div style="padding:12px 16px;">
+                    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px;">
+                        <div><span style="font-size:11px;color:var(--text-muted);">Время:</span> <span style="font-size:13px;">${t}</span></div>
+                        <div><span style="font-size:11px;color:var(--text-muted);">User:</span> <span style="font-size:13px;">${l.user_id || '—'}</span></div>
+                        <div><span style="font-size:11px;color:var(--text-muted);">Endpoint:</span> <span style="font-size:13px;font-weight:600;">${l.endpoint}</span></div>
+                        <div><span style="font-size:11px;color:var(--text-muted);">Модель:</span> <span style="font-size:13px;">${l.model || '—'}</span></div>
+                        <div><span style="font-size:11px;color:var(--text-muted);">Токены:</span> <span style="font-size:13px;">${l.input_tokens||0} → ${l.output_tokens||0} (${l.total_tokens||0})</span></div>
+                        <div><span style="font-size:11px;color:var(--text-muted);">Время:</span> <span style="font-size:13px;">${l.response_time_ms||0}ms</span></div>
+                    </div>`;
+                const sections = [
+                    {title: 'Системный промпт', content: l.system_prompt},
+                    {title: 'User Context', content: l.user_context},
+                    {title: 'История сообщений', content: l.messages ? JSON.stringify(l.messages, null, 2) : null},
+                    {title: 'Запрос пользователя', content: l.user_message},
+                    {title: 'Ответ AI', content: l.ai_response},
+                    {title: 'Ошибка', content: l.error_message},
+                ];
+                sections.forEach(s => {
+                    if (!s.content) return;
+                    h += `<details style="margin-bottom:8px;">
+                        <summary style="cursor:pointer;font-size:13px;font-weight:600;padding:8px 0;color:var(--text-primary);">${s.title}</summary>
+                        <pre style="font-size:12px;line-height:1.5;white-space:pre-wrap;word-break:break-word;padding:12px;background:var(--bg-secondary);border-radius:8px;max-height:400px;overflow-y:auto;">${escapeHtml(s.content)}</pre>
+                    </details>`;
+                });
+                h += '</div>';
+                c.innerHTML = h;
+            } catch(e) { c.innerHTML = '<div style="padding:20px;color:#ef4444">Ошибка</div>'; }
         }
 
         // Tab Navigation
@@ -8481,9 +8670,13 @@
                 psAvatar.style.display = 'none';
             }
 
-            // Show admin button if admin
+            // Show admin buttons if admin
             const adminBtn = document.getElementById('psAdminBtn');
             if (adminBtn) adminBtn.style.display = currentUser.is_admin ? '' : 'none';
+            const dialogsBtn = document.getElementById('psDialogsBtn');
+            if (dialogsBtn) dialogsBtn.style.display = currentUser.is_admin ? '' : 'none';
+            const logsBtn = document.getElementById('psLogsBtn');
+            if (logsBtn) logsBtn.style.display = currentUser.is_admin ? '' : 'none';
 
             // Load projects & topics
             loadProjects();

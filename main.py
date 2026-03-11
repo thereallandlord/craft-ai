@@ -1683,11 +1683,13 @@ def _extract_and_save_memories_sync(user_id: int, messages: list):
         recent = messages[-6:] if len(messages) > 6 else messages
         conversation = "\n".join(f"{m['role']}: {m['content']}" for m in recent if m.get('content'))
 
-        ai_text = _call_openrouter([
+        ai_text, _usage = _call_openrouter([
             {"role": "system", "content": prompt_content},
             {"role": "user", "content": conversation}
         ], memory_model)
         print(f"[Memory] AI response: {ai_text[:200]}")
+        _log_ai_call(user_id, "memory_extract", "memory_extract", memory_model,
+                     prompt_content, None, None, conversation, ai_text, _usage)
 
         # Parse JSON
         try:
@@ -1760,10 +1762,12 @@ def _auto_summarize_profile_sync(user_id: int):
             prompt = f"На основе следующих фактов о пользователе создай краткий профиль (3-5 предложений): его ниша, стиль контента, целевая аудитория, предпочтения.\n\nФакты:\n{memories_text}"
             profile_model = "openai/gpt-4o-mini"
 
-        summary = _call_openrouter([
+        summary, _usage = _call_openrouter([
             {"role": "system", "content": prompt},
             {"role": "user", "content": "Создай профиль пользователя."}
         ], profile_model)
+        _log_ai_call(user_id, "profile_summarize", "profile_summarize", profile_model,
+                     prompt, None, None, None, summary, _usage)
 
         supabase.table("users").update({"profile_summary": summary}).eq("user_id", str(user_id)).execute()
         print(f"[Memory] Profile summary updated for user {user_id}")
@@ -1824,8 +1828,9 @@ def get_system_prompt_v3(chat_type: str, has_slides: bool = False, variables: di
     return template, model
 
 
-def _call_openrouter(messages: list, model: str = "openai/gpt-4o", temperature: float = 0.7) -> str:
-    """Call OpenRouter API and return AI text response."""
+def _call_openrouter(messages: list, model: str = "openai/gpt-4o", temperature: float = 0.7) -> tuple:
+    """Call OpenRouter API. Returns (content_str, usage_dict)."""
+    _start = time.time()
     resp = requests.post(
         "https://openrouter.ai/api/v1/chat/completions",
         headers={
@@ -1837,9 +1842,47 @@ def _call_openrouter(messages: list, model: str = "openai/gpt-4o", temperature: 
         json={"model": model, "messages": messages, "temperature": temperature, "max_tokens": 4096},
         timeout=120
     )
+    _elapsed = int((time.time() - _start) * 1000)
     if resp.status_code != 200:
         raise HTTPException(status_code=resp.status_code, detail=f"OpenRouter error: {resp.text}")
-    return resp.json()["choices"][0]["message"]["content"]
+    data = resp.json()
+    _usage = data.get("usage", {})
+    return data["choices"][0]["message"]["content"], {
+        "input_tokens": _usage.get("prompt_tokens", 0),
+        "output_tokens": _usage.get("completion_tokens", 0),
+        "total_tokens": _usage.get("total_tokens", 0),
+        "response_time_ms": _elapsed,
+    }
+
+
+def _log_ai_call(user_id, endpoint, prompt_key, model, system_prompt,
+                 user_context, messages, user_message, ai_response,
+                 usage, status="success", error_message=None,
+                 topic_id=None, sub_chat_id=None):
+    """Log AI call to ai_logs table. Non-blocking, never raises."""
+    try:
+        sb = require_supabase()
+        sb.table("ai_logs").insert({
+            "user_id": int(user_id) if user_id else None,
+            "endpoint": endpoint,
+            "prompt_key": prompt_key,
+            "model": model,
+            "system_prompt": (system_prompt or "")[:5000],
+            "user_context": (user_context or "")[:2000] or None,
+            "messages": messages[-5:] if messages else None,
+            "user_message": (user_message or "")[:2000] or None,
+            "ai_response": (ai_response or "")[:5000],
+            "input_tokens": usage.get("input_tokens", 0) if usage else 0,
+            "output_tokens": usage.get("output_tokens", 0) if usage else 0,
+            "total_tokens": usage.get("total_tokens", 0) if usage else 0,
+            "response_time_ms": usage.get("response_time_ms", 0) if usage else 0,
+            "status": status,
+            "error_message": error_message,
+            "topic_id": str(topic_id) if topic_id else None,
+            "sub_chat_id": str(sub_chat_id) if sub_chat_id else None,
+        }).execute()
+    except Exception as e:
+        print(f"[ai_logs] Failed to log: {e}")
 
 
 def _parse_headlines(text: str) -> list:
@@ -1876,7 +1919,9 @@ async def format_text(request: Request):
     ]
 
     try:
-        result = _call_openrouter(messages, model, temperature=0.3)
+        result, _usage = _call_openrouter(messages, model, temperature=0.3)
+        _log_ai_call(None, "format_text", "format_text", model,
+                     system_prompt, None, None, user_text, result, _usage)
         # Strip markdown code block wrapper if present
         result = result.strip()
         if result.startswith("```"):
@@ -2048,7 +2093,10 @@ async def create_topic(request: Request):
     ]
 
     try:
-        ai_text = _call_openrouter(ai_messages, body.get("model") or prompt_model)
+        ai_text, _usage = _call_openrouter(ai_messages, body.get("model") or prompt_model)
+        _log_ai_call(user_id, "topics", "headlines", body.get("model") or prompt_model,
+                     system_prompt, user_context, ai_messages, message, ai_text, _usage,
+                     topic_id=topic_id, sub_chat_id=sub_chat_id)
     except Exception as e:
         return {"topic": topic_data, "sub_chat": sub_chat_data, "ai_response": {"content": str(e), "message_type": "text", "message_data": None}}
 
@@ -2172,10 +2220,13 @@ async def create_sub_chat(topic_id: str, request: Request):
             system_prompt += f"\n\nКонтекст о пользователе:\n{user_context}"
 
         try:
-            ai_text = _call_openrouter([
+            ai_text, _usage = _call_openrouter([
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": f"Напиши текст карусели на тему: {selected_headline}"}
             ], body.get("model") or prompt_model)
+            _log_ai_call(user_id, "sub-chats/text", "text", body.get("model") or prompt_model,
+                         system_prompt, user_context, None, selected_headline, ai_text, _usage,
+                         topic_id=topic_id, sub_chat_id=sub_chat_id)
 
             sb.table("project_messages").insert({
                 "project_id": topic_id,
@@ -2312,7 +2363,10 @@ async def ai_chat(request: Request):
 
         # Call AI
         try:
-            ai_text = _call_openrouter(ai_messages, body.get("model") or prompt_model)
+            ai_text, _usage = _call_openrouter(ai_messages, body.get("model") or prompt_model)
+            _log_ai_call(user_id, "ai/chat", prompt_key, body.get("model") or prompt_model,
+                         system_prompt, user_context, ai_messages, user_message, ai_text, _usage,
+                         topic_id=topic_id, sub_chat_id=sub_chat_id)
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
@@ -2401,28 +2455,11 @@ async def ai_chat(request: Request):
 
     # Call OpenRouter
     try:
-        resp = requests.post(
-            "https://openrouter.ai/api/v1/chat/completions",
-            headers={
-                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-                "Content-Type": "application/json",
-                "HTTP-Referer": "https://app.craftopen.space",
-                "X-Title": "Craft AI"
-            },
-            json={
-                "model": body.get("model", "openai/gpt-4o"),
-                "messages": ai_messages,
-                "temperature": 0.7,
-                "max_tokens": 4096
-            },
-            timeout=120
-        )
-
-        if resp.status_code != 200:
-            raise HTTPException(status_code=resp.status_code, detail=f"OpenRouter error: {resp.text}")
-
-        ai_response = resp.json()
-        ai_text = ai_response["choices"][0]["message"]["content"]
+        _v2_model = body.get("model", "openai/gpt-4o")
+        ai_text, _usage = _call_openrouter(ai_messages, _v2_model)
+        _log_ai_call(user_id, "ai/chat-v2", "legacy", _v2_model,
+                     system_prompt, user_context, ai_messages, user_message, ai_text, _usage,
+                     topic_id=project_id, sub_chat_id=legacy_sub_chat_id)
 
         message_type = "text"
         message_data = None
@@ -3047,6 +3084,81 @@ async def create_prompt(request: Request):
     _prompt_cache.clear()
     _prompt_cache_time = 0
     return result.data[0] if result.data else {}
+
+
+# === Admin: AI Logs & Dialogs ===
+
+@app.get("/api/admin/logs")
+async def list_ai_logs(user_id: int, limit: int = 100, offset: int = 0,
+                       filter_user_id: int = None, filter_endpoint: str = None):
+    """List AI call logs. Admin only."""
+    if str(user_id) not in ADMIN_TELEGRAM_IDS:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    sb = require_supabase()
+    q = sb.table("ai_logs").select("id,user_id,endpoint,prompt_key,model,input_tokens,output_tokens,total_tokens,response_time_ms,status,error_message,topic_id,sub_chat_id,created_at").order("created_at", desc=True)
+    if filter_user_id:
+        q = q.eq("user_id", filter_user_id)
+    if filter_endpoint:
+        q = q.eq("endpoint", filter_endpoint)
+    q = q.range(offset, offset + limit - 1)
+    result = q.execute()
+    return result.data or []
+
+
+@app.get("/api/admin/logs/{log_id}")
+async def get_ai_log_detail(log_id: str, user_id: int):
+    """Get full AI log detail. Admin only."""
+    if str(user_id) not in ADMIN_TELEGRAM_IDS:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    sb = require_supabase()
+    result = sb.table("ai_logs").select("*").eq("id", log_id).single().execute()
+    if not result.data:
+        raise HTTPException(status_code=404, detail="Log not found")
+    return result.data
+
+
+@app.get("/api/admin/users")
+async def list_admin_users(user_id: int):
+    """List all users with stats. Admin only."""
+    if str(user_id) not in ADMIN_TELEGRAM_IDS:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    sb = require_supabase()
+    users = sb.table("users").select("user_id,instagram_usernames,profile_summary,memory_count,created_at").order("created_at", desc=True).execute()
+    # Get topic counts per user
+    projects = sb.table("projects").select("user_id").execute()
+    topic_counts = {}
+    for p in (projects.data or []):
+        uid = p.get("user_id")
+        topic_counts[uid] = topic_counts.get(uid, 0) + 1
+    result = []
+    for u in (users.data or []):
+        u["topic_count"] = topic_counts.get(u["user_id"], 0)
+        result.append(u)
+    return result
+
+
+@app.get("/api/admin/users/{target_user_id}/topics")
+async def list_user_topics(target_user_id: int, user_id: int):
+    """List all topics for a specific user. Admin only."""
+    if str(user_id) not in ADMIN_TELEGRAM_IDS:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    sb = require_supabase()
+    result = sb.table("projects").select("id,title,idea_text,status,created_at,updated_at").eq("user_id", target_user_id).order("updated_at", desc=True).execute()
+    # Get message counts
+    for topic in (result.data or []):
+        msgs = sb.table("project_messages").select("id", count="exact").eq("project_id", topic["id"]).execute()
+        topic["message_count"] = msgs.count if msgs.count else 0
+    return result.data or []
+
+
+@app.get("/api/admin/topics/{topic_id}/messages")
+async def list_topic_messages(topic_id: str, user_id: int):
+    """Get all messages for a topic (all sub-chats). Admin only."""
+    if str(user_id) not in ADMIN_TELEGRAM_IDS:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    sb = require_supabase()
+    result = sb.table("project_messages").select("id,role,content,message_type,message_data,sub_chat_id,created_at").eq("project_id", topic_id).order("created_at").execute()
+    return result.data or []
 
 
 # === Legacy: Projects API ===
