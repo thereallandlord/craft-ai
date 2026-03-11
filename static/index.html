@@ -6143,7 +6143,11 @@
             c.innerHTML = '<div style="padding:20px;color:var(--text-muted)">Загрузка...</div>';
             try {
                 const r = await fetch(`${API_URL}/api/admin/logs?user_id=${currentUser.id}&limit=200`);
-                if (!r.ok) { c.innerHTML = '<div style="padding:20px;color:#ef4444">Нет доступа</div>'; return; }
+                if (!r.ok) {
+                    const errText = await r.text().catch(() => '');
+                    c.innerHTML = `<div style="padding:20px;color:#ef4444">${r.status === 403 ? 'Нет доступа' : 'Ошибка: ' + (errText || r.status)}</div>`;
+                    return;
+                }
                 const logs = await r.json();
                 if (!logs.length) { c.innerHTML = '<div style="padding:20px;color:var(--text-muted)">Логов пока нет</div>'; return; }
                 let h = '<div style="padding:8px 12px;display:flex;gap:8px;font-size:11px;font-weight:600;color:var(--text-muted);border-bottom:1px solid var(--border);">' +

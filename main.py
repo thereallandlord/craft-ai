@@ -3024,6 +3024,15 @@ TITLE - это первая строка/фраза если:
                     changed = True
                 except Exception:
                     pass
+    # Delete prompts not in defaults (e.g. removed carousel, editing)
+    default_keys = {d["prompt_key"] for d in defaults}
+    for r in (result.data or []):
+        if r["prompt_key"] not in default_keys:
+            try:
+                sb.table("system_prompts").delete().eq("prompt_key", r["prompt_key"]).execute()
+                changed = True
+            except Exception:
+                pass
     if changed:
         result = sb.table("system_prompts").select("*").order("prompt_key").execute()
     return result.data or []
@@ -3124,17 +3133,12 @@ async def list_admin_users(user_id: int):
         raise HTTPException(status_code=403, detail="Admin access required")
     sb = require_supabase()
     users = sb.table("users").select("user_id,instagram_usernames,profile_summary,memory_count,created_at").order("created_at", desc=True).execute()
-    # Get topic counts per user
-    projects = sb.table("projects").select("user_id").execute()
-    topic_counts = {}
-    for p in (projects.data or []):
-        uid = p.get("user_id")
-        topic_counts[uid] = topic_counts.get(uid, 0) + 1
-    result = []
-    for u in (users.data or []):
-        u["topic_count"] = topic_counts.get(u["user_id"], 0)
-        result.append(u)
-    return result
+    # Get topic counts per user (exact count, no row limit issues)
+    users_data = users.data or []
+    for u in users_data:
+        cnt = sb.table("projects").select("id", count="exact").eq("user_id", u["user_id"]).execute()
+        u["topic_count"] = cnt.count if cnt.count else 0
+    return users_data
 
 
 @app.get("/api/admin/users/{target_user_id}/topics")
