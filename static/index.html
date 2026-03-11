@@ -6897,20 +6897,45 @@
             rtEditorUsernameChanged(select.value);
         }
 
+        function compressImage(file, maxSize = 1920, quality = 0.85) {
+            return new Promise((resolve, reject) => {
+                const url = URL.createObjectURL(file);
+                const img = new Image();
+                img.onload = () => {
+                    let w = img.width, h = img.height;
+                    if (w > maxSize || h > maxSize) {
+                        if (w > h) { h = Math.round(h * maxSize / w); w = maxSize; }
+                        else { w = Math.round(w * maxSize / h); h = maxSize; }
+                    }
+                    const canvas = document.createElement('canvas');
+                    canvas.width = w; canvas.height = h;
+                    canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                    URL.revokeObjectURL(url);
+                    resolve(canvas.toDataURL('image/jpeg', quality));
+                };
+                img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Не удалось загрузить изображение')); };
+                img.src = url;
+            });
+        }
+
         function rtHandlePhoto(input) {
             const file = input.files[0];
             if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (e) => {
+            compressImage(file).then(dataUrl => {
                 const lib = JSON.parse(localStorage.getItem('craft_photo_library') || '[]');
-                const entry = { id: 'photo_' + Date.now(), data: e.target.result, name: file.name };
+                const entry = { id: 'photo_' + Date.now(), data: dataUrl, name: file.name };
                 lib.push(entry);
-                localStorage.setItem('craft_photo_library', JSON.stringify(lib));
-                rtSelectedPhoto = e.target.result;
+                try {
+                    localStorage.setItem('craft_photo_library', JSON.stringify(lib));
+                } catch (e) {
+                    lib.pop();
+                    showToast('Фото слишком большое для хранилища', 'error');
+                    return;
+                }
+                rtSelectedPhoto = dataUrl;
                 document.getElementById('rtPhotoName').textContent = file.name;
                 rtRenderPhotoLibrary();
-            };
-            reader.readAsDataURL(file);
+            }).catch(() => showToast('Ошибка загрузки фото', 'error'));
         }
 
         function rtSelectPhoto(photoId) {
@@ -7477,17 +7502,20 @@
         function rtSetBgOverlay(i, val) { rtSlides[i].background.overlay = parseInt(val); rtRenderSinglePreview(i); const lbl = document.getElementById('rtOverlayVal'); if (lbl) lbl.textContent = val; }
         function rtSetBgPhotoFile(i, input) {
             const file = input.files[0]; if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                rtSlides[i].background.photo = e.target.result;
+            compressImage(file).then(dataUrl => {
+                rtSlides[i].background.photo = dataUrl;
                 rtSlides[i].background.type = 'photo';
-                rtSlidePhotos[i] = e.target.result;
+                rtSlidePhotos[i] = dataUrl;
                 const lib = JSON.parse(localStorage.getItem('craft_photo_library') || '[]');
-                lib.push({id:'photo_'+Date.now(), data:e.target.result, name:file.name});
-                localStorage.setItem('craft_photo_library', JSON.stringify(lib));
+                lib.push({id:'photo_'+Date.now(), data:dataUrl, name:file.name});
+                try {
+                    localStorage.setItem('craft_photo_library', JSON.stringify(lib));
+                } catch (e) {
+                    lib.pop();
+                    showToast('Фото слишком большое для хранилища', 'error');
+                }
                 rtRenderSinglePreview(i); rtRenderBgPanel();
-            };
-            reader.readAsDataURL(file);
+            }).catch(() => showToast('Ошибка загрузки фото', 'error'));
         }
         function rtSetBgPhotoLib(i, photoId) {
             const lib = JSON.parse(localStorage.getItem('craft_photo_library') || '[]');
