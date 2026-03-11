@@ -3132,7 +3132,10 @@ async def list_ai_logs(request: Request, limit: int = 100, offset: int = 0,
         if filter_endpoint:
             params["p_endpoint"] = filter_endpoint
         result = sb.rpc("get_ai_logs", params).execute()
-        return result.data or []
+        data = result.data
+        if isinstance(data, str):
+            data = json.loads(data)
+        return data if isinstance(data, list) else []
     except HTTPException:
         raise
     except Exception as e:
@@ -3148,9 +3151,13 @@ async def get_ai_log_detail(log_id: str, request: Request):
         sb = require_supabase()
         result = sb.rpc("get_ai_log_detail", {"p_id": str(log_id)}).execute()
         data = result.data
+        if isinstance(data, str):
+            data = json.loads(data)
+        if isinstance(data, list):
+            data = data[0] if data else None
         if not data:
             raise HTTPException(status_code=404, detail="Log not found")
-        return data[0] if isinstance(data, list) else data
+        return data
     except HTTPException:
         raise
     except Exception as e:

@@ -436,7 +436,7 @@
                         <div style="display:flex;justify-content:space-between;align-items:center;">
                             <div>
                                 <div style="font-weight:600;font-size:14px;">ID: ${u.user_id}</div>
-                                <div style="font-size:12px;color:var(--text-muted)">${u.instagram_usernames ? '@' + (Array.isArray(u.instagram_usernames) ? u.instagram_usernames[0] : u.instagram_usernames) : 'Нет Instagram'}</div>
+                                <div style="font-size:12px;color:var(--text-muted)">${(() => { const ig = u.instagram_usernames; if (!ig) return 'Нет Instagram'; const name = Array.isArray(ig) ? ig[0] : ig; return (name && name !== 'undefined') ? '@' + name : 'Нет Instagram'; })()}</div>
                             </div>
                             <div style="text-align:right;">
                                 <div style="font-size:13px;font-weight:500;">${u.topic_count || 0} топиков</div>
