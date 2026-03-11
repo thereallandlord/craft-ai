@@ -13,26 +13,29 @@
             --bg-tertiary: #f4f4f4;
             --bg-hover: #ececec;
             --border: #e5e5e5;
+            --border-light: #f0f0f0;
             --text-primary: #0d0d0d;
             --text-secondary: #6e6e6e;
             --text-muted: #9a9a9a;
             --accent: #0d0d0d;
+            --accent-light: #f4f4f4;
+            --sidebar-bg: #f9f9f9;
         }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif;
             background: var(--bg-primary);
             color: var(--text-primary);
-            min-height: 100vh;
+            height: 100vh;
+            overflow: hidden;
+            -webkit-font-smoothing: antialiased;
         }
 
-        /* Login */
+        /* === Login === */
         .login-container {
             display: flex; align-items: center; justify-content: center;
-            min-height: 100vh; padding: 20px;
+            height: 100vh; padding: 20px;
         }
-        .login-box {
-            width: 100%; max-width: 360px; text-align: center;
-        }
+        .login-box { width: 100%; max-width: 360px; text-align: center; }
         .login-box h1 { font-size: 24px; font-weight: 700; margin-bottom: 8px; }
         .login-box p { font-size: 14px; color: var(--text-muted); margin-bottom: 24px; }
         .login-input {
@@ -48,42 +51,76 @@
         .login-btn:hover { opacity: 0.9; }
         .login-error { color: #ef4444; font-size: 13px; margin-top: 8px; display: none; }
 
-        /* Layout */
-        .app { display: none; flex-direction: column; min-height: 100vh; }
-        .header {
-            display: flex; align-items: center; justify-content: space-between;
-            padding: 12px 20px; border-bottom: 1px solid var(--border);
-        }
-        .header h1 { font-size: 18px; font-weight: 700; }
-        .header-logout {
-            font-size: 13px; color: var(--text-muted); cursor: pointer;
-            background: none; border: none;
-        }
-        .header-logout:hover { color: var(--text-primary); }
+        /* === App Layout (same as index.html) === */
+        .app { display: none; height: 100vh; position: relative; }
 
-        /* Tabs */
-        .tabs {
-            display: flex; border-bottom: 1px solid var(--border); padding: 0 20px;
+        /* Sidebar */
+        .project-sidebar {
+            width: 260px; background: var(--sidebar-bg);
+            display: flex; flex-direction: column; flex-shrink: 0;
+            overflow: hidden; z-index: 100;
         }
-        .tab {
-            padding: 12px 16px; font-size: 14px; font-weight: 500;
-            color: var(--text-muted); cursor: pointer; border: none;
-            background: none; border-bottom: 2px solid transparent;
+        .ps-header {
+            padding: 12px 12px 4px; display: flex; align-items: center; gap: 8px;
         }
-        .tab:hover { color: var(--text-primary); }
-        .tab.active { color: var(--text-primary); border-bottom-color: var(--accent); }
+        .ps-logo {
+            font-size: 15px; font-weight: 600; color: var(--text-primary); flex: 1;
+        }
+        .ps-new-btn {
+            width: 32px; height: 32px; background: transparent; border: none;
+            color: var(--text-secondary); border-radius: 8px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: background 0.15s ease, color 0.15s ease;
+        }
+        .ps-new-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+        .ps-nav { padding: 4px 8px 8px; }
+        .ps-nav-item {
+            display: flex; align-items: center; gap: 10px;
+            padding: 8px 12px; border-radius: 8px; cursor: pointer;
+            color: var(--text-primary); font-size: 14px;
+            border: none; background: none; width: 100%; text-align: left;
+            transition: background 0.15s ease;
+        }
+        .ps-nav-item:hover { background: var(--bg-hover); }
+        .ps-nav-item.active { background: var(--bg-hover); }
+        .ps-user-section {
+            padding: 8px 12px 12px; display: flex; align-items: center; gap: 10px;
+            cursor: pointer; border-radius: 16px; margin: auto 8px 8px;
+            transition: background 0.15s ease;
+        }
+        .ps-user-section:hover { background: var(--bg-hover); }
+        .ps-user-name {
+            font-size: 14px; color: var(--text-primary); flex: 1;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
 
-        /* Content */
-        .content { flex: 1; overflow-y: auto; }
-        .panel { display: none; padding: 20px; max-width: 960px; margin: 0 auto; width: 100%; }
-        .panel.active { display: block; }
+        /* Content Area */
+        .content-area {
+            flex: 1; position: relative; min-width: 0;
+            display: flex; overflow: hidden;
+        }
+
+        /* Panels */
+        .panel {
+            flex: 1; display: none; flex-direction: column; overflow-y: auto;
+        }
+        .panel.active { display: flex; }
+        .panel-content {
+            flex: 1; padding: 40px; max-width: 960px; margin: 0 auto; width: 100%;
+        }
+        .panel-title {
+            font-size: 24px; font-weight: 700; margin-bottom: 8px;
+        }
+        .panel-subtitle {
+            font-size: 14px; color: var(--text-secondary); margin-bottom: 32px;
+        }
 
         /* Cards */
         .card {
             border: 1px solid var(--border); border-radius: 12px;
             padding: 16px; margin-bottom: 16px;
         }
-        .card-clickable { cursor: pointer; }
+        .card-clickable { cursor: pointer; transition: background 0.15s; }
         .card-clickable:hover { background: var(--bg-secondary); }
         .card-title { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
         .card-subtitle { font-size: 12px; color: var(--text-muted); margin-bottom: 12px; }
@@ -100,11 +137,11 @@
             padding: 6px 10px; font-size: 13px; border: 1px solid var(--border);
             border-radius: 8px; background: var(--bg-secondary); outline: none; flex: 1;
         }
-        .btn {
+        .btn-save {
             padding: 8px 16px; background: var(--accent); color: #fff;
             border: none; border-radius: 8px; font-size: 13px; cursor: pointer; margin-top: 8px;
         }
-        .btn:hover { opacity: 0.9; }
+        .btn-save:hover { opacity: 0.9; }
         .btn-back {
             background: none; border: none; color: var(--accent);
             font-size: 13px; cursor: pointer; padding: 10px 0; display: block;
@@ -122,12 +159,12 @@
 
         /* Log table */
         .log-header {
-            display: flex; gap: 8px; padding: 8px 12px; font-size: 11px;
+            display: flex; gap: 8px; padding: 8px 0; font-size: 11px;
             font-weight: 600; color: var(--text-muted); border-bottom: 1px solid var(--border);
         }
         .log-row {
-            display: flex; gap: 8px; padding: 8px 12px; font-size: 12px;
-            align-items: center; cursor: pointer; border-radius: 8px; margin: 2px 0;
+            display: flex; gap: 8px; padding: 8px 0; font-size: 12px;
+            align-items: center; cursor: pointer; border-radius: 8px;
         }
         .log-row:hover { background: var(--bg-secondary); }
 
@@ -142,8 +179,34 @@
         .msg-ai .msg-bubble { background: var(--bg-secondary); color: var(--text-primary); }
         .msg-time { font-size: 10px; opacity: 0.6; margin-top: 4px; text-align: right; }
 
-        .loading { padding: 20px; color: var(--text-muted); text-align: center; }
-        .error { padding: 20px; color: #ef4444; text-align: center; }
+        .loading { padding: 40px; color: var(--text-muted); text-align: center; }
+        .error-msg { padding: 40px; color: #ef4444; text-align: center; }
+
+        /* Mobile sidebar */
+        .sidebar-overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.5); z-index: 999;
+        }
+        .sidebar-overlay.visible { display: block; }
+        .mobile-header {
+            display: none; padding: 12px 16px; border-bottom: 1px solid var(--border);
+            align-items: center; gap: 12px;
+        }
+        .mobile-header button {
+            width: 36px; height: 36px; background: none; border: none;
+            display: flex; align-items: center; justify-content: center;
+            color: var(--text-primary); cursor: pointer; border-radius: 8px;
+        }
+        .mobile-header span { font-size: 17px; font-weight: 600; }
+
+        @media (max-width: 768px) {
+            .project-sidebar {
+                position: fixed; top: 0; left: 0; bottom: 0; z-index: 1000;
+                width: 280px; transform: translateX(-100%); transition: transform 0.2s ease;
+            }
+            .project-sidebar.mobile-open { transform: translateX(0); }
+            .mobile-header { display: flex; }
+        }
     </style>
 </head>
 <body>
@@ -160,19 +223,72 @@
 
     <!-- App -->
     <div class="app" id="appView">
-        <div class="header">
-            <h1>Craft AI — Админ</h1>
-            <button class="header-logout" onclick="doLogout()">Выйти</button>
-        </div>
-        <div class="tabs">
-            <button class="tab active" data-tab="prompts" onclick="switchTab('prompts')">Промпты</button>
-            <button class="tab" data-tab="dialogs" onclick="switchTab('dialogs')">Диалоги</button>
-            <button class="tab" data-tab="logs" onclick="switchTab('logs')">AI Логи</button>
-        </div>
-        <div class="content">
-            <div class="panel active" id="panel-prompts"></div>
-            <div class="panel" id="panel-dialogs"></div>
-            <div class="panel" id="panel-logs"></div>
+        <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeMobileSidebar()"></div>
+
+        <aside class="project-sidebar" id="projectSidebar">
+            <div class="ps-header">
+                <span class="ps-logo">Craft AI</span>
+                <button class="ps-new-btn" onclick="toggleSidebar()" title="Свернуть">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+                </button>
+            </div>
+            <div class="ps-nav">
+                <button class="ps-nav-item active" data-tab="home" onclick="switchTab('home')">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                    Главная
+                </button>
+                <button class="ps-nav-item" data-tab="prompts" onclick="switchTab('prompts')">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                    Промпты
+                </button>
+                <button class="ps-nav-item" data-tab="dialogs" onclick="switchTab('dialogs')">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    Диалоги
+                </button>
+                <button class="ps-nav-item" data-tab="logs" onclick="switchTab('logs')">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                    AI Логи
+                </button>
+            </div>
+            <div class="ps-user-section" onclick="doLogout()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                <span class="ps-user-name">Выйти</span>
+            </div>
+        </aside>
+
+        <div class="content-area">
+            <div class="mobile-header" id="mobileHeader">
+                <button onclick="toggleSidebar()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                </button>
+                <span>Craft AI — Админ</span>
+            </div>
+
+            <!-- Home -->
+            <div class="panel active" id="panel-home">
+                <div class="panel-content">
+                    <div class="panel-title">Главная</div>
+                    <div class="panel-subtitle">Дашборды и статистика (скоро)</div>
+                    <div style="padding:40px 0;text-align:center;color:var(--text-muted);font-size:14px;">
+                        Здесь будут дашборды
+                    </div>
+                </div>
+            </div>
+
+            <!-- Промпты -->
+            <div class="panel" id="panel-prompts">
+                <div class="panel-content" id="promptsContent"></div>
+            </div>
+
+            <!-- Диалоги -->
+            <div class="panel" id="panel-dialogs">
+                <div class="panel-content" id="dialogsContent"></div>
+            </div>
+
+            <!-- AI Логи -->
+            <div class="panel" id="panel-logs">
+                <div class="panel-content" id="logsContent"></div>
+            </div>
         </div>
     </div>
 
@@ -236,13 +352,28 @@
         function showApp() {
             document.getElementById('loginView').style.display = 'none';
             document.getElementById('appView').style.display = 'flex';
-            loadPrompts();
+            switchTab('home');
+        }
+
+        // === Sidebar ===
+        function toggleSidebar() {
+            const sidebar = document.getElementById('projectSidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            if (window.innerWidth <= 768) {
+                sidebar.classList.toggle('mobile-open');
+                overlay.classList.toggle('visible');
+            }
+        }
+        function closeMobileSidebar() {
+            document.getElementById('projectSidebar').classList.remove('mobile-open');
+            document.getElementById('sidebarOverlay').classList.remove('visible');
         }
 
         // === Tabs ===
         function switchTab(tabId) {
-            document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tabId));
+            document.querySelectorAll('.ps-nav-item').forEach(n => n.classList.toggle('active', n.dataset.tab === tabId));
             document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + tabId));
+            closeMobileSidebar();
             if (tabId === 'prompts') loadPrompts();
             if (tabId === 'dialogs') loadDialogs();
             if (tabId === 'logs') loadLogs();
@@ -250,11 +381,11 @@
 
         // === Промпты ===
         async function loadPrompts() {
-            const c = document.getElementById('panel-prompts');
+            const c = document.getElementById('promptsContent');
             c.innerHTML = '<div class="loading">Загрузка...</div>';
             try {
                 const r = await api('/api/admin/prompts');
-                if (!r.ok) { c.innerHTML = '<div class="error">Ошибка загрузки</div>'; return; }
+                if (!r.ok) { c.innerHTML = '<div class="error-msg">Ошибка загрузки</div>'; return; }
                 const prompts = await r.json();
                 if (!prompts.length) { c.innerHTML = '<div class="loading">Нет промптов</div>'; return; }
                 const models = [
@@ -275,10 +406,10 @@
                             <select class="select" id="model-${p.prompt_key}">${opts}</select>
                         </div>
                         <textarea class="textarea" id="prompt-${p.prompt_key}">${escapeHtml(p.content)}</textarea>
-                        <button class="btn" onclick="savePrompt('${p.prompt_key}')">Сохранить</button>
+                        <button class="btn-save" onclick="savePrompt('${p.prompt_key}')">Сохранить</button>
                     </div>`;
                 }).join('');
-            } catch(e) { c.innerHTML = '<div class="error">Ошибка</div>'; }
+            } catch(e) { c.innerHTML = '<div class="error-msg">Ошибка</div>'; }
         }
 
         async function savePrompt(key) {
@@ -293,11 +424,11 @@
 
         // === Диалоги ===
         async function loadDialogs() {
-            const c = document.getElementById('panel-dialogs');
+            const c = document.getElementById('dialogsContent');
             c.innerHTML = '<div class="loading">Загрузка...</div>';
             try {
                 const r = await api('/api/admin/users');
-                if (!r.ok) { c.innerHTML = '<div class="error">Ошибка: ' + (await r.text().catch(()=>'')) + '</div>'; return; }
+                if (!r.ok) { c.innerHTML = '<div class="error-msg">Ошибка: ' + (await r.text().catch(()=>'')) + '</div>'; return; }
                 const users = await r.json();
                 if (!users.length) { c.innerHTML = '<div class="loading">Пользователей нет</div>'; return; }
                 c.innerHTML = users.map(u => `
@@ -315,11 +446,11 @@
                         ${u.profile_summary ? `<div style="font-size:11px;color:var(--text-muted);margin-top:6px;line-height:1.4;">${escapeHtml(u.profile_summary).substring(0,150)}...</div>` : ''}
                     </div>
                 `).join('');
-            } catch(e) { c.innerHTML = '<div class="error">Ошибка загрузки</div>'; }
+            } catch(e) { c.innerHTML = '<div class="error-msg">Ошибка загрузки</div>'; }
         }
 
         async function loadUserTopics(userId) {
-            const c = document.getElementById('panel-dialogs');
+            const c = document.getElementById('dialogsContent');
             c.innerHTML = '<div class="loading">Загрузка...</div>';
             try {
                 const r = await api('/api/admin/users/' + userId + '/topics');
@@ -337,11 +468,11 @@
                     </div>
                 `).join('');
                 c.innerHTML = h;
-            } catch(e) { c.innerHTML = '<div class="error">Ошибка</div>'; }
+            } catch(e) { c.innerHTML = '<div class="error-msg">Ошибка</div>'; }
         }
 
         async function loadTopicChat(topicId, userId) {
-            const c = document.getElementById('panel-dialogs');
+            const c = document.getElementById('dialogsContent');
             c.innerHTML = '<div class="loading">Загрузка...</div>';
             try {
                 const r = await api('/api/admin/topics/' + topicId + '/messages');
@@ -357,18 +488,18 @@
                     h += `<div class="msg ${cls}"><div class="msg-bubble">${content}<div class="msg-time">${time} · ${m.message_type || 'text'}</div></div></div>`;
                 });
                 c.innerHTML = h;
-            } catch(e) { c.innerHTML = '<div class="error">Ошибка</div>'; }
+            } catch(e) { c.innerHTML = '<div class="error-msg">Ошибка</div>'; }
         }
 
         // === AI Логи ===
         async function loadLogs() {
-            const c = document.getElementById('panel-logs');
+            const c = document.getElementById('logsContent');
             c.innerHTML = '<div class="loading">Загрузка...</div>';
             try {
                 const r = await api('/api/admin/logs?limit=200');
                 if (!r.ok) {
                     const err = await r.text().catch(()=>'');
-                    c.innerHTML = '<div class="error">Ошибка: ' + (err || r.status) + '</div>';
+                    c.innerHTML = '<div class="error-msg">Ошибка: ' + (err || r.status) + '</div>';
                     return;
                 }
                 const logs = await r.json();
@@ -391,11 +522,11 @@
                     </div>`;
                 });
                 c.innerHTML = h;
-            } catch(e) { c.innerHTML = '<div class="error">Ошибка загрузки</div>'; }
+            } catch(e) { c.innerHTML = '<div class="error-msg">Ошибка загрузки</div>'; }
         }
 
         async function loadLogDetail(logId) {
-            const c = document.getElementById('panel-logs');
+            const c = document.getElementById('logsContent');
             c.innerHTML = '<div class="loading">Загрузка...</div>';
             try {
                 const r = await api('/api/admin/logs/' + logId);
@@ -416,7 +547,7 @@
                     h += `<details style="margin-bottom:8px;"><summary style="cursor:pointer;font-size:13px;font-weight:600;padding:8px 0;">${s.t}</summary><pre style="font-size:12px;line-height:1.5;white-space:pre-wrap;word-break:break-word;padding:12px;background:var(--bg-secondary);border-radius:8px;max-height:400px;overflow-y:auto;">${escapeHtml(s.c)}</pre></details>`;
                 });
                 c.innerHTML = h;
-            } catch(e) { c.innerHTML = '<div class="error">Ошибка</div>'; }
+            } catch(e) { c.innerHTML = '<div class="error-msg">Ошибка</div>'; }
         }
 
         // Init
