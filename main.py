@@ -1163,13 +1163,13 @@ async def list_templates(preview: str = "full", user_id: str = ""):
                     bg_copy = dict(bg)
                     bg_copy['photo'] = _make_thumbnail(bg['photo'])
                     slide['background'] = bg_copy
-                # Сжать element.photo в elements
+                # Убрать тяжёлые base64 из elements (>10KB)
                 elements = slide.get('elements', [])
                 new_elements = []
                 for el in elements:
-                    if el.get('type') == 'photo' and isinstance(el.get('photo'), str) and el['photo'].startswith('data:'):
+                    if el.get('type') == 'photo' and isinstance(el.get('photo'), str) and len(el.get('photo', '')) > 10000:
                         el_copy = dict(el)
-                        el_copy['photo'] = _make_thumbnail(el['photo'], max_w=100)
+                        el_copy['photo'] = ''  # Убираем для превью, полные данные в GET /templates/{id}
                         new_elements.append(el_copy)
                     else:
                         new_elements.append(el)
