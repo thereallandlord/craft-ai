@@ -3461,8 +3461,11 @@ def upsert_user_to_supabase(user_id: int, first_name: str = "", username: str = 
 
 @app.get("/api/auth/config")
 async def auth_config():
-    """Return auth config for frontend (bot username)."""
-    return {"bot_username": TELEGRAM_BOT_USERNAME}
+    """Return auth config for frontend (bot username and bot id)."""
+    bot_id = ""
+    if TELEGRAM_BOT_TOKEN and ":" in TELEGRAM_BOT_TOKEN:
+        bot_id = TELEGRAM_BOT_TOKEN.split(":")[0]
+    return {"bot_username": TELEGRAM_BOT_USERNAME, "bot_id": bot_id}
 
 
 @app.post("/api/auth/telegram")
