@@ -1169,15 +1169,25 @@ async def list_templates(preview: str = "full", user_id: str = ""):
 
 
 @app.get("/templates/{identifier}")
-async def get_template(identifier: str):
+async def get_template(identifier: str, user_id: str = ""):
     """Get single template by template_id from Supabase."""
     if not supabase:
         raise HTTPException(status_code=500, detail="Supabase not configured")
 
     try:
         result = supabase.table("user_templates").select("*").eq("template_id", identifier).execute()
-        if result.data and len(result.data) > 0:
-            row = result.data[0]
+        rows = result.data or []
+        if rows:
+            row = None
+            # Приоритет: свой шаблон > системный > любой
+            if user_id:
+                own = [r for r in rows if str(r.get("user_id", "")) == user_id]
+                if own:
+                    row = own[0]
+            if not row:
+                sys_rows = [r for r in rows if r.get("is_system")]
+                row = sys_rows[0] if sys_rows else rows[0]
+
             ttype = "system" if row.get("is_system") else ("published" if row.get("is_published") else "personal")
             return {
                 "name": row["name"],
@@ -1393,8 +1403,24 @@ async def generate_carousel(request: GenerateRequest):
             with open(fallback_path, 'r', encoding='utf-8') as f:
                 template = json.load(f)
                 template_path = fallback_path
-        else:
-            raise HTTPException(status_code=404, detail=f"Template '{template_identifier}' not found")
+
+    # Fallback: поиск в Supabase (пользовательские шаблоны)
+    if not template and supabase:
+        try:
+            result = supabase.table("user_templates").select("*").eq("template_id", template_identifier).execute()
+            if result.data:
+                row = result.data[0]
+                template = {
+                    "name": row["name"],
+                    "template_id": row["template_id"],
+                    "settings": row.get("settings") or {},
+                    "slides": row.get("slides") or [],
+                }
+        except Exception as e:
+            print(f"Supabase template lookup error: {e}")
+
+    if not template:
+        raise HTTPException(status_code=404, detail=f"Template '{template_identifier}' not found")
 
     settings = template.get('settings', {})
     slides = template.get('slides', [])

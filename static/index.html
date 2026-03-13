@@ -1549,6 +1549,40 @@
             text-overflow: ellipsis;
         }
 
+        .template-context-menu {
+            position: fixed;
+            background: var(--bg-secondary, #fff);
+            border: 1px solid var(--border, #e5e7eb);
+            border-radius: 10px;
+            padding: 4px 0;
+            box-shadow: 0 8px 24px var(--shadow-lg, rgba(0,0,0,0.15));
+            z-index: 1000;
+            min-width: 180px;
+        }
+        .template-context-menu-item {
+            padding: 8px 14px;
+            font-size: 13px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-primary, #111);
+        }
+        .template-context-menu-item:hover {
+            background: var(--bg-hover, #f3f4f6);
+        }
+        .template-context-menu-item.danger { color: #ef4444; }
+
+        .template-section.collapsed .template-section-content { display: none; }
+        .template-section-header {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-muted);
+            cursor: pointer;
+            user-select: none;
+            padding: 4px 0;
+        }
+
         /* Voice Input Button */
         .voice-input-wrapper {
             position: relative;
@@ -6151,12 +6185,17 @@
             try {
                 const r = await fetch(`${API_URL}/templates/${encodeURIComponent(templateId)}/system?user_id=${currentUser.id}`, {method: 'PUT'});
                 if (r.ok) {
+                    templateCache = [];
                     await loadTemplateSelectors(true);
                     // Re-render modal if open
                     const grid = document.getElementById('rtModalTemplateGrid');
-                    if (grid) {
-                        rtOpenTemplateModal();
+                    if (grid) rtOpenTemplateModal();
+                    // Re-render gallery if open
+                    const galleryContent = document.getElementById('templateGalleryContent');
+                    if (galleryContent && document.getElementById('templateGallery').style.display !== 'none') {
+                        await refreshGalleryFromServer(galleryContent);
                     }
+                    showToast('Обновлено', 'success');
                 }
             } catch(e) { console.error('toggleTemplateSystem error:', e); }
         }
@@ -6166,11 +6205,15 @@
             try {
                 const r = await fetch(`${API_URL}/templates/${encodeURIComponent(templateId)}/publish?user_id=${currentUser.id}`, {method: 'PUT'});
                 if (r.ok) {
+                    templateCache = [];
                     await loadTemplateSelectors(true);
                     const grid = document.getElementById('rtModalTemplateGrid');
-                    if (grid) {
-                        rtOpenTemplateModal();
+                    if (grid) rtOpenTemplateModal();
+                    const galleryContent = document.getElementById('templateGalleryContent');
+                    if (galleryContent && document.getElementById('templateGallery').style.display !== 'none') {
+                        await refreshGalleryFromServer(galleryContent);
                     }
+                    showToast('Обновлено', 'success');
                 }
             } catch(e) { console.error('toggleTemplatePublish error:', e); }
         }
@@ -10009,21 +10052,26 @@
 
         function renderGalleryCards(container, templates) {
             const isAdmin = currentUser && currentUser.is_admin;
+            const userId = currentUser ? String(currentUser.id) : '';
             const personal = templates.filter(t => t.type === 'personal');
             const system = templates.filter(t => t.type === 'system');
             const published = templates.filter(t => t.type === 'published');
 
-            function galleryCards(list) {
+            // Load collapsed state from localStorage
+            let sectionsState = {};
+            try { sectionsState = JSON.parse(localStorage.getItem('template_sections_state') || '{}'); } catch(e) {}
+
+            function galleryCards(list, sectionType) {
                 return `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px;">
                     ${list.map(t => {
                         const tid = t.template_id || t.name;
                         const count = t.slidesCount || (t.slides ? t.slides.length : '?');
-                        const adminBtns = isAdmin ? `<div style="position:absolute;top:4px;right:4px;display:flex;gap:2px;z-index:2;" onclick="event.stopPropagation()">
-                            <button onclick="toggleTemplateSystem('${tid}')" title="${t.is_system ? 'Убрать из системных' : 'Сделать системным'}" style="width:22px;height:22px;border-radius:5px;border:none;cursor:pointer;font-size:11px;background:${t.is_system ? 'rgba(99,102,241,0.9)' : 'rgba(0,0,0,0.4)'};color:#fff;">S</button>
-                            <button onclick="toggleTemplatePublish('${tid}')" title="${t.is_published ? 'Снять с публикации' : 'Опубликовать'}" style="width:22px;height:22px;border-radius:5px;border:none;cursor:pointer;font-size:11px;background:${t.is_published ? 'rgba(34,197,94,0.9)' : 'rgba(0,0,0,0.4)'};color:#fff;">P</button>
-                        </div>` : '';
+                        const isOwn = String(t.owner_id || '') === userId || t.type === 'personal';
+                        const menuBtn = `<div style="position:absolute;top:4px;right:4px;z-index:2;" onclick="event.stopPropagation()">
+                            <button onclick="showTemplateMenu(event,'${tid.replace(/'/g, "\\'")}','${t.type}',${!!t.is_system},${!!t.is_published},'${String(t.owner_id||'').replace(/'/g, "\\'")}')" title="Меню" style="width:24px;height:24px;border-radius:6px;border:none;cursor:pointer;font-size:16px;background:rgba(0,0,0,0.4);color:#fff;line-height:24px;text-align:center;">⋯</button>
+                        </div>`;
                         return `<div class="template-card" style="border-radius:10px;cursor:pointer;position:relative;" onclick="openTemplatePreview('${tid}', '${t.type || 'personal'}')">
-                            ${adminBtns}
+                            ${menuBtn}
                             <div class="template-card-preview" id="gallery-preview-${tid}" style="aspect-ratio:4/5;">
                                 <div class="template-card-preview-placeholder">${count} слайдов</div>
                             </div>
@@ -10033,19 +10081,19 @@
                 </div>`;
             }
 
+            function section(key, title, list) {
+                const collapsed = sectionsState[key] === true;
+                const arrow = collapsed ? '▸' : '▾';
+                return `<div class="template-section${collapsed ? ' collapsed' : ''}" data-section-key="${key}">
+                    <div class="template-section-header" onclick="toggleGallerySection(this)" style="margin:0 0 8px;">${arrow} ${title} (${list.length})</div>
+                    <div class="template-section-content">${galleryCards(list, key)}</div>
+                </div>`;
+            }
+
             let html = '';
-            if (personal.length > 0) {
-                html += `<div style="font-size:14px;font-weight:600;color:var(--text-muted);margin:0 0 8px;">Мои шаблоны</div>`;
-                html += galleryCards(personal);
-            }
-            if (system.length > 0) {
-                html += `<div style="font-size:14px;font-weight:600;color:var(--text-muted);margin:${html ? '20' : '0'}px 0 8px;">Системные</div>`;
-                html += galleryCards(system);
-            }
-            if (published.length > 0) {
-                html += `<div style="font-size:14px;font-weight:600;color:var(--text-muted);margin:20px 0 8px;">От сообщества</div>`;
-                html += galleryCards(published);
-            }
+            if (personal.length > 0) html += section('personal', 'Мои шаблоны', personal);
+            if (system.length > 0) html += section('system', 'Системные', system);
+            if (published.length > 0) html += section('published', 'От сообщества', published);
             if (!html) {
                 html = '<div style="padding:40px;text-align:center;color:var(--text-muted);">Нет шаблонов. Нажмите «Создать с нуля» чтобы начать.</div>';
             }
@@ -10057,6 +10105,119 @@
                     if (t.slides && t.slides.length > 0) renderTemplatePreview('gallery', t);
                 });
             });
+        }
+
+        function toggleGallerySection(header) {
+            const section = header.parentElement;
+            section.classList.toggle('collapsed');
+            const key = section.dataset.sectionKey;
+            const isCollapsed = section.classList.contains('collapsed');
+            header.textContent = header.textContent.replace(/^[▸▾]/, isCollapsed ? '▸' : '▾');
+            try {
+                const state = JSON.parse(localStorage.getItem('template_sections_state') || '{}');
+                state[key] = isCollapsed;
+                localStorage.setItem('template_sections_state', JSON.stringify(state));
+            } catch(e) {}
+        }
+
+        function showTemplateMenu(event, tid, type, isSystem, isPublished, ownerId) {
+            event.stopPropagation();
+            // Remove any existing menu
+            document.querySelectorAll('.template-context-menu').forEach(m => m.remove());
+
+            const isAdmin = currentUser && currentUser.is_admin;
+            const userId = currentUser ? String(currentUser.id) : '';
+            const isOwn = ownerId === userId || type === 'personal';
+
+            let items = [];
+
+            if (isOwn || (isAdmin && type === 'system')) {
+                items.push({label: 'Редактировать', icon: '✏️', action: `openTemplatePreview('${tid}','${type}')`});
+            }
+
+            if (isOwn) {
+                items.push({label: 'Экспорт JSON', icon: '📥', action: `exportTemplateJson('${tid}')`});
+            }
+
+            if (!isOwn && (type === 'system' || type === 'published')) {
+                items.push({label: 'Использовать', icon: '📋', action: `useTemplateById('${tid}')`});
+            }
+
+            if (isAdmin) {
+                items.push({label: isSystem ? 'Убрать из системных' : 'Сделать системным', icon: isSystem ? '⬇️' : '⬆️', action: `toggleTemplateSystem('${tid}')`});
+                items.push({label: isPublished ? 'Снять с публикации' : 'Опубликовать', icon: isPublished ? '🔒' : '🌐', action: `toggleTemplatePublish('${tid}')`});
+            }
+
+            if (isOwn) {
+                items.push({label: 'Удалить', icon: '🗑', cls: 'danger', action: `deleteTemplateFromGallery('${tid}')`});
+            }
+
+            const menu = document.createElement('div');
+            menu.className = 'template-context-menu';
+            menu.innerHTML = items.map(it =>
+                `<div class="template-context-menu-item${it.cls ? ' ' + it.cls : ''}" onclick="event.stopPropagation();${it.action};document.querySelectorAll('.template-context-menu').forEach(m=>m.remove())">${it.icon} ${it.label}</div>`
+            ).join('');
+
+            document.body.appendChild(menu);
+
+            // Position near button
+            const rect = event.target.getBoundingClientRect();
+            let top = rect.bottom + 4;
+            let left = rect.right - 180;
+            if (left < 8) left = 8;
+            if (top + 250 > window.innerHeight) top = rect.top - menu.offsetHeight - 4;
+            menu.style.top = top + 'px';
+            menu.style.left = left + 'px';
+
+            // Close on outside click
+            setTimeout(() => {
+                document.addEventListener('click', function closeMenu() {
+                    document.querySelectorAll('.template-context-menu').forEach(m => m.remove());
+                    document.removeEventListener('click', closeMenu);
+                }, {once: true});
+            }, 10);
+        }
+
+        async function exportTemplateJson(tid) {
+            try {
+                const uid = currentUser ? currentUser.id : '';
+                const r = await fetch(`${API_URL}/templates/${encodeURIComponent(tid)}${uid ? '?user_id=' + uid : ''}`);
+                if (!r.ok) throw new Error();
+                const data = await r.json();
+                const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url; a.download = (data.name || tid) + '.json'; a.click();
+                URL.revokeObjectURL(url);
+                showToast('Шаблон экспортирован', 'success');
+            } catch(e) { showToast('Ошибка экспорта', 'error'); }
+        }
+
+        async function useTemplateById(tid) {
+            try {
+                const uid = currentUser ? currentUser.id : '';
+                const r = await fetch(`${API_URL}/templates/${encodeURIComponent(tid)}${uid ? '?user_id=' + uid : ''}`);
+                if (!r.ok) throw new Error();
+                const t = await r.json();
+                useTemplate(JSON.stringify(t));
+            } catch(e) { showToast('Ошибка загрузки шаблона', 'error'); }
+        }
+
+        async function deleteTemplateFromGallery(tid) {
+            // Find template name from cache
+            let templateName = tid;
+            const found = templateCache.find(t => (t.template_id || t.name) === tid);
+            if (found) templateName = found.name || tid;
+            if (!confirm(`Удалить "${templateName}"?`)) return;
+            try {
+                const uid = currentUser ? currentUser.id : '';
+                await fetch(`${API_URL}/templates/${encodeURIComponent(tid)}?user_id=${uid}`, { method: 'DELETE' });
+                templateCache = [];
+                try { localStorage.removeItem('templateCacheV3'); } catch(e) {}
+                const content = document.getElementById('templateGalleryContent');
+                if (content) await refreshGalleryFromServer(content);
+                showToast('Удалено', 'success');
+            } catch(e) { showToast('Ошибка удаления', 'error'); }
         }
 
         async function preloadTemplates() {
@@ -10122,10 +10283,12 @@
         }
 
         async function openTemplatePreview(templateId, templateType) {
-            // Personal templates → open editor directly
-            if (templateType === 'personal') {
+            // Personal templates OR admin on system templates → open editor directly
+            const isAdmin = currentUser && currentUser.is_admin;
+            if (templateType === 'personal' || (isAdmin && templateType === 'system')) {
                 try {
-                    const r = await fetch(`${API_URL}/templates/${encodeURIComponent(templateId)}`);
+                    const uid = currentUser ? currentUser.id : '';
+                    const r = await fetch(`${API_URL}/templates/${encodeURIComponent(templateId)}${uid ? '?user_id=' + uid : ''}`);
                     if (r.ok) {
                         openTemplateEditor(await r.json());
                         return;
@@ -10196,6 +10359,9 @@
                     })
                 });
             } catch(e) {}
+            // Refresh cache so new template appears in gallery
+            templateCache = [];
+            try { localStorage.removeItem('templateCacheV3'); } catch(e) {}
             // Open in editor
             t.template_id = newTid;
             openTemplateEditor(t);
