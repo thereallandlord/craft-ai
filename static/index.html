@@ -8486,14 +8486,46 @@
             if (subtitle) subtitle.insertAdjacentHTML('afterend', html);
         }
 
-        function openTelegramPopup() {
-            // Используем Telegram.Login.auth если доступен, иначе пересоздаём виджет
+        let _tgBotUsername = '';
+
+        async function openTelegramPopup() {
+            // 1. Получить bot_username если ещё нет
+            if (!_tgBotUsername) {
+                try {
+                    const cfgResp = await fetch(`${API_URL}/api/auth/config`);
+                    if (cfgResp.ok) {
+                        const cfg = await cfgResp.json();
+                        _tgBotUsername = cfg.bot_username;
+                    }
+                } catch(e) {}
+            }
+            if (!_tgBotUsername) {
+                alert('Telegram Login не настроен');
+                return;
+            }
+
+            // 2. Загрузить скрипт Telegram если не загружен
+            if (!window.Telegram || !window.Telegram.Login) {
+                await new Promise((resolve) => {
+                    const s = document.createElement('script');
+                    s.src = 'https://telegram.org/js/telegram-widget.js?22';
+                    s.onload = () => setTimeout(resolve, 300);
+                    s.onerror = resolve;
+                    document.head.appendChild(s);
+                });
+            }
+
+            // 3. Вызвать Telegram.Login.auth — откроет popup для входа
             if (window.Telegram && window.Telegram.Login && window.Telegram.Login.auth) {
                 window.Telegram.Login.auth({ bot_id: _tgBotUsername, request_access: 'write' }, function(user) {
-                    if (user) onTelegramAuth(user);
+                    if (user) {
+                        const cb = document.getElementById('loginChoiceBlock');
+                        if (cb) cb.remove();
+                        onTelegramAuth(user);
+                    }
                 });
             } else {
-                // Fallback: пересоздать виджет
+                // Fallback: показать обычный виджет
                 const cb = document.getElementById('loginChoiceBlock');
                 if (cb) cb.remove();
                 const container = document.getElementById('telegramLoginWidget');
@@ -8503,8 +8535,6 @@
                 showLogin();
             }
         }
-
-        let _tgBotUsername = '';
 
         function showLoginChoiceBack() {
             const cb = document.getElementById('loginChoiceBlock');
