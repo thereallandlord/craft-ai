@@ -9776,7 +9776,10 @@
                 });
                 if (!r.ok) {
                     const err = await r.json().catch(() => ({}));
-                    throw new Error(err.detail || 'Ошибка сохранения');
+                    const detail = typeof err.detail === 'string' ? err.detail
+                        : Array.isArray(err.detail) ? err.detail.map(d => d.msg || JSON.stringify(d)).join(', ')
+                        : 'Ошибка сохранения';
+                    throw new Error(detail);
                 }
                 showToast('Сохранено', 'success');
                 // Обновляем кэш чтобы шаблон появился в галерее
@@ -10345,15 +10348,16 @@
         }
 
         async function useTemplate(templateJson) {
-            const t = JSON.parse(templateJson);
+            const t = typeof templateJson === 'string' ? JSON.parse(templateJson) : templateJson;
             if (!currentUser) {
                 showToast('Войдите чтобы использовать шаблон', 'error');
                 return;
             }
             // Copy to personal with new template_id
             const newTid = t.template_id + '_copy_' + Date.now();
+            let saved = false;
             try {
-                await fetch(`${API_URL}/templates`, {
+                const r = await fetch(`${API_URL}/templates`, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
@@ -10364,14 +10368,22 @@
                         user_id: currentUser.id
                     })
                 });
-            } catch(e) {}
+                if (r.ok) {
+                    saved = true;
+                } else {
+                    const err = await r.json().catch(() => ({}));
+                    console.error('Copy template error:', err);
+                }
+            } catch(e) {
+                console.error('Copy template fetch error:', e);
+            }
             // Refresh cache so new template appears in gallery
             templateCache = [];
             try { localStorage.removeItem('templateCacheV3'); } catch(e) {}
             // Open in editor
             t.template_id = newTid;
             openTemplateEditor(t);
-            showToast('Шаблон скопирован в "Мои шаблоны"', 'success');
+            showToast(saved ? 'Шаблон скопирован в "Мои шаблоны"' : 'Ошибка копирования шаблона', saved ? 'success' : 'error');
         }
 
         function openTemplateEditor(templateData) {

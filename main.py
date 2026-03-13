@@ -1217,21 +1217,28 @@ async def save_template(template: TemplateData):
     if not template.user_id:
         raise HTTPException(status_code=400, detail="user_id required")
 
+    # Приведение user_id к int (в БД колонка BIGINT)
+    try:
+        uid_int = int(template.user_id)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=400, detail=f"Invalid user_id: {template.user_id}")
+
     tid = template.template_id or generate_template_id(template.name)
 
     try:
         row = {
-            "user_id": template.user_id,
+            "user_id": uid_int,
             "template_id": tid,
             "name": template.name,
-            "slides": template.slides,
-            "settings": template.settings,
+            "slides": template.slides or [],
+            "settings": template.settings or {},
             "updated_at": datetime.now().isoformat()
         }
         supabase.table("user_templates").upsert(row, on_conflict="user_id,template_id").execute()
         return {"success": True, "name": template.name, "template_id": tid, "type": "personal"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error saving template: {e}")
+        print(f"Error saving template: {e}")
+        raise HTTPException(status_code=500, detail=f"Ошибка сохранения: {str(e)}")
 
 
 @app.put("/templates/{identifier}/publish")
