@@ -5971,16 +5971,22 @@
         async function refreshTemplateCache() {
             try {
                 const uid = currentUser ? String(currentUser.id) : '';
-                const r = await fetch(`${API_URL}/templates?preview=light${uid ? '&user_id=' + uid : ''}`);
+                const url = `${API_URL}/templates?preview=light${uid ? '&user_id=' + uid : ''}`;
+                console.log('[templates] refreshTemplateCache fetching:', url);
+                const r = await fetch(url);
                 if (r.ok) {
-                    const templates = (await r.json()).templates || [];
+                    const data = await r.json();
+                    const templates = data.templates || [];
+                    console.log('[templates] fetched:', templates.length, 'templates');
                     if (templates.length > 0) {
                         templateCache = templates;
                         try { localStorage.setItem('templateCacheV3', JSON.stringify(templates)); } catch(e) {}
                     }
                     return templates;
+                } else {
+                    console.error('[templates] fetch failed:', r.status, r.statusText);
                 }
-            } catch(e) { console.error('refreshTemplateCache error:', e); }
+            } catch(e) { console.error('[templates] refreshTemplateCache error:', e); }
             return templateCache;
         }
 
@@ -10262,8 +10268,9 @@
         async function refreshGalleryFromServer(container) {
             try {
                 const templates = await refreshTemplateCache();
-                // Рендер галереи если она видна
-                if (container && document.getElementById('templateGallery')?.style.display !== 'none') {
+                // Рендер галереи если видна
+                const gallery = document.getElementById('templateGallery');
+                if (container && gallery && gallery.style.display !== 'none') {
                     renderGalleryCards(container, templates.length > 0 ? templates : templateCache);
                 }
             } catch(e) { console.error('refreshGalleryFromServer error:', e); }
@@ -10296,7 +10303,14 @@
 
             // No cache — show spinner and load
             content.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-muted);"><span class="spinner"></span> Загрузка шаблонов...</div>';
-            await refreshGalleryFromServer(content);
+            const templates = await refreshTemplateCache();
+            console.log('[templates] openTemplateGallery got:', templates.length, 'templateCache:', templateCache.length);
+            if (templates.length > 0 || templateCache.length > 0) {
+                renderGalleryCards(content, templates.length > 0 ? templates : templateCache);
+            } else {
+                // Показать кнопку повторной загрузки вместо "Нет шаблонов"
+                content.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-muted);">Не удалось загрузить шаблоны.<br><button class="btn btn-primary" onclick="openTemplateGallery()" style="margin-top:12px;">Повторить</button></div>';
+            }
         }
 
         async function openTemplatePreview(templateId, templateType) {
