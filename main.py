@@ -1154,14 +1154,26 @@ async def list_templates(preview: str = "full", user_id: str = ""):
     def format_row(row, ttype: str):
         all_slides = row.get("slides") or []
         if preview == 'light':
-            # Первый слайд с thumbnail вместо полного фото
+            # Первый слайд с thumbnail вместо полных base64 фото
             if all_slides:
                 slide = dict(all_slides[0])
+                # Сжать background.photo
                 bg = slide.get('background')
                 if bg and isinstance(bg, dict) and bg.get('photo', '').startswith('data:'):
                     bg_copy = dict(bg)
                     bg_copy['photo'] = _make_thumbnail(bg['photo'])
                     slide['background'] = bg_copy
+                # Сжать element.photo в elements
+                elements = slide.get('elements', [])
+                new_elements = []
+                for el in elements:
+                    if el.get('type') == 'photo' and isinstance(el.get('photo'), str) and el['photo'].startswith('data:'):
+                        el_copy = dict(el)
+                        el_copy['photo'] = _make_thumbnail(el['photo'], max_w=100)
+                        new_elements.append(el_copy)
+                    else:
+                        new_elements.append(el)
+                slide['elements'] = new_elements
                 slides_data = [slide]
             else:
                 slides_data = []
