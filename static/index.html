@@ -9746,6 +9746,11 @@
         }
 
         async function saveTemplate() {
+            if (!currentUser) {
+                showToast('Войдите чтобы сохранить шаблон', 'error');
+                return;
+            }
+
             state.templateName = document.getElementById('templateName').value || 'Новый шаблон';
             let templateId = document.getElementById('templateId').value.trim();
 
@@ -9760,8 +9765,7 @@
                 template_id: templateId,
                 settings: state.settings,
                 slides: state.slides,
-                createdAt: new Date().toISOString(),
-                user_id: currentUser ? currentUser.id : undefined
+                user_id: currentUser.id
             };
 
             try {
@@ -9770,16 +9774,18 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(template)
                 });
-                if (r.ok) {
-                    showToast('Сохранено', 'success');
-                    loadTemplatesList();
-                    loadTemplateSelectors(true);
-                } else throw new Error();
+                if (!r.ok) {
+                    const err = await r.json().catch(() => ({}));
+                    throw new Error(err.detail || 'Ошибка сохранения');
+                }
+                showToast('Сохранено', 'success');
+                // Обновляем кэш чтобы шаблон появился в галерее
+                templateCache = [];
+                try { localStorage.removeItem('templateCacheV3'); } catch(e) {}
+                loadTemplatesList();
+                loadTemplateSelectors(true);
             } catch (e) {
-                const t = JSON.parse(localStorage.getItem('carousel_templates') || '{}');
-                t[state.templateName] = template;
-                localStorage.setItem('carousel_templates', JSON.stringify(t));
-                showToast('Сохранено локально', 'success');
+                showToast(e.message || 'Ошибка сохранения шаблона', 'error');
             }
         }
 
@@ -10140,7 +10146,7 @@
             }
 
             if (!isOwn && (type === 'system' || type === 'published')) {
-                items.push({label: 'Использовать', icon: '📋', action: `useTemplateById('${tid}')`});
+                items.push({label: 'Скопировать себе', icon: '📋', action: `useTemplateById('${tid}')`});
             }
 
             if (isAdmin) {
@@ -10320,7 +10326,7 @@
                             <div class="template-card-preview" id="tpreview-slide-${i}" style="width:100%;height:100%;"></div>
                         </div>`).join('')}
                     </div>
-                    <button class="btn btn-primary" onclick="useTemplate(${JSON.stringify(JSON.stringify(t))})" style="width:100%;padding:12px;font-size:15px;">Использовать шаблон</button>
+                    <button class="btn btn-primary" onclick="useTemplateById('${t.template_id}')" style="width:100%;padding:12px;font-size:15px;">Скопировать шаблон</button>
                 `;
                 content.innerHTML = html;
 
