@@ -8240,7 +8240,17 @@
                     showLogin();
                 }
             } else {
-                showLogin();
+                const lastUser = localStorage.getItem('craft_last_user');
+                if (lastUser) {
+                    try {
+                        showLoginChoice(JSON.parse(lastUser));
+                    } catch(e) {
+                        localStorage.removeItem('craft_last_user');
+                        showLogin();
+                    }
+                } else {
+                    showLogin();
+                }
             }
         }
 
@@ -8316,6 +8326,7 @@
 
                 currentUser = data.user;
                 localStorage.setItem('craft_user', JSON.stringify(data.user));
+                localStorage.removeItem('craft_last_user');
                 hideLogin();
                 updateUIForUser();
             } catch(e) {
@@ -8375,6 +8386,9 @@
 
         function logout() {
             _lastLoggedOutUser = currentUser;
+            if (currentUser) {
+                localStorage.setItem('craft_last_user', JSON.stringify(currentUser));
+            }
             currentUser = null;
             localStorage.removeItem('craft_user');
             // Hide user info
@@ -8415,9 +8429,11 @@
         }
 
         function quickRelogin() {
-            if (!_lastLoggedOutUser) return;
-            currentUser = _lastLoggedOutUser;
+            const user = _lastLoggedOutUser || JSON.parse(localStorage.getItem('craft_last_user') || 'null');
+            if (!user) return;
+            currentUser = user;
             localStorage.setItem('craft_user', JSON.stringify(currentUser));
+            localStorage.removeItem('craft_last_user');
             _lastLoggedOutUser = null;
             const cb = document.getElementById('loginChoiceBlock');
             if (cb) cb.remove();
@@ -8427,6 +8443,7 @@
 
         function showDifferentAccount() {
             _lastLoggedOutUser = null;
+            localStorage.removeItem('craft_last_user');
             const cb = document.getElementById('loginChoiceBlock');
             if (cb) cb.remove();
             document.getElementById('telegramLoginWidget').style.display = '';
