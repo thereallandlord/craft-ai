@@ -7265,6 +7265,9 @@
                 const slide = {...s};
                 const photo = rtSlidePhotos[i] || (i === 0 ? rtSelectedPhoto : null);
                 if (photo) slide.PHOTO = photo;
+                if (rtSlides[i] && rtSlides[i].background) {
+                    slide._background = rtSlides[i].background;
+                }
                 return slide;
             });
             const r = await fetch(`${API_URL}/generate`, {
@@ -9628,7 +9631,7 @@
 
             // NEW v7.0: Генерируем template_id если не заполнен
             if (!templateId) {
-                templateId = generateTemplateId(state.templateName);
+                templateId = generateTemplateId(state.templateName) + '_' + Date.now().toString(36).slice(-4);
                 document.getElementById('templateId').value = templateId;
             }
 

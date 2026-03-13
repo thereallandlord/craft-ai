@@ -1467,6 +1467,14 @@ async def generate_carousel(request: GenerateRequest):
 
             slide = json.loads(json.dumps(template_to_use))
 
+            # NEW: Override background from client request (color picker, photo, etc.)
+            if '_background' in slide_vars:
+                client_bg = slide_vars['_background']
+                if isinstance(client_bg, dict):
+                    if not slide.get('background'):
+                        slide['background'] = {}
+                    slide['background'].update(client_bg)
+
             # Подстановка PHOTO для background
             if 'PHOTO' in slide_vars and slide.get('background', {}).get('type') == 'photo':
                 slide['background']['photo'] = slide_vars['PHOTO']
