@@ -1127,15 +1127,35 @@ async def list_templates(preview: str = "full", user_id: str = ""):
 
     templates = []
 
+    def make_thumbnail(data_uri: str, max_w: int = 200) -> str:
+        """Сжать base64 фото до маленького thumbnail для превью."""
+        try:
+            header, b64data = data_uri.split(',', 1)
+            img_bytes = base64.b64decode(b64data)
+            img = Image.open(io.BytesIO(img_bytes))
+            # Resize keeping aspect ratio
+            ratio = max_w / img.width
+            new_h = int(img.height * ratio)
+            img = img.resize((max_w, new_h), Image.LANCZOS)
+            # Convert to JPEG
+            buf = io.BytesIO()
+            img.convert('RGB').save(buf, format='JPEG', quality=50, optimize=True)
+            thumb_b64 = base64.b64encode(buf.getvalue()).decode()
+            return f"data:image/jpeg;base64,{thumb_b64}"
+        except Exception:
+            return ""
+
     def format_row(row, ttype: str):
         all_slides = row.get("slides") or []
         if preview == 'light':
-            # Первый слайд без base64 фонов (для превью карточки в галерее)
+            # Первый слайд с thumbnail вместо полного фото
             if all_slides:
                 slide = dict(all_slides[0])
                 bg = slide.get('background')
                 if bg and isinstance(bg, dict) and bg.get('photo', '').startswith('data:'):
-                    slide['background'] = {k: v for k, v in bg.items() if k != 'photo'}
+                    bg_copy = dict(bg)
+                    bg_copy['photo'] = make_thumbnail(bg['photo'])
+                    slide['background'] = bg_copy
                 slides_data = [slide]
             else:
                 slides_data = []

@@ -8506,6 +8506,12 @@
             loadProjects();
             loadTopics();
             loadUserSettings();
+
+            // Обновить шаблоны с user_id (чтобы показать личные и опубликованные)
+            refreshTemplateCache().then(() => {
+                loadTemplateSelectors(true);
+                rerenderGalleryIfVisible();
+            });
         }
 
         function logout() {
