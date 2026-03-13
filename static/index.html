@@ -8446,7 +8446,10 @@
             localStorage.removeItem('craft_last_user');
             const cb = document.getElementById('loginChoiceBlock');
             if (cb) cb.remove();
-            document.getElementById('telegramLoginWidget').style.display = '';
+            // Полностью пересоздать Telegram виджет (сбросить кэш сессии)
+            const container = document.getElementById('telegramLoginWidget');
+            container.innerHTML = '';
+            container.style.display = '';
             document.getElementById('loginWidgetLoading').style.display = '';
             showLogin();
         }
