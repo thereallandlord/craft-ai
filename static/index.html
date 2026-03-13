@@ -8371,7 +8371,10 @@
             loadUserSettings();
         }
 
+        let _lastLoggedOutUser = null;
+
         function logout() {
+            _lastLoggedOutUser = currentUser;
             currentUser = null;
             localStorage.removeItem('craft_user');
             // Hide user info
@@ -8387,6 +8390,47 @@
             if (settingsBtn) settingsBtn.style.display = '';
             // Go home
             goHome();
+            if (_lastLoggedOutUser) {
+                showLoginChoice(_lastLoggedOutUser);
+            } else {
+                showLogin();
+            }
+        }
+
+        function showLoginChoice(savedUser) {
+            document.getElementById('loginOverlay').classList.remove('hidden');
+            document.getElementById('telegramLoginWidget').style.display = 'none';
+            document.getElementById('loginWidgetLoading').style.display = 'none';
+            document.getElementById('loginLoading').style.display = 'none';
+            document.getElementById('loginError').style.display = 'none';
+            const old = document.getElementById('loginChoiceBlock');
+            if (old) old.remove();
+            const name = savedUser.first_name || savedUser.username || 'пользователь';
+            const html = `<div id="loginChoiceBlock" style="display:flex;flex-direction:column;gap:10px;margin-top:20px;width:100%;">
+                <button onclick="quickRelogin()" style="padding:12px 20px;background:var(--accent,#0d0d0d);color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;">Войти как ${name}</button>
+                <button onclick="showDifferentAccount()" style="padding:12px 20px;background:var(--bg-secondary,#f9f9f9);color:var(--text-primary,#0d0d0d);border:1px solid var(--border,#e5e5e5);border-radius:12px;font-size:15px;cursor:pointer;">Войти в другой аккаунт</button>
+            </div>`;
+            const subtitle = document.querySelector('.login-subtitle');
+            if (subtitle) subtitle.insertAdjacentHTML('afterend', html);
+        }
+
+        function quickRelogin() {
+            if (!_lastLoggedOutUser) return;
+            currentUser = _lastLoggedOutUser;
+            localStorage.setItem('craft_user', JSON.stringify(currentUser));
+            _lastLoggedOutUser = null;
+            const cb = document.getElementById('loginChoiceBlock');
+            if (cb) cb.remove();
+            hideLogin();
+            updateUIForUser();
+        }
+
+        function showDifferentAccount() {
+            _lastLoggedOutUser = null;
+            const cb = document.getElementById('loginChoiceBlock');
+            if (cb) cb.remove();
+            document.getElementById('telegramLoginWidget').style.display = '';
+            document.getElementById('loginWidgetLoading').style.display = '';
             showLogin();
         }
 
