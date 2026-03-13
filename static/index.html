@@ -8162,9 +8162,8 @@
         // === AUTH ===
         let currentUser = null;
         let _tgBotUsername = '';
-        let _tgBotId = '';
         let _isReloginAfterLogout = false;
-        let _lastLoggedOutUserId = null;
+        let _loginPollInterval = null;
         let userSettings = { last_template_id: 'kamalov', instagram_usernames: [] };
 
         async function loadUserSettings() {
@@ -8253,13 +8252,12 @@
             const container = document.getElementById('telegramLoginWidget');
 
             // Fetch config if not already loaded
-            if (!_tgBotUsername || !_tgBotId) {
+            if (!_tgBotUsername) {
                 try {
                     const cfgResp = await fetch(`${API_URL}/api/auth/config`);
                     if (cfgResp.ok) {
                         const cfg = await cfgResp.json();
                         _tgBotUsername = cfg.bot_username;
-                        _tgBotId = cfg.bot_id;
                     }
                 } catch(e) {}
 
@@ -8272,13 +8270,13 @@
             }
 
             if (_isReloginAfterLogout) {
-                // After logout: show custom button that opens Telegram popup
+                // After logout: bot deep link for account switching
                 document.getElementById('loginWidgetLoading').style.display = 'none';
                 container.innerHTML = '';
                 const btn = document.createElement('button');
                 btn.className = 'login-tg-btn';
                 btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M12 0C5.37 0 0 5.37 0 12s5.37 12 12 12 12-5.37 12-12S18.63 0 12 0zm5.53 8.14l-1.79 8.45c-.13.6-.5.75-.99.47l-2.77-2.04-1.34 1.29c-.15.15-.27.27-.56.27l.2-2.83 5.15-4.65c.22-.2-.05-.31-.35-.12l-6.36 4.01-2.74-.86c-.6-.18-.61-.6.12-.88l10.71-4.13c.5-.18.93.12.77.88z"/></svg> Войти через Telegram';
-                btn.onclick = openTelegramPopup;
+                btn.onclick = startBotLogin;
                 container.appendChild(btn);
             } else {
                 // First visit: show embedded Telegram widget
@@ -8305,95 +8303,59 @@
             document.getElementById('loginOverlay').classList.add('hidden');
         }
 
-        async function openTelegramPopup() {
-            // Ensure telegram-widget.js is loaded (provides Telegram.Login.auth)
-            if (!window.Telegram || !window.Telegram.Login) {
-                await new Promise((resolve) => {
-                    const s = document.createElement('script');
-                    s.src = 'https://telegram.org/js/telegram-widget.js?22';
-                    s.onload = () => setTimeout(resolve, 300);
-                    s.onerror = resolve;
-                    document.head.appendChild(s);
-                });
-            }
-
-            if (window.Telegram && window.Telegram.Login && window.Telegram.Login.auth) {
-                window.Telegram.Login.auth(
-                    { bot_id: _tgBotId, request_access: 'write' },
-                    function(user) {
-                        if (!user) {
-                            // Popup closed without auth — show switch account instructions
-                            showSwitchAccountMessage();
-                            return;
-                        }
-                        if (_lastLoggedOutUserId && user.id == _lastLoggedOutUserId) {
-                            showSwitchAccountMessage(user);
-                        } else {
-                            onTelegramAuth(user);
-                        }
-                    }
-                );
-            } else {
-                _isReloginAfterLogout = false;
-                const container = document.getElementById('telegramLoginWidget');
-                container.innerHTML = '';
-                showLogin();
-            }
-        }
-
-        function copyCurrentUrl() {
-            navigator.clipboard.writeText(window.location.href).then(() => {
-                const btn = document.getElementById('copyUrlBtn');
-                if (btn) { btn.textContent = 'Скопировано!'; setTimeout(() => { btn.textContent = 'Скопировать ссылку'; }, 2000); }
-            });
-        }
-
-        function showSwitchAccountMessage(sameUser) {
+        async function startBotLogin() {
             const container = document.getElementById('telegramLoginWidget');
-            const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
-            const shortcut = isMac ? 'Cmd+Shift+N' : 'Ctrl+Shift+N';
-            const name = sameUser ? (sameUser.first_name || sameUser.username) : '';
+            try {
+                const resp = await fetch(`${API_URL}/api/auth/create-login-token`, { method: 'POST' });
+                if (!resp.ok) throw new Error('Failed to create token');
+                const { token, bot_username } = await resp.json();
 
-            let html = '<div style="text-align:center; max-width:340px;">';
+                // Open bot deep link in Telegram app
+                window.open(`https://t.me/${bot_username}?start=login_${token}`, '_blank');
 
-            if (sameUser) {
-                html += `<p style="color:var(--text-secondary); font-size:14px; margin-bottom:16px;">
-                    Telegram запоминает аккаунт в браузере и вернул тот же (<b>${name}</b>).
-                </p>`;
-            } else {
-                html += `<p style="color:var(--text-secondary); font-size:14px; margin-bottom:16px;">
-                    Окно авторизации закрылось без входа.
-                </p>`;
-            }
-
-            html += `<p style="color:var(--text-primary); font-size:14px; font-weight:600; margin-bottom:12px;">
-                        Чтобы войти другим аккаунтом:
-                     </p>
-                     <p style="color:var(--text-secondary); font-size:13px; margin-bottom:20px; line-height:1.6;">
-                        1. Скопируйте ссылку на эту страницу<br>
-                        2. Откройте приватное окно (<b>${shortcut}</b>)<br>
-                        3. Вставьте ссылку и войдите другим аккаунтом
-                     </p>
-                     <div style="display:flex; flex-direction:column; gap:10px;">
-                        <button id="copyUrlBtn" onclick="copyCurrentUrl()"
-                                style="background:#2AABEE; color:#fff; border:none; padding:12px 20px; border-radius:12px; cursor:pointer; font-size:15px; font-weight:600; transition: background 0.2s;">
-                            Скопировать ссылку
-                        </button>`;
-
-            if (sameUser) {
-                html += `<button onclick="onTelegramAuth(JSON.parse(this.dataset.user))" data-user='${JSON.stringify(sameUser).replace(/'/g, "&#39;")}'
-                                style="background:none; border:1px solid var(--border-color); color:var(--text-secondary); padding:10px 20px; border-radius:12px; cursor:pointer; font-size:14px;">
-                            Войти как ${name}
-                        </button>`;
-            } else {
-                html += `<button class="login-tg-btn" onclick="openTelegramPopup()">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M12 0C5.37 0 0 5.37 0 12s5.37 12 12 12 12-5.37 12-12S18.63 0 12 0zm5.53 8.14l-1.79 8.45c-.13.6-.5.75-.99.47l-2.77-2.04-1.34 1.29c-.15.15-.27.27-.56.27l.2-2.83 5.15-4.65c.22-.2-.05-.31-.35-.12l-6.36 4.01-2.74-.86c-.6-.18-.61-.6.12-.88l10.71-4.13c.5-.18.93.12.77.88z"/></svg>
+                // Show waiting UI
+                container.innerHTML = `
+                    <div style="text-align:center; max-width:320px;">
+                        <p style="color:var(--text-secondary); font-size:14px; margin-bottom:12px;">
+                            Откройте Telegram и нажмите <b>«Start»</b> / <b>«Начать»</b>
+                        </p>
+                        <div style="display:flex; align-items:center; justify-content:center; gap:8px; color:var(--text-muted); font-size:13px; margin-bottom:16px;">
+                            <div class="spinner" style="width:16px; height:16px; border-width:2px;"></div>
+                            <span id="botLoginStatus">Ожидание авторизации...</span>
+                        </div>
+                        <button onclick="startBotLogin()"
+                                style="background:none; border:1px solid var(--border-color); color:var(--text-secondary); padding:8px 16px; border-radius:8px; cursor:pointer; font-size:13px;">
                             Попробовать снова
-                        </button>`;
-            }
+                        </button>
+                    </div>
+                `;
 
-            html += '</div></div>';
-            container.innerHTML = html;
+                // Poll for auth result
+                if (_loginPollInterval) clearInterval(_loginPollInterval);
+                _loginPollInterval = setInterval(async () => {
+                    try {
+                        const check = await fetch(`${API_URL}/api/auth/check-login-token/${token}`);
+                        const result = await check.json();
+                        if (result.status === 'authenticated') {
+                            clearInterval(_loginPollInterval);
+                            _loginPollInterval = null;
+                            _isReloginAfterLogout = false;
+                            currentUser = result.user;
+                            localStorage.setItem('craft_user', JSON.stringify(result.user));
+                            hideLogin();
+                            updateUIForUser();
+                        } else if (result.status === 'expired') {
+                            clearInterval(_loginPollInterval);
+                            _loginPollInterval = null;
+                            const status = document.getElementById('botLoginStatus');
+                            if (status) status.textContent = 'Время истекло. Нажмите «Попробовать снова».';
+                        }
+                    } catch(e) {}
+                }, 2000);
+
+            } catch(e) {
+                container.innerHTML = '<p style="color:var(--text-secondary); font-size:14px;">Ошибка. Попробуйте обновить страницу.</p>';
+            }
         }
 
         function showLoginError(msg) {
@@ -8482,7 +8444,7 @@
 
         function logout() {
             _isReloginAfterLogout = true;
-            _lastLoggedOutUserId = currentUser ? currentUser.id : null;
+            if (_loginPollInterval) { clearInterval(_loginPollInterval); _loginPollInterval = null; }
             currentUser = null;
             localStorage.removeItem('craft_user');
             // Hide user info

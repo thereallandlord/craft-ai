@@ -86,6 +86,7 @@ import hashlib
 import asyncio
 import hmac
 import time
+import secrets
 import numpy as np
 from supabase import create_client, Client as SupabaseClient
 import psycopg2
@@ -3401,6 +3402,11 @@ def get_admin_ids():
     return [x.strip() for x in os.getenv("ADMIN_TELEGRAM_IDS", "").split(",") if x.strip()]
 CLUB_CHAT_ID = "-1002841247853"
 
+# Pending login tokens for bot deep link auth
+_pending_login_tokens = {}  # token -> {"created": timestamp, "user": None or user_data}
+_LOGIN_TOKEN_TTL = 300  # 5 minutes
+_webhook_registered = False
+
 
 def verify_telegram_hash(auth_data: dict) -> bool:
     """Verify data from Telegram Login Widget using HMAC-SHA256."""
@@ -3461,11 +3467,129 @@ def upsert_user_to_supabase(user_id: int, first_name: str = "", username: str = 
 
 @app.get("/api/auth/config")
 async def auth_config():
-    """Return auth config for frontend (bot username and bot id)."""
-    bot_id = ""
-    if TELEGRAM_BOT_TOKEN and ":" in TELEGRAM_BOT_TOKEN:
-        bot_id = TELEGRAM_BOT_TOKEN.split(":")[0]
-    return {"bot_username": TELEGRAM_BOT_USERNAME, "bot_id": bot_id}
+    """Return auth config for frontend (bot username)."""
+    return {"bot_username": TELEGRAM_BOT_USERNAME}
+
+
+async def _ensure_webhook(request: Request):
+    """Lazily register Telegram webhook on first use."""
+    global _webhook_registered
+    if _webhook_registered or not TELEGRAM_BOT_TOKEN:
+        return
+    host = request.headers.get("x-forwarded-host") or request.headers.get("host", "")
+    proto = request.headers.get("x-forwarded-proto", "https")
+    if not host:
+        return
+    base_url = f"{proto}://{host}"
+    webhook_url = f"{base_url}/api/telegram/webhook"
+    try:
+        resp = requests.post(
+            f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/setWebhook",
+            json={"url": webhook_url},
+            timeout=10
+        )
+        if resp.status_code == 200:
+            _webhook_registered = True
+            print(f"✅ Telegram webhook set: {webhook_url}")
+        else:
+            print(f"⚠️ Webhook setup response: {resp.text}")
+    except Exception as e:
+        print(f"⚠️ Webhook setup failed: {e}")
+
+
+@app.post("/api/auth/create-login-token")
+async def create_login_token(request: Request):
+    """Create a one-time login token for bot deep link auth."""
+    # Cleanup expired tokens
+    now = time.time()
+    expired = [t for t, v in _pending_login_tokens.items() if now - v["created"] > _LOGIN_TOKEN_TTL]
+    for t in expired:
+        del _pending_login_tokens[t]
+
+    # Ensure webhook is registered
+    await _ensure_webhook(request)
+
+    token = secrets.token_urlsafe(16)
+    _pending_login_tokens[token] = {"created": now, "user": None}
+    return {"token": token, "bot_username": TELEGRAM_BOT_USERNAME}
+
+
+@app.get("/api/auth/check-login-token/{token}")
+async def check_login_token(token: str):
+    """Check if a login token has been authenticated via bot."""
+    data = _pending_login_tokens.get(token)
+    if not data:
+        return {"status": "expired"}
+    if time.time() - data["created"] > _LOGIN_TOKEN_TTL:
+        del _pending_login_tokens[token]
+        return {"status": "expired"}
+    if data["user"]:
+        user = data["user"]
+        del _pending_login_tokens[token]
+        return {"status": "authenticated", "user": user}
+    return {"status": "pending"}
+
+
+@app.post("/api/telegram/webhook")
+async def telegram_webhook(request: Request):
+    """Handle incoming Telegram bot updates (for login deep links)."""
+    try:
+        update = await request.json()
+    except Exception:
+        return {"ok": True}
+
+    message = update.get("message", {})
+    text = message.get("text", "")
+    tg_user = message.get("from", {})
+    chat_id = message.get("chat", {}).get("id")
+
+    # Handle /start login_TOKEN
+    if text.startswith("/start login_"):
+        token = text.replace("/start login_", "").strip()
+        pending = _pending_login_tokens.get(token)
+
+        if not pending or time.time() - pending["created"] > _LOGIN_TOKEN_TTL:
+            if chat_id:
+                requests.post(
+                    f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
+                    json={"chat_id": chat_id, "text": "Ссылка устарела. Попробуйте ещё раз на сайте."},
+                    timeout=10
+                )
+            return {"ok": True}
+
+        user_id = tg_user.get("id", 0)
+        is_club_member = check_club_membership(user_id)
+        is_admin = str(user_id) in get_admin_ids()
+
+        sb_user = upsert_user_to_supabase(
+            user_id, tg_user.get("first_name", ""), tg_user.get("username", ""), is_club_member
+        )
+
+        user_response = {
+            "id": user_id,
+            "first_name": tg_user.get("first_name", ""),
+            "last_name": tg_user.get("last_name", ""),
+            "username": tg_user.get("username", ""),
+            "photo_url": "",
+            "is_club_member": is_club_member,
+            "is_admin": is_admin,
+        }
+        if sb_user:
+            user_response["plan"] = sb_user.get("plan", "free")
+            user_response["carousels_used"] = sb_user.get("carousels_used", 0)
+            user_response["carousels_limit"] = sb_user.get("carousels_limit", 10)
+            user_response["profile_summary"] = sb_user.get("profile_summary")
+
+        pending["user"] = user_response
+
+        if chat_id:
+            requests.post(
+                f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
+                json={"chat_id": chat_id, "text": "✅ Вы авторизованы! Вернитесь в браузер."},
+                timeout=10
+            )
+
+    return {"ok": True}
 
 
 @app.post("/api/auth/telegram")
