@@ -5967,6 +5967,31 @@
         // Load templates into select dropdowns for Ready Text and Wizard tabs
         let templateCache = []; // Cache loaded templates
 
+        // Единая функция обновления кэша шаблонов
+        async function refreshTemplateCache() {
+            try {
+                const uid = currentUser ? String(currentUser.id) : '';
+                const r = await fetch(`${API_URL}/templates?preview=light${uid ? '&user_id=' + uid : ''}`);
+                if (r.ok) {
+                    const templates = (await r.json()).templates || [];
+                    if (templates.length > 0) {
+                        templateCache = templates;
+                        try { localStorage.setItem('templateCacheV3', JSON.stringify(templates)); } catch(e) {}
+                    }
+                    return templates;
+                }
+            } catch(e) { console.error('refreshTemplateCache error:', e); }
+            return templateCache;
+        }
+
+        // Перерисовать галерею если она видна
+        function rerenderGalleryIfVisible() {
+            const content = document.getElementById('templateGalleryContent');
+            if (content && templateCache.length > 0 && document.getElementById('templateGallery')?.style.display !== 'none') {
+                renderGalleryCards(content, templateCache);
+            }
+        }
+
         let _templateRetryCount = 0;
         async function loadTemplateSelectors(force = false) {
             // Skip reload if cache already has data (unless forced)
@@ -6185,16 +6210,11 @@
             try {
                 const r = await fetch(`${API_URL}/templates/${encodeURIComponent(templateId)}/system?user_id=${currentUser.id}`, {method: 'PUT'});
                 if (r.ok) {
-                    templateCache = [];
-                    await loadTemplateSelectors(true);
-                    // Re-render modal if open
+                    await refreshTemplateCache();
+                    loadTemplateSelectors(true);
                     const grid = document.getElementById('rtModalTemplateGrid');
                     if (grid) rtOpenTemplateModal();
-                    // Re-render gallery if open
-                    const galleryContent = document.getElementById('templateGalleryContent');
-                    if (galleryContent && document.getElementById('templateGallery').style.display !== 'none') {
-                        await refreshGalleryFromServer(galleryContent);
-                    }
+                    rerenderGalleryIfVisible();
                     showToast('Обновлено', 'success');
                 }
             } catch(e) { console.error('toggleTemplateSystem error:', e); }
@@ -6205,14 +6225,11 @@
             try {
                 const r = await fetch(`${API_URL}/templates/${encodeURIComponent(templateId)}/publish?user_id=${currentUser.id}`, {method: 'PUT'});
                 if (r.ok) {
-                    templateCache = [];
-                    await loadTemplateSelectors(true);
+                    await refreshTemplateCache();
+                    loadTemplateSelectors(true);
                     const grid = document.getElementById('rtModalTemplateGrid');
                     if (grid) rtOpenTemplateModal();
-                    const galleryContent = document.getElementById('templateGalleryContent');
-                    if (galleryContent && document.getElementById('templateGallery').style.display !== 'none') {
-                        await refreshGalleryFromServer(galleryContent);
-                    }
+                    rerenderGalleryIfVisible();
                     showToast('Обновлено', 'success');
                 }
             } catch(e) { console.error('toggleTemplatePublish error:', e); }
@@ -9783,10 +9800,10 @@
                 }
                 showToast('Сохранено', 'success');
                 // Обновляем кэш чтобы шаблон появился в галерее
-                templateCache = [];
-                try { localStorage.removeItem('templateCacheV3'); } catch(e) {}
+                await refreshTemplateCache();
                 loadTemplatesList();
                 loadTemplateSelectors(true);
+                rerenderGalleryIfVisible();
             } catch (e) {
                 showToast(e.message || 'Ошибка сохранения шаблона', 'error');
             }
@@ -10221,10 +10238,9 @@
             try {
                 const uid = currentUser ? currentUser.id : '';
                 await fetch(`${API_URL}/templates/${encodeURIComponent(tid)}?user_id=${uid}`, { method: 'DELETE' });
-                templateCache = [];
-                try { localStorage.removeItem('templateCacheV3'); } catch(e) {}
-                const content = document.getElementById('templateGalleryContent');
-                if (content) await refreshGalleryFromServer(content);
+                await refreshTemplateCache();
+                loadTemplateSelectors(true);
+                rerenderGalleryIfVisible();
                 showToast('Удалено', 'success');
             } catch(e) { showToast('Ошибка удаления', 'error'); }
         }
@@ -10245,20 +10261,12 @@
 
         async function refreshGalleryFromServer(container) {
             try {
-                const uid = currentUser ? currentUser.id : '';
-                const r = await fetch(`${API_URL}/templates?preview=light${uid ? '&user_id=' + uid : ''}`);
-                if (r.ok) {
-                    const templates = (await r.json()).templates || [];
-                    if (templates.length > 0) {
-                        templateCache = templates;
-                        try { localStorage.setItem('templateCacheV3', JSON.stringify(templates)); } catch(e) {}
-                    }
-                    // Always render after fetch (even empty — replaces spinner with "Нет шаблонов")
-                    if (document.getElementById('templateGallery').style.display !== 'none') {
-                        renderGalleryCards(container, templates.length > 0 ? templates : templateCache);
-                    }
+                const templates = await refreshTemplateCache();
+                // Рендер галереи если она видна
+                if (container && document.getElementById('templateGallery')?.style.display !== 'none') {
+                    renderGalleryCards(container, templates.length > 0 ? templates : templateCache);
                 }
-            } catch(e) {}
+            } catch(e) { console.error('refreshGalleryFromServer error:', e); }
         }
 
         async function openTemplateGallery() {
@@ -10381,8 +10389,7 @@
                     return;
                 }
                 // Refresh cache so new template appears in gallery
-                templateCache = [];
-                try { localStorage.removeItem('templateCacheV3'); } catch(e) {}
+                refreshTemplateCache();
                 // Open in editor
                 t.template_id = newTid;
                 openTemplateEditor(t);
