@@ -1130,7 +1130,15 @@ async def list_templates(preview: str = "full", user_id: str = ""):
     def format_row(row, ttype: str):
         all_slides = row.get("slides") or []
         if preview == 'light':
-            slides_data = [all_slides[0]] if all_slides else []
+            # Первый слайд без base64 фонов (для превью карточки в галерее)
+            if all_slides:
+                slide = dict(all_slides[0])
+                bg = slide.get('background')
+                if bg and isinstance(bg, dict) and bg.get('photo', '').startswith('data:'):
+                    slide['background'] = {k: v for k, v in bg.items() if k != 'photo'}
+                slides_data = [slide]
+            else:
+                slides_data = []
         else:
             slides_data = all_slides
         return {
