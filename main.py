@@ -3321,13 +3321,18 @@ async def admin_dashboard(request: Request):
     _check_admin_token(request)
     try:
         from datetime import datetime
+        import urllib.request
         sb = require_supabase()
         # Users stats from Supabase
-        all_users = sb.table("users").select("user_id,last_active,carousels_used").execute()
+        all_users = sb.table("users").select("user_id,first_name,last_name,username,last_active,carousels_used").execute()
         users_data = all_users.data or []
         total_users = len(users_data)
         today_str = datetime.now().strftime("%Y-%m-%d")
-        active_today = sum(1 for u in users_data if (u.get("last_active") or "")[:10] == today_str)
+        active_today_users = [
+            {"user_id": u["user_id"], "first_name": u.get("first_name",""), "last_name": u.get("last_name",""), "username": u.get("username","")}
+            for u in users_data if (u.get("last_active") or "")[:10] == today_str
+        ]
+        active_today = len(active_today_users)
         total_carousels = sum(u.get("carousels_used") or 0 for u in users_data)
         # AI logs stats from PostgreSQL (_pg_query returns list of dicts via RealDictCursor)
         tok_row = _pg_query("SELECT COALESCE(SUM(total_tokens),0) as val FROM ai_logs")
@@ -3339,6 +3344,26 @@ async def admin_dashboard(request: Request):
             ) sub
         """)
         avg_tokens = avg_row[0]["val"] if avg_row else 0
+        # Cost calculation by model pricing (OpenRouter rates)
+        cost_row = _pg_query("""
+            SELECT COALESCE(SUM(
+                CASE
+                    WHEN model ILIKE '%%gemini%%flash%%' THEN input_tokens * 0.15 / 1000000.0 + output_tokens * 0.60 / 1000000.0
+                    WHEN model ILIKE '%%gpt-4o-mini%%' THEN input_tokens * 0.15 / 1000000.0 + output_tokens * 0.60 / 1000000.0
+                    WHEN model ILIKE '%%gpt-4o%%' THEN input_tokens * 2.50 / 1000000.0 + output_tokens * 10.0 / 1000000.0
+                    WHEN model ILIKE '%%gemini%%pro%%' THEN input_tokens * 1.25 / 1000000.0 + output_tokens * 10.0 / 1000000.0
+                    WHEN model ILIKE '%%claude%%' THEN input_tokens * 3.0 / 1000000.0 + output_tokens * 15.0 / 1000000.0
+                    ELSE input_tokens * 0.50 / 1000000.0 + output_tokens * 1.50 / 1000000.0
+                END
+            ), 0) as total_cost_usd FROM ai_logs
+        """)
+        total_cost_usd = float(cost_row[0]["total_cost_usd"]) if cost_row else 0.0
+        # USD/RUB rate from CBR
+        try:
+            cbr_resp = urllib.request.urlopen("https://www.cbr-xml-daily.ru/daily_json.js", timeout=3)
+            usd_rub = json.loads(cbr_resp.read())["Valute"]["USD"]["Value"]
+        except Exception:
+            usd_rub = 88.0
         daily_rows = _pg_query("""
             SELECT created_at::date as day, COUNT(*) as cnt
             FROM ai_logs WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'
@@ -3347,8 +3372,11 @@ async def admin_dashboard(request: Request):
         return {
             "total_users": total_users,
             "active_today": active_today,
+            "active_today_users": active_today_users,
             "total_carousels": total_carousels,
             "total_tokens": int(total_tokens),
+            "total_cost_usd": round(total_cost_usd, 2),
+            "usd_rub_rate": round(float(usd_rub), 2),
             "avg_tokens_per_user": round(float(avg_tokens)),
             "daily_usage": [{"date": str(r["day"]), "count": r["cnt"]} for r in daily_rows]
         }

@@ -395,27 +395,55 @@
             return String(n);
         }
 
+        let _dashData = null;
+        function toggleActiveUsers() {
+            const el = document.getElementById('activeUsersList');
+            if (!el) return;
+            el.style.display = el.style.display === 'none' ? 'block' : 'none';
+        }
+
         function renderDashboard(d) {
+            _dashData = d;
             const c = document.getElementById('dashboardContent');
+            const costUsd = (d.total_cost_usd || 0).toFixed(2);
+            const costRub = Math.round((d.total_cost_usd || 0) * (d.usd_rub_rate || 88));
             // Метрики
-            let h = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+            let h = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
                 <div class="card" style="padding:16px;text-align:center;">
                     <div style="font-size:28px;font-weight:700;color:var(--primary);">${d.total_users}</div>
                     <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">Всего пользователей</div>
                 </div>
-                <div class="card" style="padding:16px;text-align:center;">
+                <div class="card card-clickable" style="padding:16px;text-align:center;" onclick="toggleActiveUsers()">
                     <div style="font-size:28px;font-weight:700;color:#22c55e;">${d.active_today}</div>
-                    <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">Активных сегодня</div>
+                    <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">Активных сегодня ▾</div>
                 </div>
                 <div class="card" style="padding:16px;text-align:center;">
                     <div style="font-size:28px;font-weight:700;color:#f59e0b;">${d.total_carousels}</div>
                     <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">Скачано каруселей</div>
                 </div>
                 <div class="card" style="padding:16px;text-align:center;">
-                    <div style="font-size:28px;font-weight:700;color:#8b5cf6;">${formatNum(d.total_tokens)}</div>
-                    <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">Токенов использовано</div>
+                    <div style="font-size:24px;font-weight:700;color:#8b5cf6;">$${costUsd}</div>
+                    <div style="font-size:13px;color:var(--text-muted);margin-top:2px;">≈ ${costRub} ₽</div>
+                    <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${formatNum(d.total_tokens)} токенов</div>
                 </div>
             </div>`;
+            // Список активных юзеров (скрыт по умолчанию)
+            const activeUsers = d.active_today_users || [];
+            if (activeUsers.length) {
+                h += `<div id="activeUsersList" style="display:none;margin-bottom:12px;">
+                    <div class="card" style="padding:12px;">
+                        <div style="font-size:13px;font-weight:600;margin-bottom:8px;">Активны сегодня:</div>
+                        ${activeUsers.map(u => {
+                            const name = ((u.first_name || '') + ' ' + (u.last_name || '')).trim() || 'Пользователь';
+                            const uname = u.username ? ' · @' + u.username : '';
+                            return `<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:13px;display:flex;justify-content:space-between;">
+                                <span>${name}${uname}</span>
+                                <span style="color:var(--text-muted);font-size:12px;">ID: ${u.user_id}</span>
+                            </div>`;
+                        }).join('')}
+                    </div>
+                </div>`;
+            }
             // Средние токены
             h += `<div class="card" style="padding:14px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;">
                 <span style="font-size:13px;color:var(--text-muted);">Среднее на пользователя</span>
