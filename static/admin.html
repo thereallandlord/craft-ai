@@ -299,6 +299,8 @@
         let adminToken = sessionStorage.getItem('admin_token') || '';
         let _adminUsersCache = null;
         let _adminDashCache = null;
+        let _adminPromptsCache = null;
+        let _adminLogsCache = null;
 
         function escapeHtml(s) {
             if (!s) return '';
@@ -348,6 +350,8 @@
             adminToken = '';
             _adminUsersCache = null;
             _adminDashCache = null;
+            _adminPromptsCache = null;
+            _adminLogsCache = null;
             sessionStorage.removeItem('admin_token');
             document.getElementById('appView').style.display = 'none';
             document.getElementById('loginView').style.display = 'flex';
@@ -477,36 +481,48 @@
         }
 
         // === Промпты ===
+        function renderPrompts(prompts) {
+            const c = document.getElementById('promptsContent');
+            if (!prompts.length) { c.innerHTML = '<div class="loading">Нет промптов</div>'; return; }
+            const models = [
+                {value: 'openai/gpt-4o', label: 'GPT-4o'},
+                {value: 'openai/gpt-4o-mini', label: 'GPT-4o Mini'},
+                {value: 'google/gemini-2.5-pro', label: 'Gemini 2.5 Pro'},
+                {value: 'google/gemini-2.5-flash', label: 'Gemini 2.5 Flash'},
+                {value: 'anthropic/claude-sonnet-4.5', label: 'Claude Sonnet 4.5'},
+            ];
+            c.innerHTML = prompts.map(p => {
+                const cur = p.model || 'openai/gpt-4o';
+                const opts = models.map(m => `<option value="${m.value}" ${m.value===cur?'selected':''}>${m.label}</option>`).join('');
+                return `<div class="card" data-key="${p.prompt_key}">
+                    <div class="card-title">${escapeHtml(p.title)}</div>
+                    <div class="card-subtitle">${p.prompt_key}${p.description ? ' — ' + escapeHtml(p.description) : ''}</div>
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                        <label style="font-size:12px;color:var(--text-muted);font-weight:500;white-space:nowrap;">Модель:</label>
+                        <select class="select" id="model-${p.prompt_key}">${opts}</select>
+                    </div>
+                    <textarea class="textarea" id="prompt-${p.prompt_key}">${escapeHtml(p.content)}</textarea>
+                    <button class="btn-save" onclick="savePrompt('${p.prompt_key}')">Сохранить</button>
+                </div>`;
+            }).join('');
+        }
+
         async function loadPrompts() {
             const c = document.getElementById('promptsContent');
-            c.innerHTML = '<div class="loading">Загрузка...</div>';
+            if (_adminPromptsCache) {
+                renderPrompts(_adminPromptsCache);
+            } else {
+                c.innerHTML = '<div class="loading">Загрузка...</div>';
+            }
             try {
                 const r = await api('/api/admin/prompts');
-                if (!r.ok) { c.innerHTML = '<div class="error-msg">Ошибка загрузки</div>'; return; }
+                if (!r.ok) { if (!_adminPromptsCache) c.innerHTML = '<div class="error-msg">Ошибка загрузки</div>'; return; }
                 const prompts = await r.json();
-                if (!prompts.length) { c.innerHTML = '<div class="loading">Нет промптов</div>'; return; }
-                const models = [
-                    {value: 'openai/gpt-4o', label: 'GPT-4o'},
-                    {value: 'openai/gpt-4o-mini', label: 'GPT-4o Mini'},
-                    {value: 'google/gemini-2.5-pro', label: 'Gemini 2.5 Pro'},
-                    {value: 'google/gemini-2.5-flash', label: 'Gemini 2.5 Flash'},
-                    {value: 'anthropic/claude-sonnet-4.5', label: 'Claude Sonnet 4.5'},
-                ];
-                c.innerHTML = prompts.map(p => {
-                    const cur = p.model || 'openai/gpt-4o';
-                    const opts = models.map(m => `<option value="${m.value}" ${m.value===cur?'selected':''}>${m.label}</option>`).join('');
-                    return `<div class="card" data-key="${p.prompt_key}">
-                        <div class="card-title">${escapeHtml(p.title)}</div>
-                        <div class="card-subtitle">${p.prompt_key}${p.description ? ' — ' + escapeHtml(p.description) : ''}</div>
-                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-                            <label style="font-size:12px;color:var(--text-muted);font-weight:500;white-space:nowrap;">Модель:</label>
-                            <select class="select" id="model-${p.prompt_key}">${opts}</select>
-                        </div>
-                        <textarea class="textarea" id="prompt-${p.prompt_key}">${escapeHtml(p.content)}</textarea>
-                        <button class="btn-save" onclick="savePrompt('${p.prompt_key}')">Сохранить</button>
-                    </div>`;
-                }).join('');
-            } catch(e) { c.innerHTML = '<div class="error-msg">Ошибка</div>'; }
+                _adminPromptsCache = prompts;
+                renderPrompts(prompts);
+            } catch(e) {
+                if (!_adminPromptsCache) c.innerHTML = '<div class="error-msg">Ошибка</div>';
+            }
         }
 
         async function savePrompt(key) {
@@ -515,6 +531,7 @@
             if (!content) return;
             try {
                 const r = await api('/api/admin/prompts/' + key, {method:'PUT', body:{content, model}});
+                if (r.ok) _adminPromptsCache = null;
                 showToast(r.ok ? 'Сохранено' : 'Ошибка', r.ok ? 'success' : 'error');
             } catch(e) { showToast('Ошибка', 'error'); }
         }
@@ -612,37 +629,45 @@
         }
 
         // === AI Логи ===
+        function renderLogs(logs) {
+            const c = document.getElementById('logsContent');
+            if (!logs.length) { c.innerHTML = '<div class="loading">Логов пока нет</div>'; return; }
+            let h = '<div class="log-header"><div style="width:70px;">Время</div><div style="width:60px;">User</div><div style="flex:1;">Endpoint</div><div style="width:80px;">Модель</div><div style="width:50px;">Токены</div><div style="width:50px;">Время</div><div style="width:50px;">Статус</div></div>';
+            logs.forEach(l => {
+                const t = new Date(l.created_at);
+                const time = t.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
+                const date = t.toLocaleDateString('ru-RU',{day:'2-digit',month:'2-digit'});
+                const model = (l.model||'').replace('openai/','').replace('google/','').replace('anthropic/','').substring(0,12);
+                const color = l.status === 'success' ? '#22c55e' : '#ef4444';
+                h += `<div class="log-row" onclick="loadLogDetail('${l.id}')">
+                    <div style="width:70px;color:var(--text-muted);">${date} ${time}</div>
+                    <div style="width:60px;">${l.user_id||'—'}</div>
+                    <div style="flex:1;font-weight:500;">${l.endpoint||''}<span style="color:var(--text-muted);font-weight:400;margin-left:4px;">${l.prompt_key||''}</span></div>
+                    <div style="width:80px;color:var(--text-muted);">${model}</div>
+                    <div style="width:50px;">${l.total_tokens||0}</div>
+                    <div style="width:50px;color:var(--text-muted);">${l.response_time_ms||0}ms</div>
+                    <div style="width:50px;"><span style="color:${color};">●</span></div>
+                </div>`;
+            });
+            c.innerHTML = h;
+        }
+
         async function loadLogs() {
             const c = document.getElementById('logsContent');
-            c.innerHTML = '<div class="loading">Загрузка...</div>';
+            if (_adminLogsCache) {
+                renderLogs(_adminLogsCache);
+            } else {
+                c.innerHTML = '<div class="loading">Загрузка...</div>';
+            }
             try {
                 const r = await api('/api/admin/logs?limit=200');
-                if (!r.ok) {
-                    const err = await r.text().catch(()=>'');
-                    c.innerHTML = '<div class="error-msg">Ошибка: ' + (err || r.status) + '</div>';
-                    return;
-                }
+                if (!r.ok) { if (!_adminLogsCache) c.innerHTML = '<div class="error-msg">Ошибка загрузки</div>'; return; }
                 const logs = await r.json();
-                if (!logs.length) { c.innerHTML = '<div class="loading">Логов пока нет</div>'; return; }
-                let h = '<div class="log-header"><div style="width:70px;">Время</div><div style="width:60px;">User</div><div style="flex:1;">Endpoint</div><div style="width:80px;">Модель</div><div style="width:50px;">Токены</div><div style="width:50px;">Время</div><div style="width:50px;">Статус</div></div>';
-                logs.forEach(l => {
-                    const t = new Date(l.created_at);
-                    const time = t.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
-                    const date = t.toLocaleDateString('ru-RU',{day:'2-digit',month:'2-digit'});
-                    const model = (l.model||'').replace('openai/','').replace('google/','').replace('anthropic/','').substring(0,12);
-                    const color = l.status === 'success' ? '#22c55e' : '#ef4444';
-                    h += `<div class="log-row" onclick="loadLogDetail('${l.id}')">
-                        <div style="width:70px;color:var(--text-muted);">${date} ${time}</div>
-                        <div style="width:60px;">${l.user_id||'—'}</div>
-                        <div style="flex:1;font-weight:500;">${l.endpoint||''}<span style="color:var(--text-muted);font-weight:400;margin-left:4px;">${l.prompt_key||''}</span></div>
-                        <div style="width:80px;color:var(--text-muted);">${model}</div>
-                        <div style="width:50px;">${l.total_tokens||0}</div>
-                        <div style="width:50px;color:var(--text-muted);">${l.response_time_ms||0}ms</div>
-                        <div style="width:50px;"><span style="color:${color};">●</span></div>
-                    </div>`;
-                });
-                c.innerHTML = h;
-            } catch(e) { c.innerHTML = '<div class="error-msg">Ошибка загрузки</div>'; }
+                _adminLogsCache = logs;
+                renderLogs(logs);
+            } catch(e) {
+                if (!_adminLogsCache) c.innerHTML = '<div class="error-msg">Ошибка загрузки</div>';
+            }
         }
 
         async function loadLogDetail(logId) {
