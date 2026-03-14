@@ -5980,7 +5980,7 @@
                     console.log('[templates] fetched:', templates.length, 'templates');
                     if (templates.length > 0) {
                         templateCache = templates;
-                        try { localStorage.setItem('templateCacheV3', JSON.stringify(templates)); } catch(e) {}
+                        try { localStorage.setItem('templateCacheV4', JSON.stringify(templates)); } catch(e) {}
                     }
                     return templates;
                 } else {
@@ -6006,7 +6006,7 @@
             // Try localStorage first for instant display
             if (!force) {
                 try {
-                    const cached = JSON.parse(localStorage.getItem('templateCacheV3') || '[]');
+                    const cached = JSON.parse(localStorage.getItem('templateCacheV4') || '[]');
                     if (cached.length > 0) {
                         templateCache = cached;
                         // Background refresh after 1s
@@ -6041,8 +6041,11 @@
                 templateCache = templates;
             }
             if (templates.length > 0) {
-                try { localStorage.setItem('templateCacheV3', JSON.stringify(templates)); } catch(e) {}
+                try { localStorage.setItem('templateCacheV4', JSON.stringify(templates)); } catch(e) {}
             }
+
+            // Перерисовать галерею если она открыта (после фонового обновления)
+            rerenderGalleryIfVisible();
 
             // Auto-select first template for RT if none selected
             if (templates.length > 0 && !document.getElementById('rtTemplateSelect').value) {
@@ -10265,7 +10268,7 @@
                     const templates = data.templates || [];
                     if (templates.length > 0) {
                         templateCache = templates;
-                        try { localStorage.setItem('templateCacheV3', JSON.stringify(templates)); } catch(e) {}
+                        try { localStorage.setItem('templateCacheV4', JSON.stringify(templates)); } catch(e) {}
                     }
                 }
             } catch(e) {}
@@ -10295,7 +10298,7 @@
 
             // localStorage fallback (Chrome after page refresh)
             try {
-                const cached = localStorage.getItem('templateCacheV3');
+                const cached = localStorage.getItem('templateCacheV4');
                 if (cached) {
                     const parsed = JSON.parse(cached);
                     if (parsed.length > 0) {
