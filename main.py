@@ -3320,6 +3320,7 @@ async def admin_dashboard(request: Request):
     """Dashboard stats. Admin only."""
     _check_admin_token(request)
     try:
+        from datetime import datetime
         sb = require_supabase()
         # Users stats from Supabase
         all_users = sb.table("users").select("user_id,last_active,carousels_used").execute()
