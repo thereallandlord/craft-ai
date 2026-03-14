@@ -3306,8 +3306,10 @@ async def track_download(request: Request):
     try:
         body = await request.json()
         user_id = body.get("user_id")
-        if user_id and DATABASE_URL:
-            _pg_query("UPDATE users SET carousels_used = COALESCE(carousels_used, 0) + 1 WHERE user_id = %s", [str(user_id)])
+        if user_id and supabase:
+            resp = supabase.table("users").select("carousels_used").eq("user_id", str(user_id)).execute()
+            current = (resp.data[0].get("carousels_used") or 0) if resp.data else 0
+            supabase.table("users").update({"carousels_used": current + 1}).eq("user_id", str(user_id)).execute()
     except Exception as e:
         print(f"[track/download] Error: {e}")
     return {"ok": True}
@@ -3318,9 +3320,15 @@ async def admin_dashboard(request: Request):
     """Dashboard stats. Admin only."""
     _check_admin_token(request)
     try:
-        total_users = (_pg_query("SELECT COUNT(*) FROM users") or [[0]])[0][0]
-        active_today = (_pg_query("SELECT COUNT(*) FROM users WHERE last_active::date = CURRENT_DATE") or [[0]])[0][0]
-        total_carousels = (_pg_query("SELECT COALESCE(SUM(carousels_used),0) FROM users") or [[0]])[0][0]
+        sb = require_supabase()
+        # Users stats from Supabase
+        all_users = sb.table("users").select("user_id,last_active,carousels_used").execute()
+        users_data = all_users.data or []
+        total_users = len(users_data)
+        today_str = datetime.now().strftime("%Y-%m-%d")
+        active_today = sum(1 for u in users_data if (u.get("last_active") or "")[:10] == today_str)
+        total_carousels = sum(u.get("carousels_used") or 0 for u in users_data)
+        # AI logs stats from PostgreSQL
         total_tokens = (_pg_query("SELECT COALESCE(SUM(total_tokens),0) FROM ai_logs") or [[0]])[0][0]
         avg_tokens = (_pg_query("""
             SELECT COALESCE(AVG(user_total), 0) FROM (
@@ -3330,14 +3338,13 @@ async def admin_dashboard(request: Request):
         """) or [[0]])[0][0]
         daily_usage = _pg_query("""
             SELECT created_at::date as day, COUNT(*) as cnt
-            FROM ai_logs
-            WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'
+            FROM ai_logs WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'
             GROUP BY day ORDER BY day
         """) or []
         return {
-            "total_users": int(total_users),
-            "active_today": int(active_today),
-            "total_carousels": int(total_carousels),
+            "total_users": total_users,
+            "active_today": active_today,
+            "total_carousels": total_carousels,
             "total_tokens": int(total_tokens),
             "avg_tokens_per_user": round(float(avg_tokens)),
             "daily_usage": [{"date": str(r[0]), "count": r[1]} for r in daily_usage]
