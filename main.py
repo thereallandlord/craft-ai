@@ -3329,15 +3329,17 @@ async def admin_dashboard(request: Request):
         today_str = datetime.now().strftime("%Y-%m-%d")
         active_today = sum(1 for u in users_data if (u.get("last_active") or "")[:10] == today_str)
         total_carousels = sum(u.get("carousels_used") or 0 for u in users_data)
-        # AI logs stats from PostgreSQL
-        total_tokens = (_pg_query("SELECT COALESCE(SUM(total_tokens),0) FROM ai_logs") or [[0]])[0][0]
-        avg_tokens = (_pg_query("""
-            SELECT COALESCE(AVG(user_total), 0) FROM (
+        # AI logs stats from PostgreSQL (_pg_query returns list of dicts via RealDictCursor)
+        tok_row = _pg_query("SELECT COALESCE(SUM(total_tokens),0) as val FROM ai_logs")
+        total_tokens = tok_row[0]["val"] if tok_row else 0
+        avg_row = _pg_query("""
+            SELECT COALESCE(AVG(user_total), 0) as val FROM (
                 SELECT SUM(total_tokens) as user_total FROM ai_logs
                 WHERE user_id IS NOT NULL GROUP BY user_id
             ) sub
-        """) or [[0]])[0][0]
-        daily_usage = _pg_query("""
+        """)
+        avg_tokens = avg_row[0]["val"] if avg_row else 0
+        daily_rows = _pg_query("""
             SELECT created_at::date as day, COUNT(*) as cnt
             FROM ai_logs WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'
             GROUP BY day ORDER BY day
@@ -3348,7 +3350,7 @@ async def admin_dashboard(request: Request):
             "total_carousels": total_carousels,
             "total_tokens": int(total_tokens),
             "avg_tokens_per_user": round(float(avg_tokens)),
-            "daily_usage": [{"date": str(r[0]), "count": r[1]} for r in daily_usage]
+            "daily_usage": [{"date": str(r["day"]), "count": r["cnt"]} for r in daily_rows]
         }
     except Exception as e:
         print(f"[admin/dashboard] Error: {e}")
