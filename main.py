@@ -165,6 +165,14 @@ if DATABASE_URL:
     except Exception as e:
         print(f"⚠️ ai_logs table migration error: {e}")
 
+    # Auto-migration: add last_name and photo_url to users table
+    try:
+        _pg_query("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_name TEXT DEFAULT ''")
+        _pg_query("ALTER TABLE users ADD COLUMN IF NOT EXISTS photo_url TEXT DEFAULT ''")
+        print("✅ users extra fields ready")
+    except Exception as e:
+        print(f"⚠️ users extra fields migration error: {e}")
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -3332,7 +3340,7 @@ async def list_admin_users(request: Request):
     _check_admin_token(request)
     try:
         sb = require_supabase()
-        users = sb.table("users").select("user_id,instagram_usernames,profile_summary,memory_count,created_at").order("created_at", desc=True).execute()
+        users = sb.table("users").select("user_id,first_name,last_name,username,photo_url,instagram_usernames,profile_summary,memory_count,last_active,created_at").order("last_active", desc=True).execute()
         users_data = users.data or []
         for u in users_data:
             try:
@@ -3564,7 +3572,7 @@ def check_club_membership(user_id: int) -> bool:
     return False
 
 
-def upsert_user_to_supabase(user_id: int, first_name: str = "", username: str = "", is_club_member: bool = False):
+def upsert_user_to_supabase(user_id: int, first_name: str = "", username: str = "", is_club_member: bool = False, last_name: str = "", photo_url: str = ""):
     """Upsert user into Supabase users table. Returns full user profile."""
     if not supabase:
         return None
@@ -3572,7 +3580,9 @@ def upsert_user_to_supabase(user_id: int, first_name: str = "", username: str = 
         user_data = {
             "user_id": str(user_id),
             "first_name": first_name,
+            "last_name": last_name,
             "username": username or "",
+            "photo_url": photo_url,
             "last_active": "now()",
         }
         result = supabase.table("users").upsert(user_data, on_conflict="user_id").execute()
@@ -3705,8 +3715,10 @@ async def telegram_webhook(request: Request):
         is_club_member = check_club_membership(user_id)
         is_admin = str(user_id) in get_admin_ids()
 
+        photo_url = get_telegram_photo_url(user_id)
         sb_user = upsert_user_to_supabase(
-            user_id, tg_user.get("first_name", ""), tg_user.get("username", ""), is_club_member
+            user_id, tg_user.get("first_name", ""), tg_user.get("username", ""), is_club_member,
+            last_name=tg_user.get("last_name", ""), photo_url=photo_url
         )
 
         user_response = {
@@ -3714,7 +3726,7 @@ async def telegram_webhook(request: Request):
             "first_name": tg_user.get("first_name", ""),
             "last_name": tg_user.get("last_name", ""),
             "username": tg_user.get("username", ""),
-            "photo_url": get_telegram_photo_url(user_id),
+            "photo_url": photo_url,
             "is_club_member": is_club_member,
             "is_admin": is_admin,
         }
@@ -3757,7 +3769,8 @@ async def auth_telegram(data: dict):
 
     # Upsert user in Supabase
     sb_user = upsert_user_to_supabase(
-        user_id, data.get("first_name", ""), data.get("username", ""), is_club_member
+        user_id, data.get("first_name", ""), data.get("username", ""), is_club_member,
+        last_name=data.get("last_name", ""), photo_url=data.get("photo_url", "")
     )
 
     user_response = {
@@ -3823,7 +3836,8 @@ async def auth_miniapp(request: Request):
 
     # Upsert user in Supabase
     sb_user = upsert_user_to_supabase(
-        user_id, data["user"].get("first_name", ""), data["user"].get("username", ""), is_club_member
+        user_id, data["user"].get("first_name", ""), data["user"].get("username", ""), is_club_member,
+        last_name=data["user"].get("last_name", ""), photo_url=data["user"].get("photo_url", "")
     )
 
     user_response = {
