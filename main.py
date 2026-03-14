@@ -130,6 +130,41 @@ def _pg_query(query, params=None, fetchone=False):
     finally:
         conn.close()
 
+
+# Auto-create ai_logs table on startup
+if DATABASE_URL:
+    try:
+        _pg_query("""
+            CREATE TABLE IF NOT EXISTS ai_logs (
+                id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+                user_id BIGINT,
+                endpoint TEXT NOT NULL,
+                prompt_key TEXT,
+                model TEXT NOT NULL,
+                system_prompt TEXT,
+                user_context TEXT,
+                messages JSONB,
+                user_message TEXT,
+                ai_response TEXT,
+                input_tokens INTEGER DEFAULT 0,
+                output_tokens INTEGER DEFAULT 0,
+                total_tokens INTEGER DEFAULT 0,
+                response_time_ms INTEGER DEFAULT 0,
+                status TEXT DEFAULT 'success',
+                error_message TEXT,
+                topic_id UUID,
+                sub_chat_id UUID,
+                created_at TIMESTAMPTZ DEFAULT now()
+            )
+        """)
+        _pg_query("CREATE INDEX IF NOT EXISTS idx_ai_logs_user_id ON ai_logs(user_id)")
+        _pg_query("CREATE INDEX IF NOT EXISTS idx_ai_logs_created_at ON ai_logs(created_at DESC)")
+        _pg_query("CREATE INDEX IF NOT EXISTS idx_ai_logs_endpoint ON ai_logs(endpoint)")
+        _pg_query("CREATE INDEX IF NOT EXISTS idx_ai_logs_status ON ai_logs(status)")
+        print("✅ ai_logs table ready")
+    except Exception as e:
+        print(f"⚠️ ai_logs table migration error: {e}")
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
