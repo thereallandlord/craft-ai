@@ -3289,6 +3289,53 @@ def _check_admin_token(request: Request):
         raise HTTPException(status_code=403, detail="Admin access required")
 
 
+@app.post("/api/track/download")
+async def track_download(request: Request):
+    """Track carousel download. Increments carousels_used for the user."""
+    try:
+        body = await request.json()
+        user_id = body.get("user_id")
+        if user_id and DATABASE_URL:
+            _pg_query("UPDATE users SET carousels_used = COALESCE(carousels_used, 0) + 1 WHERE user_id = %s", [str(user_id)])
+    except Exception as e:
+        print(f"[track/download] Error: {e}")
+    return {"ok": True}
+
+
+@app.get("/api/admin/dashboard")
+async def admin_dashboard(request: Request):
+    """Dashboard stats. Admin only."""
+    _check_admin_token(request)
+    try:
+        total_users = (_pg_query("SELECT COUNT(*) FROM users") or [[0]])[0][0]
+        active_today = (_pg_query("SELECT COUNT(*) FROM users WHERE last_active::date = CURRENT_DATE") or [[0]])[0][0]
+        total_carousels = (_pg_query("SELECT COALESCE(SUM(carousels_used),0) FROM users") or [[0]])[0][0]
+        total_tokens = (_pg_query("SELECT COALESCE(SUM(total_tokens),0) FROM ai_logs") or [[0]])[0][0]
+        avg_tokens = (_pg_query("""
+            SELECT COALESCE(AVG(user_total), 0) FROM (
+                SELECT SUM(total_tokens) as user_total FROM ai_logs
+                WHERE user_id IS NOT NULL GROUP BY user_id
+            ) sub
+        """) or [[0]])[0][0]
+        daily_usage = _pg_query("""
+            SELECT created_at::date as day, COUNT(*) as cnt
+            FROM ai_logs
+            WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'
+            GROUP BY day ORDER BY day
+        """) or []
+        return {
+            "total_users": int(total_users),
+            "active_today": int(active_today),
+            "total_carousels": int(total_carousels),
+            "total_tokens": int(total_tokens),
+            "avg_tokens_per_user": round(float(avg_tokens)),
+            "daily_usage": [{"date": str(r[0]), "count": r[1]} for r in daily_usage]
+        }
+    except Exception as e:
+        print(f"[admin/dashboard] Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/api/admin/logs")
 async def list_ai_logs(request: Request, limit: int = 100, offset: int = 0,
                        filter_user_id: int = None, filter_endpoint: str = None):

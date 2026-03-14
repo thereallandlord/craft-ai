@@ -268,9 +268,9 @@
             <div class="panel active" id="panel-home">
                 <div class="panel-content">
                     <div class="panel-title">Главная</div>
-                    <div class="panel-subtitle">Дашборды и статистика (скоро)</div>
-                    <div style="padding:40px 0;text-align:center;color:var(--text-muted);font-size:14px;">
-                        Здесь будут дашборды
+                    <div class="panel-subtitle">Статистика сервиса</div>
+                    <div id="dashboardContent">
+                        <div class="loading">Загрузка...</div>
                     </div>
                 </div>
             </div>
@@ -298,6 +298,7 @@
         const API_URL = window.location.origin;
         let adminToken = sessionStorage.getItem('admin_token') || '';
         let _adminUsersCache = null;
+        let _adminDashCache = null;
 
         function escapeHtml(s) {
             if (!s) return '';
@@ -346,6 +347,7 @@
         function doLogout() {
             adminToken = '';
             _adminUsersCache = null;
+            _adminDashCache = null;
             sessionStorage.removeItem('admin_token');
             document.getElementById('appView').style.display = 'none';
             document.getElementById('loginView').style.display = 'flex';
@@ -376,9 +378,102 @@
             document.querySelectorAll('.ps-nav-item').forEach(n => n.classList.toggle('active', n.dataset.tab === tabId));
             document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + tabId));
             closeMobileSidebar();
+            if (tabId === 'home') loadDashboard();
             if (tabId === 'prompts') loadPrompts();
             if (tabId === 'dialogs') loadDialogs();
             if (tabId === 'logs') loadLogs();
+        }
+
+        // === Дашборд ===
+        function formatNum(n) {
+            if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+            if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+            return String(n);
+        }
+
+        function renderDashboard(d) {
+            const c = document.getElementById('dashboardContent');
+            // Метрики
+            let h = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+                <div class="card" style="padding:16px;text-align:center;">
+                    <div style="font-size:28px;font-weight:700;color:var(--primary);">${d.total_users}</div>
+                    <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">Всего пользователей</div>
+                </div>
+                <div class="card" style="padding:16px;text-align:center;">
+                    <div style="font-size:28px;font-weight:700;color:#22c55e;">${d.active_today}</div>
+                    <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">Активных сегодня</div>
+                </div>
+                <div class="card" style="padding:16px;text-align:center;">
+                    <div style="font-size:28px;font-weight:700;color:#f59e0b;">${d.total_carousels}</div>
+                    <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">Скачано каруселей</div>
+                </div>
+                <div class="card" style="padding:16px;text-align:center;">
+                    <div style="font-size:28px;font-weight:700;color:#8b5cf6;">${formatNum(d.total_tokens)}</div>
+                    <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">Токенов использовано</div>
+                </div>
+            </div>`;
+            // Средние токены
+            h += `<div class="card" style="padding:14px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-size:13px;color:var(--text-muted);">Среднее на пользователя</span>
+                <span style="font-size:18px;font-weight:600;">${formatNum(d.avg_tokens_per_user)} токенов</span>
+            </div>`;
+            // График
+            const usage = d.daily_usage || [];
+            if (usage.length > 1) {
+                const maxVal = Math.max(...usage.map(u => u.count), 1);
+                const W = 600, H = 180, padL = 40, padB = 30, padT = 10, padR = 10;
+                const chartW = W - padL - padR, chartH = H - padT - padB;
+                const stepX = chartW / (usage.length - 1);
+                const points = usage.map((u, i) => `${padL + i * stepX},${padT + chartH - (u.count / maxVal) * chartH}`);
+                const polyline = points.join(' ');
+                const area = `${padL},${padT + chartH} ${polyline} ${padL + (usage.length - 1) * stepX},${padT + chartH}`;
+                // Подписи по X (каждый 7й день)
+                let xLabels = '';
+                usage.forEach((u, i) => {
+                    if (i % 7 === 0 || i === usage.length - 1) {
+                        const d = new Date(u.date);
+                        xLabels += `<text x="${padL + i * stepX}" y="${H - 4}" text-anchor="middle" fill="var(--text-muted)" font-size="10">${d.getDate()}.${String(d.getMonth()+1).padStart(2,'0')}</text>`;
+                    }
+                });
+                // Линии сетки по Y
+                let yLines = '', yLabels = '';
+                for (let i = 0; i <= 3; i++) {
+                    const y = padT + chartH - (i / 3) * chartH;
+                    const val = Math.round(maxVal * i / 3);
+                    yLines += `<line x1="${padL}" y1="${y}" x2="${W - padR}" y2="${y}" stroke="var(--border)" stroke-width="0.5"/>`;
+                    yLabels += `<text x="${padL - 6}" y="${y + 4}" text-anchor="end" fill="var(--text-muted)" font-size="10">${val}</text>`;
+                }
+                h += `<div class="card" style="padding:16px;">
+                    <div style="font-size:13px;font-weight:600;margin-bottom:12px;">AI-вызовы за 30 дней</div>
+                    <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;">
+                        ${yLines}${yLabels}
+                        <polygon points="${area}" fill="var(--primary)" opacity="0.1"/>
+                        <polyline points="${polyline}" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+                        ${xLabels}
+                    </svg>
+                </div>`;
+            } else {
+                h += `<div class="card" style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px;">Данных для графика пока недостаточно</div>`;
+            }
+            c.innerHTML = h;
+        }
+
+        async function loadDashboard() {
+            const c = document.getElementById('dashboardContent');
+            if (_adminDashCache) {
+                renderDashboard(_adminDashCache);
+            } else {
+                c.innerHTML = '<div class="loading">Загрузка...</div>';
+            }
+            try {
+                const r = await api('/api/admin/dashboard');
+                if (!r.ok) { if (!_adminDashCache) c.innerHTML = '<div class="error-msg">Ошибка</div>'; return; }
+                const data = await r.json();
+                _adminDashCache = data;
+                renderDashboard(data);
+            } catch(e) {
+                if (!_adminDashCache) c.innerHTML = '<div class="error-msg">Ошибка загрузки</div>';
+            }
         }
 
         // === Промпты ===

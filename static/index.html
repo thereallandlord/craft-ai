@@ -7556,6 +7556,7 @@
         function downloadAllGenerated(prefix) {
             const images = prefix === 'chat' ? chatGeneratedImages : [];
             if (images.length === 0) return;
+            if (currentUser?.id) fetch(API_URL + '/api/track/download', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: currentUser.id})}).catch(()=>{});
             images.forEach((img, i) => {
                 setTimeout(() => {
                     const a = document.createElement('a');
@@ -10510,6 +10511,7 @@
         }
 
         async function exportAllSlides() {
+            if (currentUser?.id) fetch(API_URL + '/api/track/download', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({user_id: currentUser.id})}).catch(()=>{});
             showToast('Экспорт...', 'success');
             for (let i = 0; i < state.slides.length; i++) {
                 await downloadSlide(i);
