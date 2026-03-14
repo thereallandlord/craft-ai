@@ -3613,6 +3613,32 @@ async def check_login_token(token: str):
     return {"status": "pending"}
 
 
+def get_telegram_photo_url(user_id: int) -> str:
+    """Fetch user's Telegram profile photo URL via Bot API."""
+    try:
+        r = requests.get(
+            f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/getUserProfilePhotos",
+            params={"user_id": user_id, "limit": 1},
+            timeout=5,
+        )
+        data = r.json()
+        photos = data.get("result", {}).get("photos", [])
+        if not photos:
+            return ""
+        file_id = photos[0][0]["file_id"]
+        r2 = requests.get(
+            f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/getFile",
+            params={"file_id": file_id},
+            timeout=5,
+        )
+        file_path = r2.json().get("result", {}).get("file_path", "")
+        if not file_path:
+            return ""
+        return f"https://api.telegram.org/file/bot{TELEGRAM_BOT_TOKEN}/{file_path}"
+    except Exception:
+        return ""
+
+
 @app.post("/api/telegram/webhook")
 async def telegram_webhook(request: Request):
     """Handle incoming Telegram bot updates (for login deep links)."""
@@ -3653,7 +3679,7 @@ async def telegram_webhook(request: Request):
             "first_name": tg_user.get("first_name", ""),
             "last_name": tg_user.get("last_name", ""),
             "username": tg_user.get("username", ""),
-            "photo_url": "",
+            "photo_url": get_telegram_photo_url(user_id),
             "is_club_member": is_club_member,
             "is_admin": is_admin,
         }
