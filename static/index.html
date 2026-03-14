@@ -5966,6 +5966,7 @@
 
         // Load templates into select dropdowns for Ready Text and Wizard tabs
         let templateCache = []; // Cache loaded templates
+        let _templatesFetched = false; // true после первого успешного fetch
 
         // Единая функция обновления кэша шаблонов
         async function refreshTemplateCache() {
@@ -5978,6 +5979,7 @@
                     const data = await r.json();
                     const templates = data.templates || [];
                     console.log('[templates] fetched:', templates.length, 'templates');
+                    _templatesFetched = true;
                     if (templates.length > 0) {
                         templateCache = templates;
                         try { localStorage.setItem('templateCacheV4', JSON.stringify(templates)); } catch(e) {}
@@ -6009,6 +6011,7 @@
                     const cached = JSON.parse(localStorage.getItem('templateCacheV4') || '[]');
                     if (cached.length > 0) {
                         templateCache = cached;
+                        _templatesFetched = true;
                         // Background refresh after 1s
                         setTimeout(() => loadTemplateSelectors(true), 1000);
                         return;
@@ -6023,6 +6026,7 @@
                 if (r.ok) {
                     const d = await r.json();
                     templates = d.templates || [];
+                    _templatesFetched = true;
                 }
             } catch (e) {
                 templates = Object.values(JSON.parse(localStorage.getItem('carousel_templates') || '{}'));
@@ -10136,7 +10140,13 @@
             if (system.length > 0) html += section('system', 'Системные', system);
             if (published.length > 0) html += section('published', 'От сообщества', published);
             if (!html) {
-                html = '<div style="padding:40px;text-align:center;color:var(--text-muted);">Нет шаблонов. Нажмите «Создать с нуля» чтобы начать.</div>';
+                if (_templatesFetched) {
+                    html = '<div style="padding:40px;text-align:center;color:var(--text-muted);">Нет шаблонов. Нажмите «+ Создать с нуля» чтобы начать.</div>';
+                } else {
+                    html = '<div style="padding:40px;text-align:center;color:var(--text-muted);"><span class="spinner"></span> Загрузка шаблонов...</div>';
+                    // Автоматически обновить галерею когда данные подгрузятся
+                    refreshTemplateCache().then(() => rerenderGalleryIfVisible());
+                }
             }
             container.innerHTML = html;
 
