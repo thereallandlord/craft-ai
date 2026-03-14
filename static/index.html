@@ -4435,7 +4435,23 @@
         <div class="tab-page" id="tab-rewrite">
             <div class="tab-page-content">
                 <div class="tab-page-title">Конкуренты</div>
-                <div class="tab-page-subtitle">Отслеживайте конкурентов и анализируйте их контент</div>
+                <div class="tab-page-subtitle">Анализируйте контент конкурентов и создавайте свои карусели</div>
+
+                <!-- Анализ контента -->
+                <div style="background:var(--bg-tertiary);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:24px;">
+                    <div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:12px;">Анализ контента</div>
+                    <div style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;">Вставьте ссылку на пост из Instagram, YouTube, TikTok, Twitter или LinkedIn</div>
+                    <div style="display:flex;gap:8px;margin-bottom:12px;">
+                        <input type="text" id="competitorLinkInput" placeholder="https://instagram.com/p/... или другая ссылка" style="flex:1;padding:8px 12px;background:var(--bg-primary);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-size:13px;" onkeydown="if(event.key==='Enter')competitorAnalyze()">
+                        <button class="btn" onclick="competitorAnalyze()" id="competitorAnalyzeBtn">Анализировать</button>
+                    </div>
+
+                    <!-- Analysis result (rendered by JS) -->
+                    <div id="competitorAnalysisResult" style="display:none;"></div>
+
+                    <!-- Rewrite button -->
+                    <button class="btn btn-primary" id="competitorRewriteBtn" onclick="competitorRewrite()" disabled style="width:100%;opacity:0.5;cursor:not-allowed;margin-top:12px;display:none;">Рерайт под мой стиль</button>
+                </div>
 
                 <!-- Мои конкуренты -->
                 <div style="background:var(--bg-tertiary);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:24px;">
@@ -4445,20 +4461,6 @@
                         <input type="text" id="competitorInput" placeholder="@username" style="flex:1;padding:8px 12px;background:var(--bg-primary);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-size:13px;">
                         <button class="btn" onclick="competitorAdd()" style="white-space:nowrap;">Добавить</button>
                     </div>
-                </div>
-
-                <!-- Анализ контента -->
-                <div style="background:var(--bg-tertiary);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:24px;">
-                    <div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:12px;">Анализ контента</div>
-                    <div style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;">Вставьте ссылку на карусель или рилс конкурента для анализа</div>
-                    <div style="display:flex;gap:8px;margin-bottom:12px;">
-                        <input type="text" id="competitorLinkInput" placeholder="https://instagram.com/p/..." style="flex:1;padding:8px 12px;background:var(--bg-primary);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-size:13px;">
-                        <button class="btn" onclick="competitorAnalyze()" id="competitorAnalyzeBtn">Анализировать</button>
-                    </div>
-                    <div id="competitorAnalysisResult" style="display:none;padding:16px;background:var(--bg-primary);border:1px solid var(--border);border-radius:8px;margin-bottom:12px;">
-                        <div style="font-size:13px;color:var(--text-secondary);text-align:center;">Анализ будет доступен после подключения AI</div>
-                    </div>
-                    <button class="btn" id="competitorRewriteBtn" disabled style="width:100%;opacity:0.5;cursor:not-allowed;">Рерайт под мой стиль</button>
                 </div>
             </div>
         </div>
@@ -5389,7 +5391,7 @@
                     const data = await resp.json();
                     const sc = data.sub_chat;
                     currentTopicId = sc.topic_id;
-                    const typeLabels = {headlines: 'Идеи и темы', text: 'Текст', carousel: 'Карусель'};
+                    const typeLabels = {headlines: 'Идеи и темы', text: 'Текст', carousel: 'Карусель', analysis: 'Анализ'};
                     document.getElementById('scTitle').textContent = sc.title || typeLabels[sc.chat_type] || 'Чат';
                     document.getElementById('scTypeBadge').textContent = typeLabels[sc.chat_type] || sc.chat_type;
 
@@ -5400,6 +5402,15 @@
                         inputBar.style.display = 'none';
                         document.getElementById('scActionBar').style.display = 'none';
                         scInitCarouselEditor(sc);
+                    } else if (sc.chat_type === 'analysis') {
+                        // Show analysis with rewrite action
+                        renderSubChatMessages(data.messages || [], sc.chat_type);
+                        inputBar.style.display = 'none';
+                        const bar = document.getElementById('scActionBar');
+                        if (bar) {
+                            bar.style.display = 'flex';
+                            bar.innerHTML = `<button class="btn btn-primary" onclick="scRewriteFromAnalysis('${sc.topic_id}', '${sc.id}')" style="flex:1;">Рерайт под мой стиль</button>`;
+                        }
                     } else {
                         renderSubChatMessages(data.messages || [], sc.chat_type);
                         updateActionBar(sc, data.messages || []);
@@ -5428,6 +5439,9 @@
                     });
                     content += '</div>';
                 }
+                if (msg.message_type === 'analysis' && msg.message_data) {
+                    content = renderAnalysisMessageCard(msg.message_data);
+                }
                 // Action buttons under assistant messages (ChatGPT style)
                 let actions = '';
                 if (msg.role === 'assistant' && chatType === 'text') {
@@ -5445,6 +5459,43 @@
                 return `<div class="pv-msg ${msg.role}"><div>${content.replace(/\n/g, '<br>')}</div>${actions}<div class="msg-time">${time}</div></div>`;
             }).join('');
             container.scrollTop = container.scrollHeight;
+        }
+
+        async function scRewriteFromAnalysis(topicId, analysisSubChatId) {
+            // Get the analysis message to extract caption/transcript
+            try {
+                const resp = await fetch(`${API_URL}/api/sub-chats/${analysisSubChatId}`);
+                if (!resp.ok) { showToast('Ошибка загрузки анализа', 'error'); return; }
+                const data = await resp.json();
+                const analysisMsg = (data.messages || []).find(m => m.message_type === 'analysis');
+                if (!analysisMsg || !analysisMsg.message_data) { showToast('Данные анализа не найдены', 'error'); return; }
+
+                const ad = analysisMsg.message_data;
+                let rewriteText = ad.caption || '';
+                if (ad.transcript) rewriteText += '\n\n[Транскрипт видео]:\n' + ad.transcript;
+
+                showToast('Создаю рерайт...', 'info');
+
+                const rResp = await fetch(`${API_URL}/api/topics/${topicId}/sub-chats`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        user_id: String(currentUser.id),
+                        chat_type: 'text',
+                        selected_headline: rewriteText.substring(0, 5000),
+                        parent_subchat_id: analysisSubChatId,
+                        source: 'competitor_rewrite',
+                        slides_count: 7,
+                    })
+                });
+                if (!rResp.ok) { showToast('Ошибка рерайта', 'error'); return; }
+                const result = await rResp.json();
+                openSubChat(result.sub_chat.id);
+                showToast('Рерайт создан!', 'success');
+            } catch(e) {
+                console.error('[scRewriteFromAnalysis]', e);
+                showToast('Ошибка: ' + e.message, 'error');
+            }
         }
 
         function updateActionBar(subChat, messages) {
@@ -8057,6 +8108,10 @@
         }
 
         // === COMPETITORS TAB ===
+        let _competitorAnalysis = null;
+        let _competitorTopicId = null;
+        let _competitorSubChatId = null;
+
         function competitorsLoad() {
             const list = JSON.parse(localStorage.getItem('craft_competitors') || '[]');
             const container = document.getElementById('competitorsList');
@@ -8093,12 +8148,247 @@
             competitorsLoad();
         }
 
-        function competitorAnalyze() {
+        async function competitorAnalyze() {
             const link = document.getElementById('competitorLinkInput').value.trim();
             if (!link) return;
+            if (!currentUser) { showToast('Авторизуйтесь для анализа', 'error'); return; }
+
+            const btn = document.getElementById('competitorAnalyzeBtn');
             const result = document.getElementById('competitorAnalysisResult');
+            const rewriteBtn = document.getElementById('competitorRewriteBtn');
+
+            // Reset state
+            _competitorAnalysis = null;
+            _competitorTopicId = null;
+            _competitorSubChatId = null;
+            rewriteBtn.disabled = true;
+            rewriteBtn.style.opacity = '0.5';
+            rewriteBtn.style.cursor = 'not-allowed';
+            rewriteBtn.style.display = 'none';
+
+            // Loading state
+            btn.disabled = true;
+            btn.textContent = 'Анализирую...';
             result.style.display = 'block';
-            result.innerHTML = '<div style="font-size:13px;color:var(--text-secondary);text-align:center;">Анализ будет доступен после подключения AI webhook</div>';
+            result.innerHTML = '<div style="text-align:center;padding:24px;"><div class="thinking-dot"></div><div style="font-size:12px;color:var(--text-muted);margin-top:8px;">Загружаем пост...</div></div>';
+
+            try {
+                const resp = await fetch(`${API_URL}/api/competitor/analyze`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ url: link, user_id: String(currentUser.id) })
+                });
+
+                if (!resp.ok) {
+                    const err = await resp.json().catch(() => ({ detail: 'Ошибка сервера' }));
+                    const detail = Array.isArray(err.detail)
+                        ? err.detail.map(d => d.msg).join('; ')
+                        : (err.detail || 'Неизвестная ошибка');
+                    throw new Error(detail);
+                }
+
+                const data = await resp.json();
+                _competitorAnalysis = data.analysis;
+                _competitorTopicId = data.topic.id;
+                _competitorSubChatId = data.sub_chat.id;
+
+                renderCompetitorAnalysis(data.analysis);
+
+                // Enable rewrite button
+                rewriteBtn.disabled = false;
+                rewriteBtn.style.opacity = '1';
+                rewriteBtn.style.cursor = 'pointer';
+                rewriteBtn.style.display = '';
+
+                // Refresh topics list in background
+                if (typeof loadTopics === 'function') loadTopics();
+
+            } catch(e) {
+                console.error('[competitor] Analysis failed:', e);
+                result.innerHTML = `<div style="padding:16px;text-align:center;"><div style="font-size:13px;color:#ef4444;">${escapeHtml(e.message)}</div></div>`;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Анализировать';
+            }
+        }
+
+        function renderCompetitorAnalysis(data) {
+            const container = document.getElementById('competitorAnalysisResult');
+            if (!container) return;
+
+            // Platform badge
+            const platformLabels = {
+                instagram: 'Instagram', youtube: 'YouTube', tiktok: 'TikTok',
+                twitter: 'Twitter/X', linkedin: 'LinkedIn', facebook: 'Facebook'
+            };
+            const platformLabel = platformLabels[data.platform] || data.platform;
+
+            // Post type label
+            const typeLabels = {
+                carousel: 'Карусель', reel: 'Рилс', post: 'Пост',
+                video: 'Видео', short: 'Шорт', tweet: 'Твит'
+            };
+            const typeLabel = typeLabels[data.post_type] || data.post_type;
+
+            // Format date
+            const date = data.taken_at ? new Date(data.taken_at * 1000).toLocaleDateString('ru-RU', {
+                day: 'numeric', month: 'long', year: 'numeric'
+            }) : '';
+
+            // Format numbers
+            const formatNum = n => {
+                if (!n) return '0';
+                if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+                if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+                return String(n);
+            };
+
+            // Build images preview (max 4)
+            let imagesHtml = '';
+            if (data.images && data.images.length > 0) {
+                const showImages = data.images.slice(0, 4);
+                imagesHtml = `<div style="display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;">
+                    ${showImages.map(img => `
+                        <div style="flex-shrink:0;width:80px;height:80px;border-radius:6px;overflow:hidden;background:var(--bg-tertiary);">
+                            <img src="${escapeHtml(img.url)}" style="width:100%;height:100%;object-fit:cover;"
+                                 onerror="this.parentElement.innerHTML='<div style=\\'display:flex;align-items:center;justify-content:center;height:100%;font-size:10px;color:var(--text-muted)\\'>Нет фото</div>'"
+                                 loading="lazy">
+                        </div>
+                    `).join('')}
+                    ${data.images.length > 4 ? `<div style="flex-shrink:0;width:80px;height:80px;border-radius:6px;background:var(--bg-tertiary);display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--text-muted);">+${data.images.length - 4}</div>` : ''}
+                </div>`;
+            }
+
+            // Caption (truncated)
+            const captionShort = data.caption && data.caption.length > 300
+                ? data.caption.substring(0, 300) + '...'
+                : (data.caption || '');
+            const hasMore = data.caption && data.caption.length > 300;
+
+            // Transcript
+            let transcriptHtml = '';
+            if (data.transcript) {
+                const trShort = data.transcript.length > 200 ? data.transcript.substring(0, 200) + '...' : data.transcript;
+                transcriptHtml = `
+                    <div style="margin-top:12px;padding:10px;background:var(--bg-tertiary);border-radius:6px;">
+                        <div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:6px;">Транскрипт видео</div>
+                        <div id="competitorTranscript" style="font-size:12px;color:var(--text-primary);line-height:1.4;white-space:pre-wrap;">${escapeHtml(trShort)}</div>
+                        ${data.transcript.length > 200 ? `<button onclick="document.getElementById('competitorTranscript').textContent=_competitorAnalysis.transcript;this.style.display='none'" style="background:none;border:none;color:var(--accent);font-size:11px;cursor:pointer;padding:4px 0;">Показать полностью</button>` : ''}
+                    </div>
+                `;
+            }
+
+            container.style.display = 'block';
+            container.innerHTML = `
+                <div style="padding:16px;background:var(--bg-primary);border:1px solid var(--border);border-radius:8px;">
+                    <!-- Header -->
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            ${data.profile_pic_url ? `<img src="${escapeHtml(data.profile_pic_url)}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;" onerror="this.style.display='none'">` : ''}
+                            <div>
+                                <div style="font-size:13px;font-weight:600;color:var(--text-primary);">${data.username ? '@' + escapeHtml(data.username) : 'Автор'}</div>
+                                ${date ? `<div style="font-size:11px;color:var(--text-muted);">${date}</div>` : ''}
+                            </div>
+                        </div>
+                        <div style="display:flex;gap:4px;">
+                            <span style="font-size:10px;padding:2px 6px;background:var(--accent);color:white;border-radius:3px;">${platformLabel}</span>
+                            <span style="font-size:10px;padding:2px 6px;background:var(--bg-tertiary);border-radius:3px;color:var(--text-secondary);">${typeLabel}${data.images && data.images.length > 1 ? ` (${data.images.length})` : ''}</span>
+                        </div>
+                    </div>
+
+                    <!-- Images -->
+                    ${imagesHtml}
+
+                    <!-- Caption -->
+                    <div style="margin-bottom:8px;">
+                        <div id="competitorCaption" style="font-size:13px;color:var(--text-primary);line-height:1.5;white-space:pre-wrap;">${escapeHtml(captionShort)}</div>
+                        ${hasMore ? `<button onclick="document.getElementById('competitorCaption').textContent=_competitorAnalysis.caption;this.style.display='none'" style="background:none;border:none;color:var(--accent);font-size:12px;cursor:pointer;padding:4px 0;">Показать полностью</button>` : ''}
+                    </div>
+
+                    <!-- Transcript (if video) -->
+                    ${transcriptHtml}
+
+                    <!-- Engagement -->
+                    <div style="display:flex;gap:16px;font-size:12px;color:var(--text-muted);margin-top:8px;">
+                        <span>❤️ ${formatNum(data.like_count)}</span>
+                        <span>💬 ${formatNum(data.comment_count)}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderAnalysisMessageCard(data) {
+            // Compact version for subchat messages view
+            const platformLabels = {instagram: 'Instagram', youtube: 'YouTube', tiktok: 'TikTok', twitter: 'Twitter/X', linkedin: 'LinkedIn', facebook: 'Facebook'};
+            const typeLabels = {carousel: 'Карусель', reel: 'Рилс', post: 'Пост', video: 'Видео', short: 'Шорт', tweet: 'Твит'};
+            const captionShort = data.caption && data.caption.length > 200 ? data.caption.substring(0, 200) + '...' : (data.caption || '');
+            const formatNum = n => n >= 1000 ? (n / 1000).toFixed(1) + 'K' : (n || 0);
+
+            return `
+                <div style="padding:12px;background:var(--bg-tertiary);border-radius:8px;">
+                    <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
+                        <span style="font-size:10px;padding:2px 6px;background:var(--accent);color:white;border-radius:3px;">${platformLabels[data.platform] || data.platform}</span>
+                        <span style="font-size:12px;font-weight:600;color:var(--text-primary);">${data.username ? '@' + escapeHtml(data.username) : ''}</span>
+                        <span style="font-size:10px;color:var(--text-muted);">${typeLabels[data.post_type] || ''}</span>
+                    </div>
+                    <div style="font-size:12px;color:var(--text-primary);line-height:1.4;white-space:pre-wrap;margin-bottom:6px;">${escapeHtml(captionShort)}</div>
+                    ${data.transcript ? `<div style="font-size:11px;color:var(--text-secondary);margin-bottom:6px;">📝 Транскрипт: ${escapeHtml(data.transcript.substring(0, 100))}${data.transcript.length > 100 ? '...' : ''}</div>` : ''}
+                    <div style="font-size:11px;color:var(--text-muted);">❤️ ${formatNum(data.like_count)} · 💬 ${formatNum(data.comment_count)}</div>
+                </div>
+            `;
+        }
+
+        async function competitorRewrite() {
+            if (!_competitorAnalysis || !_competitorTopicId || !currentUser) return;
+
+            const data = _competitorAnalysis;
+            const rewriteBtn = document.getElementById('competitorRewriteBtn');
+            const origText = rewriteBtn.textContent;
+            rewriteBtn.disabled = true;
+            rewriteBtn.innerHTML = '<span class="spinner" style="width:14px;height:14px;border-width:2px;"></span> Создаю рерайт...';
+
+            // Build text for rewrite: caption + transcript
+            let rewriteText = data.caption || '';
+            if (data.transcript) {
+                rewriteText += '\n\n[Транскрипт видео]:\n' + data.transcript;
+            }
+
+            try {
+                const resp = await fetch(`${API_URL}/api/topics/${_competitorTopicId}/sub-chats`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        user_id: String(currentUser.id),
+                        chat_type: 'text',
+                        selected_headline: rewriteText.substring(0, 5000),
+                        parent_subchat_id: _competitorSubChatId,
+                        source: 'competitor_rewrite',
+                        slides_count: 7,
+                    })
+                });
+
+                if (!resp.ok) {
+                    const err = await resp.json().catch(() => ({ detail: 'Ошибка' }));
+                    throw new Error(Array.isArray(err.detail) ? err.detail.map(d => d.msg).join('; ') : (err.detail || 'Ошибка'));
+                }
+
+                const result = await resp.json();
+
+                // Switch to Create tab and open the new sub-chat
+                switchTab('create');
+                currentTopicId = _competitorTopicId;
+                currentSubChatId = result.sub_chat.id;
+                openSubChat(result.sub_chat.id);
+
+                showToast('Рерайт создан! Доработайте текст в чате', 'success');
+
+            } catch(e) {
+                console.error('[competitor] Rewrite failed:', e);
+                showToast('Ошибка рерайта: ' + e.message, 'error');
+            } finally {
+                rewriteBtn.disabled = false;
+                rewriteBtn.textContent = origText;
+            }
         }
 
         // === HISTORY TAB ===

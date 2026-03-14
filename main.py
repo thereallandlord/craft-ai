@@ -109,6 +109,56 @@ if DATABASE_URL:
 else:
     print("⚠️ DATABASE_URL not set — ai_logs will not work")
 
+# === Scrape Creators API ===
+SCRAPE_CREATORS_API_KEY = os.getenv("SCRAPE_CREATORS_API_KEY", "")
+SCRAPE_CREATORS_BASE = "https://api.scrapecreators.com"
+
+PLATFORM_CONFIG = {
+    "instagram": {
+        "patterns": [r'instagram\.com/(p|reel|reels)/[\w-]+'],
+        "post_endpoint": "/v1/instagram/post",
+        "transcript_endpoint": "/v2/instagram/media/transcript",
+    },
+    "youtube": {
+        "patterns": [r'youtube\.com/watch\?v=', r'youtu\.be/', r'youtube\.com/shorts/'],
+        "post_endpoint": "/v1/youtube/video",
+        "transcript_endpoint": "/v1/youtube/video/transcript",
+    },
+    "tiktok": {
+        "patterns": [r'tiktok\.com/@[\w.]+/video/', r'vm\.tiktok\.com/', r'tiktok\.com/t/'],
+        "post_endpoint": "/v2/tiktok/video",
+        "transcript_endpoint": "/v1/tiktok/video/transcript",
+    },
+    "twitter": {
+        "patterns": [r'(twitter\.com|x\.com)/\w+/status/\d+'],
+        "post_endpoint": "/v1/twitter/tweet",
+        "transcript_endpoint": "/v1/twitter/tweet/transcript",
+    },
+    "linkedin": {
+        "patterns": [r'linkedin\.com/(posts|feed/update)'],
+        "post_endpoint": "/v1/linkedin/post",
+        "transcript_endpoint": None,
+    },
+    "facebook": {
+        "patterns": [r'facebook\.com/.+/(posts|videos|reel)'],
+        "post_endpoint": "/v1/facebook/post",
+        "transcript_endpoint": "/v1/facebook/post/transcript",
+    },
+}
+
+def detect_platform(url: str) -> str | None:
+    """Detect social media platform from URL."""
+    for platform, cfg in PLATFORM_CONFIG.items():
+        for pattern in cfg["patterns"]:
+            if re.search(pattern, url):
+                return platform
+    return None
+
+if SCRAPE_CREATORS_API_KEY:
+    print("✅ SCRAPE_CREATORS_API_KEY configured")
+else:
+    print("⚠️ SCRAPE_CREATORS_API_KEY not set — competitor analysis will not work")
+
 
 def _pg_query(query, params=None, fetchone=False):
     """Execute SQL directly via psycopg2, bypassing PostgREST."""
@@ -1762,6 +1812,27 @@ SYSTEM_PROMPT_TEXT_GEN = """Ты — AI контент-менеджер для I
 SYSTEM_PROMPT_TEXT_READY = """Ты — AI контент-менеджер. Текст карусели готов. Помоги пользователю улучшить или отредактировать текст.
 Если пользователь просит что-то изменить — перепиши соответствующие слайды в том же формате."""
 
+SYSTEM_PROMPT_COMPETITOR_REWRITE = """Ты — AI контент-менеджер для Instagram-каруселей. Пользователь хочет переработать пост конкурента в свою уникальную карусель.
+
+Задача: перепиши пост конкурента в формат карусели из {slides_count} слайдов.
+- НЕ копируй текст конкурента дословно — создай уникальный контент на ту же тему
+- Используй стиль и тон пользователя (если контекст о пользователе доступен)
+- Сделай текст более вовлекающим и адаптированным под аудиторию пользователя
+- Каждый слайд — одна ключевая мысль
+
+Формат ответа СТРОГО:
+Слайд 1
+Заголовок: [цепляющий заголовок карусели]
+Описание: [вступление]
+
+Слайд 2
+Заголовок: [пункт 1]
+Описание: [раскрытие]
+
+... и так далее на {slides_count} слайдов.
+
+Пиши кратко, ёмко. Пиши на языке оригинального поста, если пользователь не указал иное."""
+
 
 def get_system_prompt(status: str, slides_count: int = 7, custom_prompts: dict = None) -> str:
     cp = custom_prompts or {}
@@ -1994,6 +2065,7 @@ def get_system_prompt_v3(chat_type: str, has_slides: bool = False, variables: di
     fallbacks = {
         'headlines': SYSTEM_PROMPT_HEADLINES_GEN,
         'text': SYSTEM_PROMPT_TEXT_GEN,
+        'competitor_rewrite': SYSTEM_PROMPT_COMPETITOR_REWRITE,
         'format_text': open(os.path.join(os.path.dirname(__file__), "prompts", "format_carousel_text.txt"), encoding="utf-8").read() if os.path.exists(os.path.join(os.path.dirname(__file__), "prompts", "format_carousel_text.txt")) else "Parse text into JSON array of slides with TITLE and DESCRIPTION fields."
     }
 
@@ -2212,6 +2284,371 @@ async def debug_text_width(request: Request):
     }
 
 
+# === Competitor Analysis API ===
+
+def _parse_instagram(data: dict) -> dict:
+    """Parse Scrape Creators Instagram response into normalized format."""
+    media = data.get("data", {}).get("xdt_shortcode_media") or data.get("data", {})
+    if not media:
+        return None
+
+    # Caption
+    caption_edges = media.get("edge_media_to_caption", {}).get("edges", [])
+    caption = caption_edges[0]["node"]["text"] if caption_edges else media.get("caption", {}).get("text", "") if isinstance(media.get("caption"), dict) else str(media.get("caption", ""))
+
+    # Owner
+    owner = media.get("owner", {})
+
+    # Images
+    images = []
+    typename = media.get("__typename", "")
+    if typename == "XDTGraphSidecar" or "edge_sidecar_to_children" in media:
+        children = media.get("edge_sidecar_to_children", {}).get("edges", [])
+        for child in children:
+            node = child.get("node", {})
+            images.append({
+                "url": node.get("display_url", ""),
+                "is_video": node.get("is_video", False),
+            })
+    else:
+        display_url = media.get("display_url", "")
+        if display_url:
+            images.append({
+                "url": display_url,
+                "is_video": media.get("is_video", False),
+            })
+
+    # Engagement
+    like_count = media.get("edge_media_preview_like", {}).get("count", 0) if isinstance(media.get("edge_media_preview_like"), dict) else media.get("like_count", 0)
+    comment_count = media.get("edge_media_to_parent_comment", {}).get("count", 0) if isinstance(media.get("edge_media_to_parent_comment"), dict) else media.get("comment_count", 0)
+
+    is_video = media.get("is_video", False)
+    post_type = "carousel" if (typename == "XDTGraphSidecar" or len(images) > 1) else ("reel" if is_video else "post")
+
+    return {
+        "platform": "instagram",
+        "username": owner.get("username", ""),
+        "profile_pic_url": owner.get("profile_pic_url", ""),
+        "caption": caption,
+        "images": images[:10],
+        "post_type": post_type,
+        "is_video": is_video,
+        "like_count": like_count,
+        "comment_count": comment_count,
+        "taken_at": media.get("taken_at_timestamp") or media.get("taken_at"),
+        "shortcode": media.get("shortcode", ""),
+    }
+
+
+def _parse_youtube(data: dict) -> dict:
+    """Parse Scrape Creators YouTube response into normalized format."""
+    video = data.get("data", data)
+    if isinstance(video, list) and video:
+        video = video[0]
+
+    title = video.get("title", "")
+    description = video.get("description", "")
+    caption = f"{title}\n\n{description}" if description else title
+
+    thumbnail = video.get("thumbnail", "") or video.get("thumbnailUrl", "")
+    if isinstance(thumbnail, list) and thumbnail:
+        thumbnail = thumbnail[-1].get("url", "") if isinstance(thumbnail[-1], dict) else str(thumbnail[-1])
+
+    images = [{"url": thumbnail, "is_video": True}] if thumbnail else []
+
+    is_short = "/shorts/" in str(video.get("url", ""))
+    return {
+        "platform": "youtube",
+        "username": video.get("channelName", "") or video.get("author", "") or video.get("ownerChannelName", ""),
+        "profile_pic_url": video.get("channelThumbnail", "") or video.get("authorThumbnail", ""),
+        "caption": caption,
+        "images": images,
+        "post_type": "short" if is_short else "video",
+        "is_video": True,
+        "like_count": video.get("likeCount", 0) or video.get("likes", 0),
+        "comment_count": video.get("commentCount", 0) or video.get("comments", 0),
+        "taken_at": None,
+        "shortcode": video.get("videoId", "") or video.get("id", ""),
+    }
+
+
+def _parse_tiktok(data: dict) -> dict:
+    """Parse Scrape Creators TikTok response into normalized format."""
+    video = data.get("data", data)
+    if isinstance(video, list) and video:
+        video = video[0]
+
+    author = video.get("author", {}) if isinstance(video.get("author"), dict) else {}
+    stats = video.get("stats", {}) if isinstance(video.get("stats"), dict) else {}
+
+    cover = video.get("cover", "") or video.get("originCover", "")
+    if isinstance(cover, list) and cover:
+        cover = cover[0] if isinstance(cover[0], str) else ""
+
+    return {
+        "platform": "tiktok",
+        "username": author.get("uniqueId", "") or video.get("author_name", "") or video.get("uniqueId", ""),
+        "profile_pic_url": author.get("avatarThumb", "") or video.get("author_avatar", ""),
+        "caption": video.get("desc", "") or video.get("title", "") or video.get("description", ""),
+        "images": [{"url": cover, "is_video": True}] if cover else [],
+        "post_type": "video",
+        "is_video": True,
+        "like_count": stats.get("diggCount", 0) or video.get("likes", 0) or video.get("diggCount", 0),
+        "comment_count": stats.get("commentCount", 0) or video.get("comments", 0) or video.get("commentCount", 0),
+        "taken_at": video.get("createTime"),
+        "shortcode": video.get("id", "") or video.get("video_id", ""),
+    }
+
+
+def _parse_twitter(data: dict) -> dict:
+    """Parse Scrape Creators Twitter/X response into normalized format."""
+    tweet = data.get("data", data)
+    if isinstance(tweet, list) and tweet:
+        tweet = tweet[0]
+
+    user = tweet.get("user", {}) if isinstance(tweet.get("user"), dict) else {}
+    media = tweet.get("media", []) if isinstance(tweet.get("media"), list) else []
+
+    images = []
+    is_video = False
+    for m in media:
+        if isinstance(m, dict):
+            if m.get("type") == "video":
+                is_video = True
+                images.append({"url": m.get("thumbnail_url", "") or m.get("preview_image_url", ""), "is_video": True})
+            elif m.get("type") == "photo" or m.get("media_url_https"):
+                images.append({"url": m.get("media_url_https", "") or m.get("url", ""), "is_video": False})
+
+    return {
+        "platform": "twitter",
+        "username": user.get("screen_name", "") or user.get("username", "") or tweet.get("author_username", ""),
+        "profile_pic_url": user.get("profile_image_url_https", "") or user.get("profile_image_url", ""),
+        "caption": tweet.get("full_text", "") or tweet.get("text", ""),
+        "images": images[:10],
+        "post_type": "tweet",
+        "is_video": is_video,
+        "like_count": tweet.get("favorite_count", 0) or tweet.get("likes", 0),
+        "comment_count": tweet.get("reply_count", 0) or tweet.get("replies", 0),
+        "taken_at": None,
+        "shortcode": tweet.get("id_str", "") or str(tweet.get("id", "")),
+    }
+
+
+def _parse_linkedin(data: dict) -> dict:
+    """Parse Scrape Creators LinkedIn response into normalized format."""
+    post = data.get("data", data)
+    if isinstance(post, list) and post:
+        post = post[0]
+
+    author = post.get("author", {}) if isinstance(post.get("author"), dict) else {}
+    images = []
+    post_images = post.get("images", []) or post.get("media", [])
+    if isinstance(post_images, list):
+        for img in post_images[:10]:
+            if isinstance(img, str):
+                images.append({"url": img, "is_video": False})
+            elif isinstance(img, dict):
+                images.append({"url": img.get("url", "") or img.get("src", ""), "is_video": img.get("type") == "video"})
+
+    return {
+        "platform": "linkedin",
+        "username": author.get("name", "") or post.get("author_name", "") or post.get("authorName", ""),
+        "profile_pic_url": author.get("profilePicture", "") or author.get("avatar", "") or post.get("authorAvatar", ""),
+        "caption": post.get("text", "") or post.get("commentary", "") or post.get("content", ""),
+        "images": images,
+        "post_type": "post",
+        "is_video": False,
+        "like_count": post.get("likeCount", 0) or post.get("likes", 0) or post.get("numLikes", 0),
+        "comment_count": post.get("commentCount", 0) or post.get("comments", 0) or post.get("numComments", 0),
+        "taken_at": None,
+        "shortcode": post.get("id", "") or post.get("urn", ""),
+    }
+
+
+def _parse_facebook(data: dict) -> dict:
+    """Parse Scrape Creators Facebook response into normalized format."""
+    post = data.get("data", data)
+    if isinstance(post, list) and post:
+        post = post[0]
+
+    images = []
+    post_images = post.get("images", []) or post.get("attachments", [])
+    if isinstance(post_images, list):
+        for img in post_images[:10]:
+            if isinstance(img, str):
+                images.append({"url": img, "is_video": False})
+            elif isinstance(img, dict):
+                images.append({"url": img.get("url", "") or img.get("src", ""), "is_video": img.get("type") == "video"})
+
+    return {
+        "platform": "facebook",
+        "username": post.get("author_name", "") or post.get("pageName", "") or post.get("username", ""),
+        "profile_pic_url": post.get("author_avatar", "") or post.get("profilePicture", ""),
+        "caption": post.get("text", "") or post.get("message", "") or post.get("content", ""),
+        "images": images,
+        "post_type": "video" if post.get("is_video") else "post",
+        "is_video": post.get("is_video", False),
+        "like_count": post.get("likes", 0) or post.get("likeCount", 0) or post.get("reactions", 0),
+        "comment_count": post.get("comments", 0) or post.get("commentCount", 0),
+        "taken_at": None,
+        "shortcode": post.get("id", "") or post.get("post_id", ""),
+    }
+
+
+_PLATFORM_PARSERS = {
+    "instagram": _parse_instagram,
+    "youtube": _parse_youtube,
+    "tiktok": _parse_tiktok,
+    "twitter": _parse_twitter,
+    "linkedin": _parse_linkedin,
+    "facebook": _parse_facebook,
+}
+
+
+@app.post("/api/competitor/analyze")
+async def competitor_analyze(request: Request):
+    """Analyze a social media post via Scrape Creators API. Creates Topic + analysis sub-chat."""
+    if not SCRAPE_CREATORS_API_KEY:
+        raise HTTPException(status_code=500, detail="SCRAPE_CREATORS_API_KEY not configured")
+
+    sb = require_supabase()
+    body = await request.json()
+    url = body.get("url", "").strip()
+    user_id = body.get("user_id")
+
+    if not url:
+        raise HTTPException(status_code=400, detail="url is required")
+    if not user_id:
+        raise HTTPException(status_code=400, detail="user_id is required")
+
+    # Detect platform
+    platform = detect_platform(url)
+    if not platform:
+        raise HTTPException(status_code=400, detail="Неподдерживаемая ссылка. Поддерживаются: Instagram, YouTube, TikTok, Twitter/X, LinkedIn, Facebook")
+
+    config = PLATFORM_CONFIG[platform]
+
+    try:
+        # 1. Fetch post data
+        print(f"[competitor] Fetching {platform} post: {url[:80]}...")
+        resp = requests.get(
+            f"{SCRAPE_CREATORS_BASE}{config['post_endpoint']}",
+            params={"url": url},
+            headers={"x-api-key": SCRAPE_CREATORS_API_KEY},
+            timeout=30
+        )
+
+        if resp.status_code != 200:
+            print(f"[competitor] Scrape Creators error {resp.status_code}: {resp.text[:500]}")
+            raise HTTPException(status_code=502, detail=f"Ошибка загрузки поста (код {resp.status_code})")
+
+        raw_data = resp.json()
+
+        # 2. Parse with platform-specific parser
+        parser = _PLATFORM_PARSERS.get(platform)
+        analysis = parser(raw_data)
+        if not analysis:
+            raise HTTPException(status_code=404, detail="Пост не найден или недоступен")
+
+        # 3. Try to get transcript for video content
+        transcript = None
+        if analysis["is_video"] and config.get("transcript_endpoint"):
+            try:
+                print(f"[competitor] Fetching transcript for {platform} video...")
+                tr_resp = requests.get(
+                    f"{SCRAPE_CREATORS_BASE}{config['transcript_endpoint']}",
+                    params={"url": url},
+                    headers={"x-api-key": SCRAPE_CREATORS_API_KEY},
+                    timeout=30
+                )
+                if tr_resp.status_code == 200:
+                    tr_data = tr_resp.json()
+                    # Extract transcript text — different platforms may return different structures
+                    if isinstance(tr_data.get("data"), str):
+                        transcript = tr_data["data"]
+                    elif isinstance(tr_data.get("data"), dict):
+                        transcript = tr_data["data"].get("transcript", "") or tr_data["data"].get("text", "")
+                    elif isinstance(tr_data.get("data"), list):
+                        # List of segments
+                        segments = tr_data["data"]
+                        transcript = " ".join(
+                            seg.get("text", "") if isinstance(seg, dict) else str(seg)
+                            for seg in segments
+                        ).strip()
+                    if transcript:
+                        print(f"[competitor] Got transcript: {len(transcript)} chars")
+                else:
+                    print(f"[competitor] Transcript unavailable (status {tr_resp.status_code})")
+            except Exception as e:
+                print(f"[competitor] Transcript fetch error: {e}")
+
+        analysis["transcript"] = transcript or ""
+        analysis["source_url"] = url
+
+        # 4. Create Topic
+        topic_title = f"Анализ @{analysis['username']}" if analysis['username'] else f"Анализ {platform}"
+        topic = sb.table("projects").insert({
+            "user_id": int(user_id),
+            "title": topic_title[:50],
+            "status": "draft",
+            "idea_text": analysis["caption"][:2000] if analysis["caption"] else url,
+        }).execute()
+        topic_data = topic.data[0]
+        topic_id = topic_data["id"]
+
+        # 5. Create analysis sub-chat
+        sub_chat = sb.table("sub_chats").insert({
+            "topic_id": topic_id,
+            "user_id": int(user_id),
+            "chat_type": "analysis",
+            "title": "Анализ",
+            "slides_data": {
+                "platform": analysis["platform"],
+                "username": analysis["username"],
+                "source_url": url,
+                "post_type": analysis["post_type"],
+                "scraped_at": time.time(),
+            },
+        }).execute()
+        sub_chat_data = sub_chat.data[0]
+        sub_chat_id = sub_chat_data["id"]
+
+        # 6. Save analysis as first message
+        sb.table("project_messages").insert({
+            "project_id": topic_id,
+            "sub_chat_id": sub_chat_id,
+            "user_id": int(user_id),
+            "role": "assistant",
+            "content": analysis["caption"][:5000],
+            "message_type": "analysis",
+            "message_data": analysis,
+        }).execute()
+
+        # Update topic's active sub-chat
+        sb.table("projects").update({"active_subchat_id": sub_chat_id}).eq("id", topic_id).execute()
+
+        print(f"[competitor] ✅ Analyzed {platform} @{analysis['username']}: "
+              f"{len(analysis['caption'])} chars, {len(analysis['images'])} images, "
+              f"{analysis['like_count']} likes. Topic: {topic_id}")
+
+        return {
+            "topic": topic_data,
+            "sub_chat": sub_chat_data,
+            "analysis": analysis,
+        }
+
+    except HTTPException:
+        raise
+    except requests.Timeout:
+        raise HTTPException(status_code=504, detail="Таймаут при загрузке поста")
+    except requests.RequestException as e:
+        print(f"[competitor] Network error: {e}")
+        raise HTTPException(status_code=502, detail=f"Ошибка сети: {str(e)}")
+    except Exception as e:
+        print(f"[competitor] Unexpected error: {e}")
+        raise HTTPException(status_code=500, detail=f"Ошибка анализа: {str(e)}")
+
+
 # === v3: Topics API ===
 
 @app.get("/api/topics")
@@ -2411,7 +2848,11 @@ async def create_sub_chat(topic_id: str, request: Request):
 
     # For text sub-chat: auto-generate slide text
     if chat_type == 'text' and selected_headline and OPENROUTER_API_KEY:
-        system_prompt, prompt_model = get_system_prompt_v3("text", variables={
+        source = body.get("source", "")
+        is_rewrite = source == "competitor_rewrite"
+        prompt_key = "competitor_rewrite" if is_rewrite else "text"
+
+        system_prompt, prompt_model = get_system_prompt_v3(prompt_key, variables={
             "slides_count": str(slides_count),
             "selected_headline": selected_headline,
         })
@@ -2419,13 +2860,20 @@ async def create_sub_chat(topic_id: str, request: Request):
         if user_context:
             system_prompt += f"\n\nКонтекст о пользователе:\n{user_context}"
 
+        user_message = (
+            f"Перепиши этот пост конкурента в формат карусели из {slides_count} слайдов в моём стиле:\n\n{selected_headline}"
+            if is_rewrite else
+            f"Напиши текст карусели на тему: {selected_headline}"
+        )
+
         try:
             ai_text, _usage = _call_openrouter([
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": f"Напиши текст карусели на тему: {selected_headline}"}
+                {"role": "user", "content": user_message}
             ], body.get("model") or prompt_model)
-            _log_ai_call(user_id, "sub-chats/text", "text", body.get("model") or prompt_model,
-                         system_prompt, user_context, None, selected_headline, ai_text, _usage,
+            _log_ai_call(user_id, f"sub-chats/{'rewrite' if is_rewrite else 'text'}", prompt_key,
+                         body.get("model") or prompt_model,
+                         system_prompt, user_context, None, selected_headline[:500], ai_text, _usage,
                          topic_id=topic_id, sub_chat_id=sub_chat_id)
 
             sb.table("project_messages").insert({
