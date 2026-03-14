@@ -24,6 +24,7 @@ try:
 except ImportError:
     pass
 import requests
+import httpx
 import base64
 import json
 import os
@@ -57,6 +58,19 @@ def _get_emoji_image(char: str, size: int):
             print(f"Emoji fetch error for {repr(char)}: {e}")
             _emoji_img_cache[key] = None
     return _emoji_img_cache[key]
+
+# Async HTTP client with connection limits for image proxy
+_http_client: httpx.AsyncClient | None = None
+
+async def get_http_client() -> httpx.AsyncClient:
+    global _http_client
+    if _http_client is None or _http_client.is_closed:
+        _http_client = httpx.AsyncClient(
+            limits=httpx.Limits(max_connections=10, max_keepalive_connections=5),
+            timeout=httpx.Timeout(15.0),
+            follow_redirects=True,
+        )
+    return _http_client
 
 # Emoji detection regex
 _EMOJI_RE = re.compile(
@@ -93,6 +107,12 @@ import psycopg2
 import psycopg2.extras
 
 app = FastAPI(title="Carousel Studio", version="7.0")
+
+@app.on_event("shutdown")
+async def shutdown_http_client():
+    global _http_client
+    if _http_client and not _http_client.is_closed:
+        await _http_client.aclose()
 
 # === Supabase ===
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
@@ -2634,7 +2654,8 @@ async def image_proxy(url: str):
         raise HTTPException(403, f"Domain not allowed: {hostname}")
 
     try:
-        resp = requests.get(url, timeout=15, headers={
+        client = await get_http_client()
+        resp = await client.get(url, headers={
             "User-Agent": "Mozilla/5.0 (compatible; CraftAI/1.0)"
         })
         if resp.status_code != 200:
@@ -2645,9 +2666,9 @@ async def image_proxy(url: str):
             media_type=content_type,
             headers={"Cache-Control": "public, max-age=3600"}  # Cache 1 hour
         )
-    except requests.Timeout:
+    except httpx.TimeoutException:
         raise HTTPException(504, "Image proxy timeout")
-    except requests.RequestException as e:
+    except httpx.HTTPError as e:
         raise HTTPException(502, f"Image proxy error: {str(e)}")
 
 
