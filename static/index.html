@@ -5475,8 +5475,14 @@
                 if (!analysisMsg || !analysisMsg.message_data) { showToast('Данные анализа не найдены', 'error'); return; }
 
                 const ad = analysisMsg.message_data;
-                let rewriteText = ad.caption || '';
-                if (ad.transcript) rewriteText += '\n\n[Транскрипт видео]:\n' + ad.transcript;
+                let rewriteText = '';
+                if (ad.slides_text && ad.slides_text.length > 0) {
+                    rewriteText = ad.slides_text.map(s => `Слайд ${s.slide}:\n${s.text}`).join('\n\n');
+                    if (ad.caption) rewriteText += '\n\n[Подпись поста]:\n' + ad.caption;
+                } else {
+                    rewriteText = ad.caption || '';
+                    if (ad.transcript) rewriteText += '\n\n[Транскрипт видео]:\n' + ad.transcript;
+                }
 
                 showToast('Создаю рерайт...', 'info');
 
@@ -8263,6 +8269,36 @@
                 </div>`;
             }
 
+            // Slides text (OCR)
+            let slidesTextHtml = '';
+            if (data.slides_text && data.slides_text.length > 0) {
+                const showAll = data.slides_text.length <= 3;
+                const visibleSlides = showAll ? data.slides_text : data.slides_text.slice(0, 2);
+                const hiddenSlides = showAll ? [] : data.slides_text.slice(2);
+                slidesTextHtml = `
+                    <div style="margin-bottom:12px;">
+                        <div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:6px;">📝 Текст слайдов (${data.slides_text.length})</div>
+                        ${visibleSlides.map(s => `
+                            <div style="padding:8px 10px;background:var(--bg-tertiary);border-radius:6px;margin-bottom:4px;">
+                                <div style="font-size:10px;font-weight:600;color:var(--text-muted);margin-bottom:2px;">Слайд ${s.slide}</div>
+                                <div style="font-size:12px;color:var(--text-primary);line-height:1.4;white-space:pre-wrap;">${escapeHtml(s.text.length > 200 ? s.text.substring(0, 200) + '...' : s.text)}</div>
+                            </div>
+                        `).join('')}
+                        ${hiddenSlides.length > 0 ? `
+                            <div id="competitorSlidesHidden" style="display:none;">
+                                ${hiddenSlides.map(s => `
+                                    <div style="padding:8px 10px;background:var(--bg-tertiary);border-radius:6px;margin-bottom:4px;">
+                                        <div style="font-size:10px;font-weight:600;color:var(--text-muted);margin-bottom:2px;">Слайд ${s.slide}</div>
+                                        <div style="font-size:12px;color:var(--text-primary);line-height:1.4;white-space:pre-wrap;">${escapeHtml(s.text.length > 200 ? s.text.substring(0, 200) + '...' : s.text)}</div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                            <button onclick="document.getElementById('competitorSlidesHidden').style.display='block';this.style.display='none'" style="background:none;border:none;color:var(--accent);font-size:11px;cursor:pointer;padding:4px 0;">Показать все ${data.slides_text.length} слайдов</button>
+                        ` : ''}
+                    </div>
+                `;
+            }
+
             // Caption (truncated)
             const captionShort = data.caption && data.caption.length > 300
                 ? data.caption.substring(0, 300) + '...'
@@ -8303,6 +8339,9 @@
                     <!-- Images -->
                     ${imagesHtml}
 
+                    <!-- Slides Text (OCR) -->
+                    ${slidesTextHtml}
+
                     <!-- Caption -->
                     <div style="margin-bottom:8px;">
                         <div id="competitorCaption" style="font-size:13px;color:var(--text-primary);line-height:1.5;white-space:pre-wrap;">${escapeHtml(captionShort)}</div>
@@ -8335,8 +8374,12 @@
                         <span style="font-size:12px;font-weight:600;color:var(--text-primary);">${data.username ? '@' + escapeHtml(data.username) : ''}</span>
                         <span style="font-size:10px;color:var(--text-muted);">${typeLabels[data.post_type] || ''}</span>
                     </div>
-                    <div style="font-size:12px;color:var(--text-primary);line-height:1.4;white-space:pre-wrap;margin-bottom:6px;">${escapeHtml(captionShort)}</div>
-                    ${data.transcript ? `<div style="font-size:11px;color:var(--text-secondary);margin-bottom:6px;">📝 Транскрипт: ${escapeHtml(data.transcript.substring(0, 100))}${data.transcript.length > 100 ? '...' : ''}</div>` : ''}
+                    ${data.slides_text && data.slides_text.length > 0 ? `
+                        <div style="font-size:11px;color:var(--text-secondary);margin-bottom:6px;">📝 Текст слайдов (${data.slides_text.length}): ${escapeHtml(data.slides_text[0].text.substring(0, 80))}${data.slides_text[0].text.length > 80 ? '...' : ''}</div>
+                    ` : `
+                        <div style="font-size:12px;color:var(--text-primary);line-height:1.4;white-space:pre-wrap;margin-bottom:6px;">${escapeHtml(captionShort)}</div>
+                    `}
+                    ${data.transcript ? `<div style="font-size:11px;color:var(--text-secondary);margin-bottom:6px;">🎙 Транскрипт: ${escapeHtml(data.transcript.substring(0, 100))}${data.transcript.length > 100 ? '...' : ''}</div>` : ''}
                     <div style="font-size:11px;color:var(--text-muted);">❤️ ${formatNum(data.like_count)} · 💬 ${formatNum(data.comment_count)}</div>
                 </div>
             `;
@@ -8351,10 +8394,16 @@
             rewriteBtn.disabled = true;
             rewriteBtn.innerHTML = '<span class="spinner" style="width:14px;height:14px;border-width:2px;"></span> Создаю рерайт...';
 
-            // Build text for rewrite: caption + transcript
-            let rewriteText = data.caption || '';
-            if (data.transcript) {
-                rewriteText += '\n\n[Транскрипт видео]:\n' + data.transcript;
+            // Build text for rewrite: prefer slides_text (OCR), fallback to caption + transcript
+            let rewriteText = '';
+            if (data.slides_text && data.slides_text.length > 0) {
+                rewriteText = data.slides_text.map(s => `Слайд ${s.slide}:\n${s.text}`).join('\n\n');
+                if (data.caption) rewriteText += '\n\n[Подпись поста]:\n' + data.caption;
+            } else {
+                rewriteText = data.caption || '';
+                if (data.transcript) {
+                    rewriteText += '\n\n[Транскрипт видео]:\n' + data.transcript;
+                }
             }
 
             try {

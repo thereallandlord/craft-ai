@@ -2112,6 +2112,112 @@ def _call_openrouter(messages: list, model: str = "openai/gpt-4o", temperature: 
     }
 
 
+def _extract_slides_text(images: list, user_id: int = None) -> list:
+    """Extract text from carousel slide images using Gemini Flash vision via OpenRouter.
+    Returns list of dicts: [{"slide": 1, "text": "..."}, ...]
+    Non-fatal: returns [] on any error.
+    """
+    image_items = [img for img in images if not img.get("is_video") and img.get("url")]
+    if not image_items:
+        return []
+
+    # Build multimodal message with image URLs
+    content_parts = [
+        {"type": "text", "text": (
+            "Извлеки весь текст с каждого слайда карусели. "
+            "Для каждого слайда выведи его номер и весь текст, который видишь на изображении. "
+            "Сохраняй оригинальный язык текста. Не добавляй своих комментариев.\n\n"
+            "Формат ответа:\n"
+            "Слайд 1:\n<весь текст с первого изображения>\n\n"
+            "Слайд 2:\n<весь текст со второго изображения>\n\n"
+            "Если на слайде нет текста, напиши: (нет текста)"
+        )}
+    ]
+    for img in image_items:
+        content_parts.append({
+            "type": "image_url",
+            "image_url": {"url": img["url"]}
+        })
+
+    messages = [{"role": "user", "content": content_parts}]
+
+    _ocr_model = "google/gemini-2.0-flash-001"
+
+    try:
+        content, usage = _call_openrouter(
+            messages=messages,
+            model=_ocr_model,
+            temperature=0.1
+        )
+    except Exception as e:
+        print(f"[OCR] Gemini URL mode failed: {e}, trying base64 fallback...")
+        # Fallback: download images and send as base64
+        try:
+            import base64
+            content_parts_b64 = [content_parts[0]]  # keep text prompt
+            for img in image_items:
+                try:
+                    img_resp = requests.get(img["url"], timeout=15)
+                    if img_resp.status_code == 200:
+                        b64 = base64.b64encode(img_resp.content).decode("utf-8")
+                        # Detect content type
+                        ct = img_resp.headers.get("content-type", "image/jpeg")
+                        content_parts_b64.append({
+                            "type": "image_url",
+                            "image_url": {"url": f"data:{ct};base64,{b64}"}
+                        })
+                    else:
+                        print(f"[OCR] Failed to download image: HTTP {img_resp.status_code}")
+                except Exception as dl_err:
+                    print(f"[OCR] Image download error: {dl_err}")
+
+            if len(content_parts_b64) <= 1:
+                print("[OCR] No images downloaded, giving up")
+                return []
+
+            messages_b64 = [{"role": "user", "content": content_parts_b64}]
+            content, usage = _call_openrouter(
+                messages=messages_b64,
+                model=_ocr_model,
+                temperature=0.1
+            )
+        except Exception as e2:
+            print(f"[OCR] Base64 fallback also failed: {e2}")
+            return []
+
+    # Parse response: split by "Слайд N:"
+    slides_text = []
+    parts = re.split(r'Слайд\s+(\d+)\s*:', content)
+    # parts = ['preamble', '1', 'text1', '2', 'text2', ...]
+    for i in range(1, len(parts) - 1, 2):
+        slide_num = int(parts[i])
+        text = parts[i + 1].strip()
+        if text and text != "(нет текста)":
+            slides_text.append({"slide": slide_num, "text": text})
+
+    # Log the OCR call
+    try:
+        _log_ai_call(
+            user_id=user_id or 0,
+            endpoint="competitor_analyze",
+            prompt_key="ocr_slides",
+            model=_ocr_model,
+            system_prompt="",
+            user_context="",
+            messages=f"[{len(image_items)} images]",
+            user_message=f"OCR {len(image_items)} carousel slides",
+            ai_response=content[:2000],
+            usage=usage,
+            status="success"
+        )
+    except Exception:
+        pass
+
+    print(f"[OCR] ✅ Extracted text from {len(slides_text)}/{len(image_items)} slides, "
+          f"tokens: {usage.get('total_tokens', '?')}")
+    return slides_text
+
+
 def _log_ai_call(user_id, endpoint, prompt_key, model, system_prompt,
                  user_context, messages, user_message, ai_response,
                  usage, status="success", error_message=None,
@@ -2585,13 +2691,28 @@ async def competitor_analyze(request: Request):
         analysis["transcript"] = transcript or ""
         analysis["source_url"] = url
 
+        # 3b. Extract text from carousel images (OCR via Gemini Flash)
+        slides_text = []
+        if analysis["images"] and not analysis["is_video"]:
+            try:
+                slides_text = _extract_slides_text(analysis["images"], user_id=int(user_id))
+                print(f"[competitor] OCR extracted text from {len(slides_text)} slides")
+            except Exception as e:
+                print(f"[competitor] OCR failed (non-fatal): {e}")
+        analysis["slides_text"] = slides_text
+
         # 4. Create Topic
         topic_title = f"Анализ @{analysis['username']}" if analysis['username'] else f"Анализ {platform}"
+        # Use slides_text for idea_text if available, fallback to caption
+        if slides_text:
+            idea_text = "\n\n".join([f"Слайд {s['slide']}: {s['text']}" for s in slides_text])[:2000]
+        else:
+            idea_text = analysis["caption"][:2000] if analysis["caption"] else url
         topic = sb.table("projects").insert({
             "user_id": int(user_id),
             "title": topic_title[:50],
             "status": "draft",
-            "idea_text": analysis["caption"][:2000] if analysis["caption"] else url,
+            "idea_text": idea_text,
         }).execute()
         topic_data = topic.data[0]
         topic_id = topic_data["id"]
