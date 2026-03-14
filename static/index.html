@@ -4189,6 +4189,7 @@
                     <button class="btn" onclick="backToGallery()">← Назад</button>
                     <button class="btn" onclick="showInstructions()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg> Инструкция</button>
                     <button class="btn" onclick="exportAllSlides()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg> Скачать</button>
+                    <button class="btn" id="editorSendTgBtn" onclick="editorSendToTelegram()" style="display:none;"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="margin-right:4px;vertical-align:middle;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.2-.08-.06-.19-.04-.27-.02-.12.03-1.99 1.27-5.62 3.72-.53.36-1.01.54-1.44.53-.47-.01-1.38-.27-2.06-.49-.83-.27-1.49-.42-1.43-.88.03-.24.37-.49 1.02-.74 3.98-1.73 6.64-2.87 7.97-3.44 3.79-1.58 4.58-1.86 5.09-1.87.11 0 .37.03.54.17.14.12.18.28.2.45-.01.06.01.24 0 .38z"/></svg> Отправить</button>
                     <button class="btn btn-primary" onclick="saveTemplate()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/></svg> Сохранить</button>
                 </div>
             </div>
@@ -4420,6 +4421,10 @@
                         <button class="btn btn-primary" onclick="downloadAllGenerated('chat')">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
                             Скачать все
+                        </button>
+                        <button class="btn" id="chatSendTgBtn" onclick="chatSendToTelegram()" style="display:none;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="margin-right:4px;vertical-align:middle;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.2-.08-.06-.19-.04-.27-.02-.12.03-1.99 1.27-5.62 3.72-.53.36-1.01.54-1.44.53-.47-.01-1.38-.27-2.06-.49-.83-.27-1.49-.42-1.43-.88.03-.24.37-.49 1.02-.74 3.98-1.73 6.64-2.87 7.97-3.44 3.79-1.58 4.58-1.86 5.09-1.87.11 0 .37.03.54.17.14.12.18.28.2.45-.01.06.01.24 0 .38z"/></svg>
+                            Отправить в Telegram
                         </button>
                     </div>
                 </div>
@@ -7359,6 +7364,46 @@
             return rtGeneratedImages;
         }
 
+        // === Telegram Send Helpers (shared by all 3 flows) ===
+        const TG_ICON_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="margin-right:6px;vertical-align:middle;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.2-.08-.06-.19-.04-.27-.02-.12.03-1.99 1.27-5.62 3.72-.53.36-1.01.54-1.44.53-.47-.01-1.38-.27-2.06-.49-.83-.27-1.49-.42-1.43-.88.03-.24.37-.49 1.02-.74 3.98-1.73 6.64-2.87 7.97-3.44 3.79-1.58 4.58-1.86 5.09-1.87.11 0 .37.03.54.17.14.12.18.28.2.45-.01.06.01.24 0 .38z"/></svg>';
+
+        function getTelegramChatId() {
+            const tg = window.Telegram && window.Telegram.WebApp;
+            if (tg && tg.initData) {
+                try {
+                    const p = new URLSearchParams(tg.initData);
+                    return JSON.parse(p.get('user') || '{}').id || null;
+                } catch(e) { return null; }
+            }
+            return currentUser?.id || null;
+        }
+
+        async function sendImagesToTelegram(images, btn) {
+            const chatId = getTelegramChatId();
+            if (!chatId) { showToast('Войдите через Telegram для отправки', 'error'); return; }
+            const origHTML = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner" style="width:14px;height:14px;border-width:2px;"></span> Отправка...';
+            try {
+                const r = await fetch(`${API_URL}/api/send-to-chat`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({chat_id: chatId, images: images})
+                });
+                if (r.ok) {
+                    const res = await r.json();
+                    showToast(`${res.sent} слайдов отправлено в Telegram!`, 'success');
+                } else {
+                    showToast('Ошибка отправки в Telegram', 'error');
+                }
+            } catch(e) {
+                showToast('Ошибка: ' + e.message, 'error');
+                console.error('[sendImagesToTelegram]', e);
+            }
+            btn.disabled = false;
+            btn.innerHTML = origHTML;
+        }
+
         async function rtDownloadAll() {
             if (rtSlides.length === 0) return;
             const btn = document.getElementById('rtDownloadBtn');
@@ -7414,41 +7459,14 @@
 
         async function rtSendToTelegram() {
             if (rtSlides.length === 0) return;
-            const tg = window.Telegram && window.Telegram.WebApp;
-            if (!tg || !tg.initData) return;
             const btn = document.getElementById('rtSendTgBtn');
-            btn.disabled = true;
-            btn.innerHTML = '<span class="spinner"></span> Отправка...';
             try {
-                // Use cached images if available, otherwise generate
                 const images = rtGeneratedImages || await rtGenerateImages();
-                const initParams = new URLSearchParams(tg.initData);
-                const userData = JSON.parse(initParams.get('user') || '{}');
-                const chatId = userData.id;
-                if (!chatId) {
-                    showToast('chat_id не найден, перезайдите в мини-апп', 'error');
-                    btn.disabled = false;
-                    btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="margin-right:6px;vertical-align:middle;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.2-.08-.06-.19-.04-.27-.02-.12.03-1.99 1.27-5.62 3.72-.53.36-1.01.54-1.44.53-.47-.01-1.38-.27-2.06-.49-.83-.27-1.49-.42-1.43-.88.03-.24.37-.49 1.02-.74 3.98-1.73 6.64-2.87 7.97-3.44 3.79-1.58 4.58-1.86 5.09-1.87.11 0 .37.03.54.17.14.12.18.28.2.45-.01.06.01.24 0 .38z"/></svg> Отправить в Telegram';
-                    return;
-                }
-                const sr = await fetch(`${API_URL}/api/send-to-chat`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({chat_id: chatId, images: images})
-                });
-                if (sr.ok) {
-                    const result = await sr.json();
-                    showToast(`${result.sent} слайдов отправлено в чат бота!`, 'success');
-                } else {
-                    const errText = await sr.text().catch(()=>'');
-                    showToast('Ошибка отправки: ' + (errText || '').substring(0, 100), 'error');
-                }
+                await sendImagesToTelegram(images, btn);
             } catch(e) {
                 showToast('Ошибка: ' + e.message, 'error');
-                console.error('Send to Telegram error:', e);
+                console.error('[rtSendToTelegram]', e);
             }
-            btn.disabled = false;
-            btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="margin-right:6px;vertical-align:middle;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.2-.08-.06-.19-.04-.27-.02-.12.03-1.99 1.27-5.62 3.72-.53.36-1.01.54-1.44.53-.47-.01-1.38-.27-2.06-.49-.83-.27-1.49-.42-1.43-.88.03-.24.37-.49 1.02-.74 3.98-1.73 6.64-2.87 7.97-3.44 3.79-1.58 4.58-1.86 5.09-1.87.11 0 .37.03.54.17.14.12.18.28.2.45-.01.06.01.24 0 .38z"/></svg> Отправить в Telegram';
         }
 
         async function generateFromReadyText() {
@@ -7529,7 +7547,7 @@
                 tg.BackButton.onClick(rtBackToInput);
             }
             const tgSendBtn = document.getElementById('rtSendTgBtn');
-            if (tgSendBtn) tgSendBtn.style.display = (tg && tg.initData) ? '' : 'none';
+            if (tgSendBtn) tgSendBtn.style.display = currentUser?.id ? '' : 'none';
             rtGeneratedImages = null; // Reset cache for new slides
 
             rtLoadEditorUsernames();
@@ -7568,6 +7586,15 @@
                 }, i * 300);
             });
             showToast(`Скачивание ${images.length} слайдов...`, 'success');
+        }
+
+        async function chatSendToTelegram() {
+            if (!chatGeneratedImages || chatGeneratedImages.length === 0) {
+                showToast('Нет слайдов для отправки', 'error');
+                return;
+            }
+            const btn = document.getElementById('chatSendTgBtn');
+            await sendImagesToTelegram(chatGeneratedImages, btn);
         }
 
         // === WEBHOOK SETTINGS ===
@@ -7934,6 +7961,8 @@
 
         function chatShowPreview() {
             document.getElementById('chatPreviewOverlay').style.display = 'flex';
+            const chatTgBtn = document.getElementById('chatSendTgBtn');
+            if (chatTgBtn) chatTgBtn.style.display = currentUser?.id ? '' : 'none';
         }
 
         function chatClosePreview() {
@@ -10444,6 +10473,10 @@
             const sidebarEditor = document.getElementById('sidebar-editor');
             if (sidebarEditor) sidebarEditor.style.display = '';
 
+            // Show Telegram send button if authenticated
+            const editorTgBtn = document.getElementById('editorSendTgBtn');
+            if (editorTgBtn) editorTgBtn.style.display = currentUser?.id ? '' : 'none';
+
             if (templateData) {
                 applyTemplate(templateData);
             } else {
@@ -10517,6 +10550,39 @@
                 await downloadSlide(i);
                 await new Promise(r => setTimeout(r, 300));
             }
+        }
+
+        async function editorSendToTelegram() {
+            if (state.slides.length === 0) {
+                showToast('Нет слайдов для отправки', 'error');
+                return;
+            }
+            const btn = document.getElementById('editorSendTgBtn');
+            const origHTML = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner" style="width:14px;height:14px;border-width:2px;"></span> Отправка...';
+            try {
+                const images = [];
+                for (let i = 0; i < state.slides.length; i++) {
+                    const r = await fetch(`${API_URL}/render-slide`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({slide: state.slides[i], settings: state.settings, slideNumber: i + 1})
+                    });
+                    if (r.ok) {
+                        const d = await r.json();
+                        images.push({base64: d.base64, filename: `slide_${i + 1}.png`});
+                    } else {
+                        throw new Error(`Ошибка рендеринга слайда ${i + 1}`);
+                    }
+                }
+                await sendImagesToTelegram(images, btn);
+            } catch(e) {
+                showToast('Ошибка: ' + e.message, 'error');
+                console.error('[editorSendToTelegram]', e);
+            }
+            btn.disabled = false;
+            btn.innerHTML = origHTML;
         }
 
         // Theme toggle
