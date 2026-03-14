@@ -8253,20 +8253,24 @@
                 return String(n);
             };
 
-            // Build images preview (max 4)
+            // Build images preview (all slides via proxy)
             let imagesHtml = '';
             if (data.images && data.images.length > 0) {
-                const showImages = data.images.slice(0, 4);
-                imagesHtml = `<div style="display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;">
-                    ${showImages.map(img => `
-                        <div style="flex-shrink:0;width:80px;height:80px;border-radius:6px;overflow:hidden;background:var(--bg-tertiary);">
-                            <img src="${escapeHtml(img.url)}" style="width:100%;height:100%;object-fit:cover;"
+                const allImages = data.images.filter(img => !img.is_video);
+                imagesHtml = `<div style="display:flex;gap:6px;margin-bottom:8px;overflow-x:auto;padding-bottom:4px;">
+                    ${allImages.map((img, idx) => `
+                        <div style="flex-shrink:0;width:120px;height:120px;border-radius:8px;overflow:hidden;background:var(--bg-tertiary);position:relative;">
+                            <img src="${API_URL}/api/image-proxy?url=${encodeURIComponent(img.url)}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;"
+                                 onclick="window.open('${API_URL}/api/image-proxy?url=${encodeURIComponent(img.url)}','_blank')"
                                  onerror="this.parentElement.innerHTML='<div style=\\'display:flex;align-items:center;justify-content:center;height:100%;font-size:10px;color:var(--text-muted)\\'>Нет фото</div>'"
                                  loading="lazy">
+                            <div style="position:absolute;top:4px;left:4px;background:rgba(0,0,0,0.6);color:white;font-size:9px;padding:1px 5px;border-radius:3px;">${idx + 1}</div>
                         </div>
                     `).join('')}
-                    ${data.images.length > 4 ? `<div style="flex-shrink:0;width:80px;height:80px;border-radius:6px;background:var(--bg-tertiary);display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--text-muted);">+${data.images.length - 4}</div>` : ''}
-                </div>`;
+                </div>
+                <button onclick="downloadAllSlides()" style="width:100%;padding:8px;background:var(--bg-tertiary);border:1px solid var(--border);border-radius:6px;font-size:12px;cursor:pointer;margin-bottom:12px;color:var(--text-primary);">
+                    ⬇️ Скачать все слайды (${allImages.length})
+                </button>`;
             }
 
             // Slides text (OCR)
@@ -8383,6 +8387,35 @@
                     <div style="font-size:11px;color:var(--text-muted);">❤️ ${formatNum(data.like_count)} · 💬 ${formatNum(data.comment_count)}</div>
                 </div>
             `;
+        }
+
+        async function downloadAllSlides() {
+            if (!_competitorAnalysis || !_competitorAnalysis.images) return;
+            const images = _competitorAnalysis.images.filter(img => !img.is_video && img.url);
+            if (images.length === 0) { showToast('Нет слайдов для скачивания', 'error'); return; }
+
+            showToast(`Скачиваю ${images.length} слайдов...`, 'info');
+            let downloaded = 0;
+            for (let i = 0; i < images.length; i++) {
+                try {
+                    const resp = await fetch(`${API_URL}/api/image-proxy?url=${encodeURIComponent(images[i].url)}`);
+                    if (!resp.ok) continue;
+                    const blob = await resp.blob();
+                    const a = document.createElement('a');
+                    a.href = URL.createObjectURL(blob);
+                    a.download = `slide_${i + 1}.jpg`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(a.href);
+                    downloaded++;
+                    // Small delay to avoid browser blocking multiple downloads
+                    if (i < images.length - 1) await new Promise(r => setTimeout(r, 300));
+                } catch(e) {
+                    console.error(`[download] Slide ${i + 1} failed:`, e);
+                }
+            }
+            showToast(`Скачано ${downloaded} из ${images.length} слайдов`, 'success');
         }
 
         async function competitorRewrite() {

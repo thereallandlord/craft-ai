@@ -13,7 +13,7 @@ NEW в v7.0:
 """
 from fastapi import FastAPI, HTTPException, UploadFile, File, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
@@ -2609,6 +2609,46 @@ _PLATFORM_PARSERS = {
     "linkedin": _parse_linkedin,
     "facebook": _parse_facebook,
 }
+
+
+# Allowed domains for image proxy (security whitelist)
+_PROXY_DOMAIN_PREFIXES = [
+    "scontent", "instagram", "fbcdn", "cdninstagram",  # Instagram/FB CDN
+    "yt3.ggpht", "i.ytimg", "lh3.googleusercontent",   # YouTube
+    "p16-sign.tiktokcdn", "p77-sign.tiktokcdn", "v16-webapp.tiktok",  # TikTok
+    "pbs.twimg", "abs.twimg",                            # Twitter
+    "media.licdn",                                        # LinkedIn
+]
+
+
+@app.get("/api/image-proxy")
+async def image_proxy(url: str):
+    """Proxy external images to avoid CORS. Returns image from CDN."""
+    if not url or not url.startswith("http"):
+        raise HTTPException(400, "Invalid URL")
+
+    # Security: only proxy images from known CDN domains
+    from urllib.parse import urlparse
+    hostname = urlparse(url).hostname or ""
+    if not any(hostname.startswith(prefix) or prefix in hostname for prefix in _PROXY_DOMAIN_PREFIXES):
+        raise HTTPException(403, f"Domain not allowed: {hostname}")
+
+    try:
+        resp = requests.get(url, timeout=15, headers={
+            "User-Agent": "Mozilla/5.0 (compatible; CraftAI/1.0)"
+        })
+        if resp.status_code != 200:
+            raise HTTPException(resp.status_code, "Image fetch failed")
+        content_type = resp.headers.get("content-type", "image/jpeg")
+        return Response(
+            content=resp.content,
+            media_type=content_type,
+            headers={"Cache-Control": "public, max-age=3600"}  # Cache 1 hour
+        )
+    except requests.Timeout:
+        raise HTTPException(504, "Image proxy timeout")
+    except requests.RequestException as e:
+        raise HTTPException(502, f"Image proxy error: {str(e)}")
 
 
 @app.post("/api/competitor/analyze")
