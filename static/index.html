@@ -5103,6 +5103,12 @@
                 <div class="tab-page-title">Тарифы</div>
                 <div class="tab-page-subtitle">Выберите подходящий план для вашего бизнеса</div>
 
+                <div class="pricing-currency-toggle" style="display:flex;justify-content:center;gap:4px;margin-bottom:24px;background:var(--bg-secondary);border-radius:12px;padding:4px;width:fit-content;margin-left:auto;margin-right:auto;">
+                    <button class="pricing-currency-btn active" id="currencyBtnRUB" onclick="setPricingCurrency('RUB')" style="padding:8px 20px;border-radius:10px;border:none;cursor:pointer;font-size:14px;font-weight:600;transition:all .2s;">₽ Рубли</button>
+                    <button class="pricing-currency-btn" id="currencyBtnUSD" onclick="setPricingCurrency('USD')" style="padding:8px 20px;border-radius:10px;border:none;cursor:pointer;font-size:14px;font-weight:600;transition:all .2s;">$ USD</button>
+                </div>
+                <div class="pricing-currency-note" style="text-align:center;margin-bottom:20px;font-size:13px;color:var(--text-muted);" id="pricingCurrencyNote">Оплата в рублях — доступны карты, СБП и другие способы</div>
+
                 <div class="pricing-cards" id="pricingCards">
                     <!-- Free -->
                     <div class="pricing-card" id="pricingFree">
@@ -5128,9 +5134,9 @@
                         <div class="pricing-badge">Популярный</div>
                         <div class="pricing-card-header">
                             <div class="pricing-plan-name">Pro</div>
-                            <div class="pricing-price">
-                                <span class="pricing-amount-old" style="text-decoration:line-through;color:var(--text-muted);font-size:18px;margin-right:4px;">$29</span>
-                                <span class="pricing-amount">$19</span>
+                            <div class="pricing-price" id="proPriceBlock">
+                                <span class="pricing-amount-old" style="text-decoration:line-through;color:var(--text-muted);font-size:18px;margin-right:4px;">2 900 ₽</span>
+                                <span class="pricing-amount">1 900 ₽</span>
                                 <span class="pricing-period">/ месяц</span>
                             </div>
                             <div class="pricing-desc">Скидка на старте — цена вырастет</div>
@@ -5148,9 +5154,9 @@
                     <div class="pricing-card" id="pricingBusiness">
                         <div class="pricing-card-header">
                             <div class="pricing-plan-name">Business</div>
-                            <div class="pricing-price">
-                                <span class="pricing-amount-old" style="text-decoration:line-through;color:var(--text-muted);font-size:18px;margin-right:4px;">$49</span>
-                                <span class="pricing-amount">$39</span>
+                            <div class="pricing-price" id="businessPriceBlock">
+                                <span class="pricing-amount-old" style="text-decoration:line-through;color:var(--text-muted);font-size:18px;margin-right:4px;">4 900 ₽</span>
+                                <span class="pricing-amount">3 900 ₽</span>
                                 <span class="pricing-period">/ месяц</span>
                             </div>
                             <div class="pricing-desc">Для команд и агентств</div>
@@ -6955,6 +6961,8 @@
         // ==================== PRICING & SUBSCRIPTION ====================
 
         async function loadPricingPage() {
+            // Init currency toggle
+            setPricingCurrency(_selectedCurrency);
             const plan = (currentUser && currentUser.plan) || 'free';
             // Update card active states
             document.querySelectorAll('.pricing-card').forEach(c => c.classList.remove('pricing-card-active'));
@@ -7032,6 +7040,52 @@
             container.innerHTML = html;
         }
 
+        let _selectedCurrency = (navigator.language || '').startsWith('ru') ? 'RUB' : 'USD';
+        const PRICING_DATA = {
+            RUB: {
+                pro:      { old: '2 900 ₽', price: '1 900 ₽' },
+                business: { old: '4 900 ₽', price: '3 900 ₽' },
+                note: 'Оплата в рублях — доступны карты, СБП и другие способы'
+            },
+            USD: {
+                pro:      { old: '$29', price: '$19' },
+                business: { old: '$49', price: '$39' },
+                note: 'Payment in USD — Visa, Mastercard, PayPal, Stripe'
+            }
+        };
+
+        function setPricingCurrency(cur) {
+            _selectedCurrency = cur;
+            const d = PRICING_DATA[cur];
+            // Update prices
+            const proBlock = document.getElementById('proPriceBlock');
+            if (proBlock) {
+                proBlock.querySelector('.pricing-amount-old').textContent = d.pro.old;
+                proBlock.querySelector('.pricing-amount').textContent = d.pro.price;
+            }
+            const bizBlock = document.getElementById('businessPriceBlock');
+            if (bizBlock) {
+                bizBlock.querySelector('.pricing-amount-old').textContent = d.business.old;
+                bizBlock.querySelector('.pricing-amount').textContent = d.business.price;
+            }
+            // Toggle active button
+            document.getElementById('currencyBtnRUB').className = 'pricing-currency-btn' + (cur === 'RUB' ? ' active' : '');
+            document.getElementById('currencyBtnUSD').className = 'pricing-currency-btn' + (cur === 'USD' ? ' active' : '');
+            // Note
+            const note = document.getElementById('pricingCurrencyNote');
+            if (note) note.textContent = d.note;
+            // Style buttons
+            document.querySelectorAll('.pricing-currency-btn').forEach(btn => {
+                if (btn.classList.contains('active')) {
+                    btn.style.background = 'var(--accent-primary, #6C5CE7)';
+                    btn.style.color = '#fff';
+                } else {
+                    btn.style.background = 'transparent';
+                    btn.style.color = 'var(--text-secondary)';
+                }
+            });
+        }
+
         async function subscribePlan(plan) {
             if (!currentUser) {
                 showLoginModal();
@@ -7046,7 +7100,7 @@
                 const resp = await fetch(`${API_URL}/api/payments/create-invoice`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ plan, user_id: String(currentUser.id), currency: 'USD' })
+                    body: JSON.stringify({ plan, user_id: String(currentUser.id), currency: _selectedCurrency })
                 });
                 if (resp.ok) {
                     const data = await resp.json();
