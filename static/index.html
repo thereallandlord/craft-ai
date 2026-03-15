@@ -4065,7 +4065,11 @@
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/></svg>
                     Шаблоны
                 </button>
-                <button class="ps-nav-item" onclick="switchTab('rewrite');closeAllViews()">
+                <button class="ps-nav-item" onclick="switchTab('analysis');closeAllViews()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                    Анализ
+                </button>
+                <button class="ps-nav-item" onclick="switchTab('competitors');closeAllViews()">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                     Конкуренты
                 </button>
@@ -4088,7 +4092,7 @@
                         Выйти
                     </button>
                 </div>
-                <img class="ps-user-avatar" id="psUserAvatar" src="" alt="">
+                <img class="ps-user-avatar" id="psUserAvatar" src="" alt="" onerror="this.style.display='none'">
                 <span class="ps-user-name" id="psUserName"></span>
             </div>
         </aside>
@@ -4109,7 +4113,11 @@
                 <span class="nav-tooltip">Создать с нуля</span>
             </button>
             <div class="nav-divider"></div>
-            <button class="nav-item" data-tab="rewrite" onclick="switchTab('rewrite')">
+            <button class="nav-item" data-tab="analysis" onclick="switchTab('analysis')">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                <span class="nav-tooltip">Анализ</span>
+            </button>
+            <button class="nav-item" data-tab="competitors" onclick="switchTab('competitors')">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                 <span class="nav-tooltip">Конкуренты</span>
             </button>
@@ -4436,10 +4444,10 @@
         </div>
 
         <!-- === TAB: Rewrite (placeholder) === -->
-        <div class="tab-page" id="tab-rewrite">
+        <div class="tab-page" id="tab-analysis">
             <div class="tab-page-content">
-                <div class="tab-page-title">Конкуренты</div>
-                <div class="tab-page-subtitle">Анализируйте контент конкурентов и создавайте свои карусели</div>
+                <div class="tab-page-title">Анализ контента</div>
+                <div class="tab-page-subtitle">Анализируйте посты из любых соцсетей и создавайте свои карусели</div>
 
                 <!-- Анализ контента -->
                 <div style="background:var(--bg-tertiary);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:24px;">
@@ -4456,10 +4464,18 @@
                     <!-- Rewrite button -->
                     <button class="btn btn-primary" id="competitorRewriteBtn" onclick="competitorRewrite()" disabled style="width:100%;opacity:0.5;cursor:not-allowed;margin-top:12px;display:none;">Рерайт под мой стиль</button>
                 </div>
+            </div>
+        </div>
+
+        <div class="tab-page" id="tab-competitors">
+            <div class="tab-page-content">
+                <div class="tab-page-title">Конкуренты</div>
+                <div class="tab-page-subtitle">Управляйте списком конкурентов для отслеживания</div>
 
                 <!-- Мои конкуренты -->
                 <div style="background:var(--bg-tertiary);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:24px;">
                     <div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:12px;">Мои конкуренты</div>
+                    <div style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;">Нет добавленных конкурентов</div>
                     <div id="competitorsList" style="margin-bottom:12px;"></div>
                     <div style="display:flex;gap:8px;">
                         <input type="text" id="competitorInput" placeholder="@username" style="flex:1;padding:8px 12px;background:var(--bg-primary);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);font-size:13px;">
@@ -6022,7 +6038,7 @@
             if (tabId === 'create') {
                 chatInitTab();
             }
-            if (tabId === 'rewrite') {
+            if (tabId === 'competitors') {
                 competitorsLoad();
             }
             if (tabId === 'history') {
@@ -8201,6 +8217,9 @@
                 _competitorAnalysis = data.analysis;
                 _competitorTopicId = data.topic.id;
                 _competitorSubChatId = data.sub_chat.id;
+                // Attach IDs for transcript processing
+                _competitorAnalysis.topic_id = _competitorTopicId;
+                _competitorAnalysis.sub_chat_id = _competitorSubChatId;
 
                 renderCompetitorAnalysis(data.analysis);
 
@@ -8222,9 +8241,103 @@
             }
         }
 
+        // Copy text to clipboard with button feedback
+        function copyToClipboard(text, btnEl) {
+            navigator.clipboard.writeText(text).then(() => {
+                if (btnEl) {
+                    const orig = btnEl.textContent;
+                    btnEl.textContent = 'Скопировано!';
+                    setTimeout(() => { btnEl.textContent = orig; }, 1500);
+                }
+            }).catch(e => {
+                console.error('[copy] Failed:', e);
+                showToast('Не удалось скопировать', 'error');
+            });
+        }
+
+        // Process transcript with AI (called by button click)
+        async function processTranscriptAI(transcript, topicId, subChatId, containerId) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            container.innerHTML = '<div style="text-align:center;padding:12px;font-size:12px;color:var(--text-muted);">⏳ Обработка ИИ...</div>';
+            try {
+                const resp = await fetch(`${API_URL}/api/competitor/process-transcript`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ user_id: String(currentUser.id), transcript, topic_id: topicId, sub_chat_id: subChatId })
+                });
+                if (!resp.ok) throw new Error('Ошибка обработки');
+                const result = await resp.json();
+                let html = '';
+                if (result.processed_transcript) {
+                    html += `<div style="margin-bottom:12px;padding:10px;background:var(--bg-tertiary);border-radius:6px;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                            <div style="font-size:11px;font-weight:600;color:var(--text-secondary);">✨ Обработанная транскрипция</div>
+                            <button onclick="copyToClipboard(this.closest('[data-processed-text]').getAttribute('data-processed-text'), this)" style="background:none;border:none;color:var(--accent);font-size:10px;cursor:pointer;padding:2px 6px;">Копировать</button>
+                        </div>
+                        <div data-processed-text="${escapeHtml(result.processed_transcript).replace(/"/g, '&quot;')}" style="font-size:12px;color:var(--text-primary);line-height:1.5;white-space:pre-wrap;">${escapeHtml(result.processed_transcript)}</div>
+                    </div>`;
+                }
+                if (result.video_structure) {
+                    const structureHtml = escapeHtml(result.video_structure)
+                        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                        .replace(/\n- /g, '\n• ')
+                        .replace(/\n/g, '<br>');
+                    html += `<div style="padding:10px;background:var(--bg-tertiary);border-radius:6px;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                            <div style="font-size:11px;font-weight:600;color:var(--text-secondary);">🔍 Анализ структуры видео</div>
+                            <button onclick="copyToClipboard(${JSON.stringify(result.video_structure).replace(/</g, '\\x3c')}, this)" style="background:none;border:none;color:var(--accent);font-size:10px;cursor:pointer;padding:2px 6px;">Копировать</button>
+                        </div>
+                        <div style="font-size:12px;color:var(--text-primary);line-height:1.5;">${structureHtml}</div>
+                    </div>`;
+                }
+                if (!html) html = '<div style="font-size:12px;color:var(--text-muted);padding:8px;">Не удалось обработать транскрипцию</div>';
+                container.innerHTML = html;
+                // Also update _competitorAnalysis if it exists
+                if (typeof _competitorAnalysis !== 'undefined' && _competitorAnalysis) {
+                    _competitorAnalysis.processed_transcript = result.processed_transcript || '';
+                    _competitorAnalysis.video_structure = result.video_structure || '';
+                }
+            } catch(e) {
+                console.error('[processTranscript]', e);
+                container.innerHTML = `<div style="font-size:12px;color:#ef4444;padding:8px;">Ошибка: ${escapeHtml(e.message)}</div>`;
+            }
+        }
+
+        // Render processed transcript + structure sections (reusable)
+        function _renderProcessedSections(data, uid) {
+            let html = '';
+            if (data.processed_transcript) {
+                html += `<div style="margin-top:8px;padding:10px;background:var(--bg-tertiary);border-radius:6px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                        <div style="font-size:11px;font-weight:600;color:var(--text-secondary);">✨ Обработанная транскрипция</div>
+                        <button onclick="copyToClipboard(_analysisDataStore['${uid}'].processed_transcript, this)" style="background:none;border:none;color:var(--accent);font-size:10px;cursor:pointer;padding:2px 6px;">Копировать</button>
+                    </div>
+                    <div style="font-size:12px;color:var(--text-primary);line-height:1.5;white-space:pre-wrap;">${escapeHtml(data.processed_transcript)}</div>
+                </div>`;
+            }
+            if (data.video_structure) {
+                const structureHtml = escapeHtml(data.video_structure)
+                    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                    .replace(/\n- /g, '\n• ')
+                    .replace(/\n/g, '<br>');
+                html += `<div style="margin-top:8px;padding:10px;background:var(--bg-tertiary);border-radius:6px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                        <div style="font-size:11px;font-weight:600;color:var(--text-secondary);">🔍 Анализ структуры видео</div>
+                        <button onclick="copyToClipboard(_analysisDataStore['${uid}'].video_structure, this)" style="background:none;border:none;color:var(--accent);font-size:10px;cursor:pointer;padding:2px 6px;">Копировать</button>
+                    </div>
+                    <div style="font-size:12px;color:var(--text-primary);line-height:1.5;">${structureHtml}</div>
+                </div>`;
+            }
+            return html;
+        }
+
         function renderCompetitorAnalysis(data) {
             const container = document.getElementById('competitorAnalysisResult');
             if (!container) return;
+
+            const uid = 'rca_' + Math.random().toString(36).substr(2, 8);
+            _analysisDataStore[uid] = data;
 
             // Platform badge
             const platformLabels = {
@@ -8236,7 +8349,7 @@
             // Post type label
             const typeLabels = {
                 carousel: 'Карусель', reel: 'Рилс', post: 'Пост',
-                video: 'Видео', short: 'Шорт', tweet: 'Твит'
+                video: 'Видео', short: 'Шортс', tweet: 'Твит'
             };
             const typeLabel = typeLabels[data.post_type] || data.post_type;
 
@@ -8278,12 +8391,16 @@
             // Slides text (OCR) — only for non-video content
             let slidesTextHtml = '';
             if (data.slides_text && data.slides_text.length > 0 && !data.is_video) {
+                const allSlidesText = data.slides_text.map(s => `Слайд ${s.slide}: ${s.text}`).join('\n\n');
                 const showAll = data.slides_text.length <= 3;
                 const visibleSlides = showAll ? data.slides_text : data.slides_text.slice(0, 2);
                 const hiddenSlides = showAll ? [] : data.slides_text.slice(2);
                 slidesTextHtml = `
                     <div style="margin-bottom:12px;">
-                        <div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:6px;">📝 Текст слайдов (${data.slides_text.length})</div>
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                            <div style="font-size:11px;font-weight:600;color:var(--text-secondary);">📝 Текст слайдов (${data.slides_text.length})</div>
+                            <button onclick="copyToClipboard(_analysisDataStore['${uid}'].slides_text.map(s=>'Слайд '+s.slide+': '+s.text).join('\\n\\n'), this)" style="background:none;border:none;color:var(--accent);font-size:10px;cursor:pointer;padding:2px 6px;">Копировать</button>
+                        </div>
                         ${visibleSlides.map(s => `
                             <div style="padding:8px 10px;background:var(--bg-tertiary);border-radius:6px;margin-bottom:4px;">
                                 <div style="font-size:10px;font-weight:600;color:var(--text-muted);margin-bottom:2px;">Слайд ${s.slide}</div>
@@ -8317,11 +8434,29 @@
                 const trShort = data.transcript.length > 200 ? data.transcript.substring(0, 200) + '...' : data.transcript;
                 transcriptHtml = `
                     <div style="margin-top:12px;padding:10px;background:var(--bg-tertiary);border-radius:6px;">
-                        <div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:6px;">Транскрипт видео</div>
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                            <div style="font-size:11px;font-weight:600;color:var(--text-secondary);">🎙 Исходная транскрипция</div>
+                            <button onclick="copyToClipboard(_analysisDataStore['${uid}'].transcript, this)" style="background:none;border:none;color:var(--accent);font-size:10px;cursor:pointer;padding:2px 6px;">Копировать</button>
+                        </div>
                         <div id="competitorTranscript" style="font-size:12px;color:var(--text-primary);line-height:1.4;white-space:pre-wrap;">${escapeHtml(trShort)}</div>
-                        ${data.transcript.length > 200 ? `<button onclick="document.getElementById('competitorTranscript').textContent=_competitorAnalysis.transcript;this.style.display='none'" style="background:none;border:none;color:var(--accent);font-size:11px;cursor:pointer;padding:4px 0;">Показать полностью</button>` : ''}
+                        ${data.transcript.length > 200 ? `<button onclick="document.getElementById('competitorTranscript').textContent=_analysisDataStore['${uid}'].transcript;this.style.display='none'" style="background:none;border:none;color:var(--accent);font-size:11px;cursor:pointer;padding:4px 0;">Показать полностью</button>` : ''}
                     </div>
                 `;
+            }
+
+            // AI-processed sections (if already available)
+            let processedHtml = '';
+            if (data.processed_transcript || data.video_structure) {
+                processedHtml = _renderProcessedSections(data, uid);
+            } else if (data.transcript && data.transcript.length > 50) {
+                // Show "Process with AI" button
+                processedHtml = `
+                    <div id="${uid}_ai_container">
+                        <button onclick="processTranscriptAI(_analysisDataStore['${uid}'].transcript, _analysisDataStore['${uid}'].topic_id || '', _analysisDataStore['${uid}'].sub_chat_id || '', '${uid}_ai_container')"
+                                style="width:100%;margin-top:8px;padding:10px;background:var(--bg-tertiary);border:1px dashed var(--border);border-radius:6px;font-size:12px;cursor:pointer;color:var(--accent);display:flex;align-items:center;justify-content:center;gap:6px;">
+                            ✨ Обработать ИИ (очистка + анализ структуры)
+                        </button>
+                    </div>`;
             }
 
             container.style.display = 'block';
@@ -8350,12 +8485,19 @@
 
                     <!-- Caption -->
                     <div style="margin-bottom:8px;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                            <div style="font-size:11px;font-weight:600;color:var(--text-secondary);">💬 Описание</div>
+                            ${data.caption ? `<button onclick="copyToClipboard(_analysisDataStore['${uid}'].caption, this)" style="background:none;border:none;color:var(--accent);font-size:10px;cursor:pointer;padding:2px 6px;">Копировать</button>` : ''}
+                        </div>
                         <div id="competitorCaption" style="font-size:13px;color:var(--text-primary);line-height:1.5;white-space:pre-wrap;">${escapeHtml(captionShort)}</div>
-                        ${hasMore ? `<button onclick="document.getElementById('competitorCaption').textContent=_competitorAnalysis.caption;this.style.display='none'" style="background:none;border:none;color:var(--accent);font-size:12px;cursor:pointer;padding:4px 0;">Показать полностью</button>` : ''}
+                        ${hasMore ? `<button onclick="document.getElementById('competitorCaption').textContent=_analysisDataStore['${uid}'].caption;this.style.display='none'" style="background:none;border:none;color:var(--accent);font-size:12px;cursor:pointer;padding:4px 0;">Показать полностью</button>` : ''}
                     </div>
 
                     <!-- Transcript (if video) -->
                     ${transcriptHtml}
+
+                    <!-- AI-processed sections -->
+                    ${processedHtml}
 
                     <!-- Engagement -->
                     <div style="display:flex;gap:16px;font-size:12px;color:var(--text-muted);margin-top:8px;">
@@ -8374,7 +8516,7 @@
             _analysisDataStore[uid] = data;
 
             const platformLabels = {instagram: 'Instagram', youtube: 'YouTube', tiktok: 'TikTok', twitter: 'Twitter/X', linkedin: 'LinkedIn', facebook: 'Facebook'};
-            const typeLabels = {carousel: 'Карусель', reel: 'Рилс', post: 'Пост', video: 'Видео', short: 'Шорт', tweet: 'Твит'};
+            const typeLabels = {carousel: 'Карусель', reel: 'Рилс', post: 'Пост', video: 'Видео', short: 'Шортс', tweet: 'Твит'};
             const formatNum = n => { if (!n) return '0'; if (n >= 1000000) return (n/1000000).toFixed(1)+'M'; if (n >= 1000) return (n/1000).toFixed(1)+'K'; return String(n); };
 
             // Date
@@ -8411,7 +8553,10 @@
                 const hiddenSlides = showAll ? [] : data.slides_text.slice(2);
                 slidesTextHtml = `
                     <div style="margin-bottom:12px;">
-                        <div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:6px;">📝 Текст слайдов (${data.slides_text.length})</div>
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                            <div style="font-size:11px;font-weight:600;color:var(--text-secondary);">📝 Текст слайдов (${data.slides_text.length})</div>
+                            <button onclick="copyToClipboard(_analysisDataStore['${uid}'].slides_text.map(s=>'Слайд '+s.slide+': '+s.text).join('\\n\\n'), this)" style="background:none;border:none;color:var(--accent);font-size:10px;cursor:pointer;padding:2px 6px;">Копировать</button>
+                        </div>
                         ${visibleSlides.map(s => `
                             <div style="padding:8px 10px;background:var(--bg-primary);border-radius:6px;margin-bottom:4px;">
                                 <div style="font-size:10px;font-weight:600;color:var(--text-muted);margin-bottom:2px;">Слайд ${s.slide}</div>
@@ -8442,9 +8587,26 @@
                 const trShort = data.transcript.length > 200 ? data.transcript.substring(0, 200) + '...' : data.transcript;
                 transcriptHtml = `
                     <div style="margin-top:8px;padding:10px;background:var(--bg-primary);border-radius:6px;">
-                        <div style="font-size:11px;font-weight:600;color:var(--text-secondary);margin-bottom:6px;">🎙 Транскрипт видео</div>
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                            <div style="font-size:11px;font-weight:600;color:var(--text-secondary);">🎙 Исходная транскрипция</div>
+                            <button onclick="copyToClipboard(_analysisDataStore['${uid}'].transcript, this)" style="background:none;border:none;color:var(--accent);font-size:10px;cursor:pointer;padding:2px 6px;">Копировать</button>
+                        </div>
                         <div id="${uid}_transcript" style="font-size:12px;color:var(--text-primary);line-height:1.4;white-space:pre-wrap;">${escapeHtml(trShort)}</div>
                         ${data.transcript.length > 200 ? `<button onclick="document.getElementById('${uid}_transcript').textContent=_analysisDataStore['${uid}'].transcript;this.style.display='none'" style="background:none;border:none;color:var(--accent);font-size:11px;cursor:pointer;padding:4px 0;">Показать полностью</button>` : ''}
+                    </div>`;
+            }
+
+            // AI-processed sections
+            let processedHtml = '';
+            if (data.processed_transcript || data.video_structure) {
+                processedHtml = _renderProcessedSections(data, uid);
+            } else if (data.transcript && data.transcript.length > 50) {
+                processedHtml = `
+                    <div id="${uid}_ai_container">
+                        <button onclick="processTranscriptAI(_analysisDataStore['${uid}'].transcript, '', '', '${uid}_ai_container')"
+                                style="width:100%;margin-top:8px;padding:10px;background:var(--bg-primary);border:1px dashed var(--border);border-radius:6px;font-size:12px;cursor:pointer;color:var(--accent);display:flex;align-items:center;justify-content:center;gap:6px;">
+                            ✨ Обработать ИИ (очистка + анализ структуры)
+                        </button>
                     </div>`;
             }
 
@@ -8466,10 +8628,15 @@
                     ${imagesHtml}
                     ${slidesTextHtml}
                     <div style="margin-bottom:8px;">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                            <div style="font-size:11px;font-weight:600;color:var(--text-secondary);">💬 Описание</div>
+                            ${data.caption ? `<button onclick="copyToClipboard(_analysisDataStore['${uid}'].caption, this)" style="background:none;border:none;color:var(--accent);font-size:10px;cursor:pointer;padding:2px 6px;">Копировать</button>` : ''}
+                        </div>
                         <div id="${uid}_caption" style="font-size:13px;color:var(--text-primary);line-height:1.5;white-space:pre-wrap;">${escapeHtml(captionShort)}</div>
                         ${hasMoreCaption ? `<button onclick="document.getElementById('${uid}_caption').textContent=_analysisDataStore['${uid}'].caption;this.style.display='none'" style="background:none;border:none;color:var(--accent);font-size:12px;cursor:pointer;padding:4px 0;">Показать полностью</button>` : ''}
                     </div>
                     ${transcriptHtml}
+                    ${processedHtml}
                     <div style="display:flex;gap:16px;font-size:12px;color:var(--text-muted);margin-top:8px;">
                         <span>❤️ ${formatNum(data.like_count)}</span>
                         <span>💬 ${formatNum(data.comment_count)}</span>
@@ -8997,11 +9164,15 @@
             const psName = document.getElementById('psUserName');
             if (psUser) psUser.style.display = 'flex';
             if (psName) psName.textContent = currentUser.first_name || currentUser.username || '';
-            if (psAvatar && currentUser.photo_url) {
-                psAvatar.src = currentUser.photo_url;
+            if (psAvatar) {
+                // Use stable avatar URL: prefer CDN photo_url, fallback to backend proxy
+                let avatarUrl = currentUser.photo_url || '';
+                if (!avatarUrl || avatarUrl.includes('api.telegram.org/file/bot')) {
+                    // Bot API URLs expire — use backend proxy
+                    avatarUrl = `${API_URL}/api/user/avatar/${currentUser.id}`;
+                }
+                psAvatar.src = avatarUrl;
                 psAvatar.style.display = 'block';
-            } else if (psAvatar) {
-                psAvatar.style.display = 'none';
             }
 
             // Load projects & topics
@@ -9048,7 +9219,8 @@
             preloadTemplates();
 
             // Restore tab from URL hash IMMEDIATELY (before any awaits block us)
-            const hash = window.location.hash.slice(1);
+            let hash = window.location.hash.slice(1);
+            if (hash === 'rewrite') hash = 'analysis'; // backward compat
             if (hash) switchTab(hash);
 
             // NEW: Load MargulanGames template by default instead of empty template
@@ -11079,7 +11251,8 @@
         init();
 
         window.addEventListener('hashchange', () => {
-            const hash = window.location.hash.slice(1);
+            let hash = window.location.hash.slice(1);
+            if (hash === 'rewrite') hash = 'analysis'; // backward compat
             if (hash && hash !== currentTab) switchTab(hash);
         });
     </script>

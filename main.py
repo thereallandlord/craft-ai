@@ -146,7 +146,7 @@ PLATFORM_CONFIG = {
         "transcript_endpoint": "/v1/youtube/video/transcript",
     },
     "tiktok": {
-        "patterns": [r'tiktok\.com/@[\w.]+/video/', r'vm\.tiktok\.com/', r'tiktok\.com/t/'],
+        "patterns": [r'tiktok\.com/@[\w.]+/video/', r'tiktok\.com/@[\w.]+/photo/', r'vm\.tiktok\.com/', r'tiktok\.com/t/'],
         "post_endpoint": "/v2/tiktok/video",
         "transcript_endpoint": "/v1/tiktok/video/transcript",
     },
@@ -1875,6 +1875,38 @@ OCR_SLIDES_PROMPT = """Извлеки ТОЛЬКО контентный текс
 
 Если на слайде нет контентного текста, напиши: (нет текста)"""
 
+TRANSCRIPT_CLEAN_PROMPT = """Ты — текстовый редактор. Возьми сырую транскрипцию видео ниже и создай чистую, читаемую версию.
+
+Задачи:
+- Добавь правильную пунктуацию и заглавные буквы
+- Раздели на логические абзацы
+- Убери слова-паразиты (ну, типа, как бы, э-э, вот, получается, короче)
+- Убери повторы и запинки
+- Сохрани весь смысл и ключевую информацию
+- НЕ добавляй ничего от себя, НЕ дополняй текст
+
+Выведи только очищенный текст на том же языке, без комментариев."""
+
+VIDEO_STRUCTURE_PROMPT = """Проанализируй транскрипцию видео и определи его структуру.
+
+Формат ответа:
+
+**Хук (первые секунды):** [чем цепляет внимание в начале]
+
+**Основной посыл:** [главная мысль/тезис видео]
+
+**Ключевые тезисы:**
+- [тезис 1]
+- [тезис 2]
+- [тезис 3]
+...
+
+**Призыв к действию (CTA):** [что автор просит сделать зрителя, если есть. Если нет — "Не обнаружен"]
+
+**Стиль подачи:** [тон, темп, уровень формальности, особенности речи]
+
+Пиши на русском. Будь конкретен, приводи примеры из текста."""
+
 
 def get_system_prompt(status: str, slides_count: int = 7, custom_prompts: dict = None) -> str:
     cp = custom_prompts or {}
@@ -2109,6 +2141,8 @@ def get_system_prompt_v3(chat_type: str, has_slides: bool = False, variables: di
         'text': SYSTEM_PROMPT_TEXT_GEN,
         'competitor_rewrite': SYSTEM_PROMPT_COMPETITOR_REWRITE,
         'ocr_slides': OCR_SLIDES_PROMPT,
+        'transcript_clean': TRANSCRIPT_CLEAN_PROMPT,
+        'video_structure': VIDEO_STRUCTURE_PROMPT,
         'format_text': open(os.path.join(os.path.dirname(__file__), "prompts", "format_carousel_text.txt"), encoding="utf-8").read() if os.path.exists(os.path.join(os.path.dirname(__file__), "prompts", "format_carousel_text.txt")) else "Parse text into JSON array of slides with TITLE and DESCRIPTION fields."
     }
 
@@ -2118,7 +2152,7 @@ def get_system_prompt_v3(chat_type: str, has_slides: bool = False, variables: di
         model = prompt_data.get("model", "openai/gpt-4o")
     else:
         template = fallbacks.get(prompt_key, SYSTEM_PROMPT_HEADLINES_GEN)
-        fallback_models = {'format_text': 'openai/gpt-4o-mini', 'memory_extract': 'openai/gpt-4o-mini', 'profile_summarize': 'openai/gpt-4o-mini', 'ocr_slides': 'google/gemini-2.0-flash-001'}
+        fallback_models = {'format_text': 'openai/gpt-4o-mini', 'memory_extract': 'openai/gpt-4o-mini', 'profile_summarize': 'openai/gpt-4o-mini', 'ocr_slides': 'google/gemini-2.0-flash-001', 'transcript_clean': 'openai/gpt-4o-mini', 'video_structure': 'openai/gpt-4o-mini'}
         model = fallback_models.get(prompt_key, "openai/gpt-4o")
 
     if variables:
@@ -2523,18 +2557,46 @@ def _parse_tiktok(data: dict) -> dict:
     author = video.get("author", {}) if isinstance(video.get("author"), dict) else {}
     stats = video.get("stats", {}) if isinstance(video.get("stats"), dict) else {}
 
-    cover = video.get("cover", "") or video.get("originCover", "")
-    if isinstance(cover, list) and cover:
-        cover = cover[0] if isinstance(cover[0], str) else ""
+    # Check for photo carousel (imagePost)
+    image_post = video.get("imagePost", {})
+    if not isinstance(image_post, dict):
+        image_post = {}
+    carousel_images_raw = image_post.get("images", [])
+    if not isinstance(carousel_images_raw, list):
+        carousel_images_raw = []
+
+    # Extract carousel image URLs
+    carousel_images = []
+    for img in carousel_images_raw:
+        if isinstance(img, str) and img:
+            carousel_images.append(img)
+        elif isinstance(img, dict):
+            img_url = img.get("imageURL", "") or img.get("imageUri", "") or img.get("url", "")
+            if img_url:
+                carousel_images.append(img_url)
+
+    is_carousel = len(carousel_images) > 0
+
+    if is_carousel:
+        images = [{"url": u, "is_video": False} for u in carousel_images[:20]]
+        post_type = "carousel"
+        is_video = False
+    else:
+        cover = video.get("cover", "") or video.get("originCover", "")
+        if isinstance(cover, list) and cover:
+            cover = cover[0] if isinstance(cover[0], str) else ""
+        images = [{"url": cover, "is_video": True}] if cover else []
+        post_type = "video"
+        is_video = True
 
     return {
         "platform": "tiktok",
         "username": author.get("uniqueId", "") or video.get("author_name", "") or video.get("uniqueId", ""),
         "profile_pic_url": author.get("avatarThumb", "") or video.get("author_avatar", ""),
         "caption": video.get("desc", "") or video.get("title", "") or video.get("description", ""),
-        "images": [{"url": cover, "is_video": True}] if cover else [],
-        "post_type": "video",
-        "is_video": True,
+        "images": images,
+        "post_type": post_type,
+        "is_video": is_video,
         "like_count": stats.get("diggCount", 0) or video.get("likes", 0) or video.get("diggCount", 0),
         "comment_count": stats.get("commentCount", 0) or video.get("comments", 0) or video.get("commentCount", 0),
         "taken_at": video.get("createTime"),
@@ -2883,6 +2945,77 @@ async def competitor_analyze(request: Request):
     except Exception as e:
         print(f"[competitor] Unexpected error: {e}")
         raise HTTPException(status_code=500, detail=f"Ошибка анализа: {str(e)}")
+
+
+@app.post("/api/competitor/process-transcript")
+async def process_transcript(request: Request):
+    """Process raw transcript with AI: clean version + structure analysis."""
+    body = await request.json()
+    user_id = body.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    transcript = body.get("transcript", "").strip()
+    topic_id = body.get("topic_id")
+    sub_chat_id = body.get("sub_chat_id")
+
+    if not transcript or len(transcript) < 30:
+        raise HTTPException(status_code=400, detail="Транскрипция слишком короткая для обработки")
+
+    # Truncate to avoid token limits
+    transcript_input = transcript[:8000]
+
+    processed_transcript = ""
+    video_structure = ""
+
+    # 1. Clean transcript
+    try:
+        clean_prompt, clean_model = get_system_prompt_v3("transcript_clean")
+        processed_transcript, _ = _call_openrouter(
+            [{"role": "system", "content": clean_prompt},
+             {"role": "user", "content": transcript_input}],
+            model=clean_model, temperature=0.3
+        )
+        print(f"[process-transcript] Clean transcript: {len(processed_transcript)} chars")
+    except Exception as e:
+        print(f"[process-transcript] Clean error (non-fatal): {e}")
+
+    # 2. Analyze structure
+    try:
+        struct_prompt, struct_model = get_system_prompt_v3("video_structure")
+        video_structure, _ = _call_openrouter(
+            [{"role": "system", "content": struct_prompt},
+             {"role": "user", "content": transcript_input}],
+            model=struct_model, temperature=0.5
+        )
+        print(f"[process-transcript] Structure analysis: {len(video_structure)} chars")
+    except Exception as e:
+        print(f"[process-transcript] Structure error (non-fatal): {e}")
+
+    # 3. Update stored message_data if sub_chat_id provided
+    if sub_chat_id and supabase and (processed_transcript or video_structure):
+        try:
+            msgs = supabase.table("sub_chat_messages").select("id,message_data").eq(
+                "sub_chat_id", sub_chat_id
+            ).eq("message_type", "analysis").order("created_at", desc=True).limit(1).execute()
+            if msgs.data:
+                msg = msgs.data[0]
+                msg_data = msg.get("message_data", {}) or {}
+                if processed_transcript:
+                    msg_data["processed_transcript"] = processed_transcript
+                if video_structure:
+                    msg_data["video_structure"] = video_structure
+                supabase.table("sub_chat_messages").update(
+                    {"message_data": json.dumps(msg_data) if isinstance(msg_data, dict) else msg_data}
+                ).eq("id", msg["id"]).execute()
+                print(f"[process-transcript] Updated message {msg['id']} with processed data")
+        except Exception as e:
+            print(f"[process-transcript] DB update error (non-fatal): {e}")
+
+    return {
+        "processed_transcript": processed_transcript,
+        "video_structure": video_structure,
+    }
 
 
 # === v3: Topics API ===
@@ -3891,6 +4024,16 @@ TITLE - это первая строка/фраза если:
              "model": "google/gemini-2.5-flash",
              "content": SYSTEM_PROMPT_COMPETITOR_REWRITE,
              "variables": [{"name": "slides_count", "description": "Количество слайдов"}]},
+            {"prompt_key": "transcript_clean", "title": "Очистка транскрипции",
+             "description": "Очищает сырую транскрипцию видео: пунктуация, абзацы, убирает слова-паразиты",
+             "model": "openai/gpt-4o-mini",
+             "content": TRANSCRIPT_CLEAN_PROMPT,
+             "variables": []},
+            {"prompt_key": "video_structure", "title": "Анализ структуры видео",
+             "description": "Анализирует хук, основной посыл, тезисы, CTA и стиль подачи видео",
+             "model": "openai/gpt-4o-mini",
+             "content": VIDEO_STRUCTURE_PROMPT,
+             "variables": []},
         ]
     # Upsert: insert missing, update existing defaults that haven't been manually edited
     defaults_by_key = {d["prompt_key"]: d for d in defaults}
@@ -4472,6 +4615,27 @@ def get_telegram_photo_url(user_id: int) -> str:
         return f"https://api.telegram.org/file/bot{TELEGRAM_BOT_TOKEN}/{file_path}"
     except Exception:
         return ""
+
+
+@app.get("/api/user/avatar/{user_id}")
+async def user_avatar(user_id: int):
+    """Return a fresh Telegram avatar URL (redirect). Useful when stored URLs expire."""
+    from fastapi.responses import RedirectResponse
+    # First try DB
+    if supabase:
+        try:
+            row = supabase.table("users").select("photo_url").eq("user_id", str(user_id)).single().execute()
+            stored_url = (row.data or {}).get("photo_url", "")
+            # CDN URLs (t.me, telegram.org without /file/bot) are stable
+            if stored_url and "api.telegram.org/file/bot" not in stored_url and stored_url.startswith("http"):
+                return RedirectResponse(stored_url)
+        except Exception:
+            pass
+    # Fallback: fetch fresh from Bot API
+    photo_url = get_telegram_photo_url(user_id)
+    if not photo_url:
+        raise HTTPException(status_code=404, detail="No avatar")
+    return RedirectResponse(photo_url)
 
 
 @app.post("/api/telegram/webhook")
