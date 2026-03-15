@@ -2711,13 +2711,16 @@ async def competitor_analyze(request: Request):
 
     config = PLATFORM_CONFIG[platform]
 
-    # Normalize URL — remove query params and trailing slashes for cleaner API calls
+    # Normalize URL — remove query params, trailing slashes, fix /reels/ → /reel/
     from urllib.parse import urlparse, urlunparse
     parsed_url = urlparse(url)
     clean_path = parsed_url.path.rstrip('/')
+    # Instagram: /reels/CODE → /reel/CODE (Scrape Creators only accepts singular)
+    if platform == "instagram":
+        clean_path = re.sub(r'/reels/', '/reel/', clean_path)
     url = urlunparse((parsed_url.scheme, parsed_url.netloc, clean_path, '', '', ''))
 
-    is_reel_url = bool(re.search(r'/(reel|reels)/', url))
+    is_reel_url = bool(re.search(r'/reel/', url))
 
     try:
         # 1. Fetch post data
@@ -2743,6 +2746,8 @@ async def competitor_analyze(request: Request):
 
         if resp.status_code != 200:
             print(f"[competitor] Scrape Creators error {resp.status_code}: {resp.text[:500]}")
+            if resp.status_code == 404:
+                raise HTTPException(status_code=404, detail="Пост не найден. Возможно, он удалён или доступен только подписчикам (приватный аккаунт)")
             raise HTTPException(status_code=502, detail=f"Ошибка загрузки поста (код {resp.status_code})")
 
         raw_data = resp.json()
