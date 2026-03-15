@@ -2667,78 +2667,156 @@
             .chat-msg { max-width: 92%; }
         }
 
-        /* === Login Overlay === */
-        .login-overlay {
+        /* === Login Modal (ChatGPT-style popup) === */
+        .login-modal-backdrop {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: var(--bg-primary);
+            background: rgba(0,0,0,0.5);
             z-index: 10000;
             display: flex;
             align-items: center;
             justify-content: center;
+            animation: fadeIn 0.2s ease;
         }
 
-        .login-overlay.hidden {
+        .login-modal-backdrop.hidden {
             display: none;
         }
 
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
         .login-card {
+            background: var(--bg-primary);
+            border-radius: 16px;
+            box-shadow: 0 24px 80px rgba(0,0,0,0.25);
             text-align: center;
             max-width: 400px;
-            padding: 48px 32px;
+            width: 90%;
+            padding: 40px 32px 32px;
+            position: relative;
+            animation: slideUp 0.25s ease;
+        }
+
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        .login-close-btn {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: none;
+            font-size: 18px;
+            color: var(--text-muted);
+            cursor: pointer;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.15s, color 0.15s;
+        }
+        .login-close-btn:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
         }
 
         .login-logo {
-            font-size: 48px;
+            font-size: 32px;
             font-weight: 800;
             letter-spacing: -1px;
-            color: var(--accent);
+            color: var(--text-primary);
             margin-bottom: 8px;
         }
 
         .login-subtitle {
-            font-size: 16px;
+            font-size: 15px;
             color: var(--text-secondary);
-            margin-bottom: 40px;
+            margin-bottom: 28px;
+            line-height: 1.5;
         }
 
-        .login-tg-btn {
-            display: inline-flex;
+        .login-provider-btn {
+            display: flex;
             align-items: center;
+            justify-content: center;
             gap: 10px;
-            background: #2AABEE;
-            color: #fff;
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.15s, border-color 0.15s;
+            margin-bottom: 10px;
+        }
+        .login-provider-btn:hover {
+            background: var(--bg-secondary);
+            border-color: var(--text-muted);
+        }
+
+        .login-divider {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 16px 0;
+            color: var(--text-muted);
+            font-size: 13px;
+        }
+        .login-divider::before,
+        .login-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border-color);
+        }
+
+        .login-email-section input {
+            width: 100%;
+            padding: 11px 14px;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            font-size: 14px;
+            outline: none;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            transition: border-color 0.15s;
+        }
+        .login-email-section input:focus {
+            border-color: var(--accent);
+        }
+
+        .login-email-btn {
+            width: 100%;
+            padding: 11px;
             border: none;
-            border-radius: 12px;
-            padding: 14px 32px;
-            font-size: 16px;
+            border-radius: 10px;
+            background: var(--accent);
+            color: white;
+            font-size: 14px;
             font-weight: 600;
             cursor: pointer;
-            transition: background 0.2s;
+            transition: opacity 0.15s;
+            margin-top: 10px;
         }
-
-        .login-tg-btn:hover {
-            background: #229ED9;
-        }
-
-        .login-note {
-            margin-top: 24px;
-            font-size: 13px;
-            color: var(--text-muted);
-        }
+        .login-email-btn:hover { opacity: 0.9; }
 
         .login-error {
-            margin-top: 20px;
-            padding: 16px;
+            margin-top: 16px;
+            padding: 12px 16px;
             background: #fef2f2;
             border: 1px solid #fecaca;
             border-radius: 10px;
             color: #dc2626;
-            font-size: 14px;
+            font-size: 13px;
             display: none;
+            text-align: left;
         }
 
         body.dark-theme .login-error {
@@ -2748,11 +2826,92 @@
         }
 
         .login-loading {
-            margin-top: 20px;
+            margin-top: 16px;
             color: var(--text-secondary);
             font-size: 14px;
             display: none;
         }
+
+        .login-legal {
+            margin-top: 20px;
+            font-size: 12px;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+        .login-legal a {
+            color: var(--text-secondary);
+            text-decoration: underline;
+        }
+
+        /* Header auth bar (anonymous users) */
+        .header-auth-bar {
+            position: fixed;
+            top: 0;
+            right: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 16px;
+        }
+        .header-auth-bar.hidden { display: none; }
+        .header-auth-btn {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s;
+            border: none;
+        }
+        .header-auth-btn.secondary {
+            background: none;
+            color: var(--text-secondary);
+        }
+        .header-auth-btn.secondary:hover {
+            color: var(--text-primary);
+        }
+        .header-auth-btn.primary {
+            background: var(--text-primary);
+            color: var(--bg-primary);
+        }
+        .header-auth-btn.primary:hover {
+            opacity: 0.85;
+        }
+
+        /* Sidebar CTA for anonymous users */
+        .ps-login-cta {
+            padding: 16px;
+            margin: 8px 12px;
+            border-radius: 12px;
+            background: var(--bg-secondary);
+            text-align: center;
+        }
+        .ps-login-cta.hidden { display: none; }
+        .ps-login-cta b {
+            display: block;
+            font-size: 13px;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+        }
+        .ps-login-cta p {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+            line-height: 1.4;
+        }
+        .ps-login-cta button {
+            width: 100%;
+            padding: 8px;
+            border: none;
+            border-radius: 8px;
+            background: var(--accent);
+            color: white;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        .ps-login-cta button:hover { opacity: 0.9; }
 
         /* User info in nav bar */
         .nav-user {
@@ -4054,44 +4213,41 @@
     </style>
 </head>
 <body>
-    <!-- Login Overlay -->
-    <div class="login-overlay" id="loginOverlay">
-        <div class="login-card" style="max-width:400px;">
+    <!-- Login Modal (ChatGPT-style popup) -->
+    <div class="login-modal-backdrop hidden" id="loginModal" onclick="if(event.target===this)hideLoginModal()">
+        <div class="login-card">
+            <button class="login-close-btn" onclick="hideLoginModal()">✕</button>
             <div class="login-logo">CRAFT</div>
-            <div class="login-subtitle">AI-инструмент для контента</div>
+            <div class="login-subtitle">Войдите или зарегистрируйтесь, чтобы сохранять чаты и генерировать контент</div>
 
-            <!-- Auth tabs -->
-            <div class="login-tabs" style="display:flex;gap:0;margin:16px 0 12px;border-bottom:1px solid var(--border-color);">
-                <button class="login-tab active" data-tab="email" onclick="switchLoginTab('email')" style="flex:1;padding:10px 0;font-size:13px;font-weight:500;border:none;background:none;cursor:pointer;color:var(--text-primary);border-bottom:2px solid var(--accent);transition:all .2s;">Email</button>
-                <button class="login-tab" data-tab="google" onclick="switchLoginTab('google')" style="flex:1;padding:10px 0;font-size:13px;font-weight:500;border:none;background:none;cursor:pointer;color:var(--text-muted);border-bottom:2px solid transparent;transition:all .2s;">Google</button>
-                <button class="login-tab" data-tab="telegram" onclick="switchLoginTab('telegram')" style="flex:1;padding:10px 0;font-size:13px;font-weight:500;border:none;background:none;cursor:pointer;color:var(--text-muted);border-bottom:2px solid transparent;transition:all .2s;">Telegram</button>
-            </div>
+            <!-- Provider buttons -->
+            <button class="login-provider-btn" onclick="googleLogin()">
+                <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+                Продолжить с Google
+            </button>
 
-            <!-- Email tab -->
-            <div class="login-tab-content" id="loginTabEmail">
-                <div style="display:flex;flex-direction:column;gap:10px;">
-                    <input type="email" id="loginEmail" placeholder="Email" style="width:100%;padding:10px 14px;border:1px solid var(--border-color);border-radius:8px;font-size:14px;outline:none;background:var(--bg-primary);color:var(--text-primary);">
-                    <input type="password" id="loginPassword" placeholder="Пароль" style="width:100%;padding:10px 14px;border:1px solid var(--border-color);border-radius:8px;font-size:14px;outline:none;background:var(--bg-primary);color:var(--text-primary);">
-                    <button onclick="emailLogin()" style="width:100%;padding:10px;border:none;border-radius:8px;background:var(--accent);color:white;font-size:14px;font-weight:500;cursor:pointer;">Войти</button>
-                    <button onclick="emailSignup()" style="width:100%;padding:10px;border:1px solid var(--border-color);border-radius:8px;background:none;color:var(--text-secondary);font-size:14px;cursor:pointer;">Создать аккаунт</button>
+            <button class="login-provider-btn" onclick="startBotLogin()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="#2AABEE"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/></svg>
+                Продолжить с Telegram
+            </button>
+
+            <div class="login-divider">или</div>
+
+            <!-- Email section -->
+            <div class="login-email-section" id="loginEmailSection">
+                <input type="email" id="loginEmail" placeholder="Адрес электронной почты" onkeydown="if(event.key==='Enter')handleEmailContinue()">
+                <input type="password" id="loginPassword" placeholder="Пароль" style="display:none;margin-top:10px;" onkeydown="if(event.key==='Enter')handleEmailContinue()">
+                <button class="login-email-btn" id="loginEmailBtn" onclick="handleEmailContinue()">Продолжить</button>
+                <div id="loginEmailSignupLink" style="display:none;margin-top:8px;font-size:13px;color:var(--text-muted);">
+                    Нет аккаунта? <a href="#" onclick="event.preventDefault();emailSignup()" style="color:var(--accent);text-decoration:none;font-weight:500;">Создать</a>
                 </div>
             </div>
 
-            <!-- Google tab -->
-            <div class="login-tab-content hidden" id="loginTabGoogle">
-                <button onclick="googleLogin()" style="width:100%;padding:12px;border:1px solid var(--border-color);border-radius:8px;background:white;color:#333;font-size:14px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;">
-                    <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
-                    Войти через Google
-                </button>
-            </div>
-
-            <!-- Telegram tab -->
-            <div class="login-tab-content hidden" id="loginTabTelegram">
-                <div id="telegramLoginWidget"></div>
-                <div class="login-widget-loading" id="loginWidgetLoading" style="color:var(--text-muted);font-size:13px;padding:16px 0;">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="animation: spin 1s linear infinite; vertical-align: middle; margin-right:6px;"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-                    Загрузка...
-                </div>
+            <!-- Telegram widget container (hidden by default, shown when Telegram chosen) -->
+            <div id="telegramLoginWidget" style="display:none"></div>
+            <div class="login-widget-loading hidden" id="loginWidgetLoading" style="color:var(--text-muted);font-size:13px;padding:16px 0;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="animation: spin 1s linear infinite; vertical-align: middle; margin-right:6px;"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                Загрузка...
             </div>
 
             <div class="login-loading" id="loginLoading">
@@ -4099,10 +4255,17 @@
                 Проверяем данные...
             </div>
             <div class="login-error" id="loginError"></div>
+
+            <div class="login-legal">
+                Используя Craft AI, вы соглашаетесь с нашими <a href="/terms" target="_blank">условиями</a> и ознакомились с нашей <a href="/privacy" target="_blank">политикой конфиденциальности</a>.
+            </div>
         </div>
-        <div style="position:fixed;bottom:16px;left:0;right:0;text-align:center;font-size:12px;color:#999;line-height:1.5;">
-            Используя Craft AI, вы соглашаетесь с нашими <a href="/terms" target="_blank" style="color:#666;text-decoration:underline;">условиями</a> и ознакомились с нашей <a href="/privacy" target="_blank" style="color:#666;text-decoration:underline;">политикой конфиденциальности</a>.
-        </div>
+    </div>
+
+    <!-- Header auth bar (anonymous users) -->
+    <div class="header-auth-bar hidden" id="headerAuthBar">
+        <button class="header-auth-btn secondary" onclick="showLoginModal()">Войти</button>
+        <button class="header-auth-btn primary" onclick="showLoginModal()">Зарегистрироваться</button>
     </div>
 
     <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
@@ -4124,7 +4287,7 @@
         <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeMobileSidebar()"></div>
 
         <!-- Project Sidebar -->
-        <aside class="project-sidebar hidden" id="projectSidebar">
+        <aside class="project-sidebar" id="projectSidebar">
             <div class="ps-header">
                 <button class="ps-new-btn" onclick="toggleSidebar()" title="Свернуть">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
@@ -4158,6 +4321,13 @@
             </div>
             <div class="ps-section-title">Ваши чаты</div>
             <div class="ps-projects" id="psProjectsList"></div>
+            <!-- Sidebar CTA for anonymous users -->
+            <div class="ps-login-cta hidden" id="psLoginCta">
+                <b>Получайте больше</b>
+                <p>Войдите, чтобы сохранять чаты и генерировать контент</p>
+                <button onclick="showLoginModal()">Войти</button>
+            </div>
+
             <div class="ps-user-section" id="psUserSection" style="display:none" onclick="toggleUserMenu(event)">
                 <div class="ps-user-menu" id="psUserMenu">
                     <button class="ps-user-menu-item" onclick="event.stopPropagation(); openProfile(); closeUserMenu();">
@@ -5286,7 +5456,8 @@
         async function homeSubmitV3() {
             const textarea = document.getElementById('homeTextarea');
             const text = textarea.value.trim();
-            if (!text || !currentUser) return;
+            if (!text) return;
+            if (!currentUser) { showLoginModal(); return; }
             textarea.value = '';
             autoResizeTextarea(textarea);
 
@@ -6080,6 +6251,12 @@
         let currentTab = 'create';
 
         function switchTab(tabId) {
+            // Protected tabs require login
+            const protectedTabs = ['analysis', 'competitors', 'settings'];
+            if (!currentUser && protectedTabs.includes(tabId)) {
+                showLoginModal();
+                return;
+            }
             currentTab = tabId;
             if (window.location.hash !== '#' + tabId) {
                 history.replaceState(null, '', '#' + tabId);
@@ -8265,7 +8442,7 @@
         async function competitorAnalyze() {
             const link = document.getElementById('competitorLinkInput').value.trim();
             if (!link) return;
-            if (!currentUser) { showToast('Авторизуйтесь для анализа', 'error'); return; }
+            if (!currentUser) { showLoginModal(); return; }
 
             const btn = document.getElementById('competitorAnalyzeBtn');
             const result = document.getElementById('competitorAnalysisResult');
@@ -9148,19 +9325,18 @@
                 }
             }
 
-            // 3. Regular auth: check localStorage or show login
+            // 3. Regular auth: check localStorage or show anonymous UI
             const saved = localStorage.getItem('craft_user');
             if (saved) {
                 try {
                     currentUser = JSON.parse(saved);
-                    hideLogin();
                     updateUIForUser();
                 } catch(e) {
                     localStorage.removeItem('craft_user');
-                    showLogin();
+                    updateUIForAnonymous();
                 }
             } else {
-                showLogin();
+                updateUIForAnonymous();
             }
         }
 
@@ -9196,7 +9372,7 @@
                     plan: account.plan || 'free',
                 };
                 localStorage.setItem('craft_user', JSON.stringify(currentUser));
-                hideLogin();
+                hideLoginModal();
                 updateUIForUser();
                 showView('home');
             } catch(e) {
@@ -9204,14 +9380,64 @@
             }
         }
 
-        async function showLogin() {
-            document.getElementById('loginOverlay').classList.remove('hidden');
-            // Default to email tab
-            switchLoginTab('email');
+        function showLoginModal() {
+            document.getElementById('loginModal').classList.remove('hidden');
+            // Reset to default state
+            document.getElementById('loginEmail').value = '';
+            document.getElementById('loginPassword').value = '';
+            document.getElementById('loginPassword').style.display = 'none';
+            document.getElementById('loginEmailBtn').textContent = 'Продолжить';
+            document.getElementById('loginEmailSection').style.display = '';
+            document.getElementById('telegramLoginWidget').style.display = 'none';
+            const err = document.getElementById('loginError');
+            if (err) { err.style.display = 'none'; err.textContent = ''; }
         }
 
-        function hideLogin() {
-            document.getElementById('loginOverlay').classList.add('hidden');
+        function hideLoginModal() {
+            document.getElementById('loginModal').classList.add('hidden');
+        }
+
+        // Aliases for backward compatibility
+        function showLogin() { showLoginModal(); }
+        function hideLogin() { hideLoginModal(); }
+
+        // Handle email "Continue" button — first show password, then login/signup
+        function handleEmailContinue() {
+            const emailInput = document.getElementById('loginEmail');
+            const passInput = document.getElementById('loginPassword');
+            const email = emailInput.value.trim();
+            if (!email) { emailInput.focus(); return; }
+
+            if (passInput.style.display === 'none') {
+                // Step 1: show password field
+                passInput.style.display = '';
+                passInput.focus();
+                document.getElementById('loginEmailBtn').textContent = 'Войти';
+                document.getElementById('loginEmailSignupLink').style.display = '';
+            } else {
+                // Step 2: attempt login, fallback to signup
+                emailLogin();
+            }
+        }
+
+        function updateUIForAnonymous() {
+            // Show sidebar (without user section)
+            const ps = document.getElementById('projectSidebar');
+            if (ps) ps.classList.remove('hidden');
+            // Show CTA in sidebar
+            const cta = document.getElementById('psLoginCta');
+            if (cta) cta.classList.remove('hidden');
+            // Hide user section
+            const psUser = document.getElementById('psUserSection');
+            if (psUser) psUser.style.display = 'none';
+            // Show header auth bar
+            const authBar = document.getElementById('headerAuthBar');
+            if (authBar) authBar.classList.remove('hidden');
+            // Hide nav user
+            const navUser = document.getElementById('navUser');
+            if (navUser) navUser.style.display = 'none';
+            // Show home view
+            showView('home');
         }
 
         async function startBotLogin() {
@@ -9277,50 +9503,7 @@
         }
 
         function switchLoginTab(tab) {
-            // Update tab buttons
-            document.querySelectorAll('.login-tab').forEach(btn => {
-                const isActive = btn.getAttribute('data-tab') === tab;
-                btn.style.color = isActive ? 'var(--text-primary)' : 'var(--text-muted)';
-                btn.style.borderBottomColor = isActive ? 'var(--accent)' : 'transparent';
-                if (isActive) btn.classList.add('active');
-                else btn.classList.remove('active');
-            });
-            // Show/hide content
-            document.getElementById('loginTabEmail').classList.toggle('hidden', tab !== 'email');
-            document.getElementById('loginTabGoogle').classList.toggle('hidden', tab !== 'google');
-            document.getElementById('loginTabTelegram').classList.toggle('hidden', tab !== 'telegram');
-            // Clear errors
-            document.getElementById('loginError').style.display = 'none';
-
-            // Load Telegram widget when switching to telegram tab
-            if (tab === 'telegram') {
-                const container = document.getElementById('telegramLoginWidget');
-                if (_tgBotUsername && !container.querySelector('script') && !container.querySelector('button')) {
-                    if (_isReloginAfterLogout) {
-                        document.getElementById('loginWidgetLoading').style.display = 'none';
-                        const btn = document.createElement('button');
-                        btn.className = 'login-tg-btn';
-                        btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M12 0C5.37 0 0 5.37 0 12s5.37 12 12 12 12-5.37 12-12S18.63 0 12 0zm5.53 8.14l-1.79 8.45c-.13.6-.5.75-.99.47l-2.77-2.04-1.34 1.29c-.15.15-.27.27-.56.27l.2-2.83 5.15-4.65c.22-.2-.05-.31-.35-.12l-6.36 4.01-2.74-.86c-.6-.18-.61-.6.12-.88l10.71-4.13c.5-.18.93.12.77.88z"/></svg> Войти через Telegram';
-                        btn.onclick = startBotLogin;
-                        container.appendChild(btn);
-                    } else {
-                        const script = document.createElement('script');
-                        script.async = true;
-                        script.src = 'https://telegram.org/js/telegram-widget.js?22';
-                        script.setAttribute('data-telegram-login', _tgBotUsername);
-                        script.setAttribute('data-size', 'large');
-                        script.setAttribute('data-radius', '12');
-                        script.setAttribute('data-onauth', 'onTelegramAuth(user)');
-                        script.setAttribute('data-request-access', 'write');
-                        script.onload = () => {
-                            setTimeout(() => {
-                                document.getElementById('loginWidgetLoading').style.display = 'none';
-                            }, 500);
-                        };
-                        container.appendChild(script);
-                    }
-                }
-            }
+            // Legacy — no-op, modal uses direct provider buttons now
         }
 
         async function emailLogin() {
@@ -9439,6 +9622,12 @@
         function updateUIForUser() {
             if (!currentUser) return;
 
+            // Hide anonymous UI elements
+            const authBar = document.getElementById('headerAuthBar');
+            if (authBar) authBar.classList.add('hidden');
+            const cta = document.getElementById('psLoginCta');
+            if (cta) cta.classList.add('hidden');
+
             // Show user info in nav
             const navUser = document.getElementById('navUser');
             const navAvatar = document.getElementById('navUserAvatar');
@@ -9517,9 +9706,9 @@
             const container = document.getElementById('telegramLoginWidget');
             container.innerHTML = '';
             container.style.display = '';
-            // Go home and show login
+            // Go home — anonymous mode, no blocking login
             goHome();
-            showLogin();
+            updateUIForAnonymous();
         }
 
         async function init() {
@@ -10760,7 +10949,7 @@
 
         async function saveTemplate() {
             if (!currentUser) {
-                showToast('Войдите чтобы сохранить шаблон', 'error');
+                showLoginModal();
                 return;
             }
 
@@ -11368,7 +11557,7 @@
         async function useTemplate(templateData) {
             const t = typeof templateData === 'string' ? JSON.parse(templateData) : templateData;
             if (!currentUser) {
-                showToast('Войдите чтобы использовать шаблон', 'error');
+                showLoginModal();
                 return;
             }
 
