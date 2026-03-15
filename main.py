@@ -4564,9 +4564,9 @@ async def update_user_settings(request: Request):
 
 # Plan limits: -1 = unlimited, missing key = unlimited (club)
 PLAN_LIMITS = {
-    "anonymous":  {"competitor_analysis": 1, "carousel_generate": 0, "ai_chat": 0},
-    "free":       {"competitor_analysis": 5, "carousel_generate": 3, "ai_chat": 20},
-    "pro":        {"competitor_analysis": 50, "carousel_generate": 30, "ai_chat": 200},
+    "anonymous":  {"competitor_analysis": 0, "carousel_generate": 0, "ai_chat": 5},
+    "free":       {"competitor_analysis": 3, "carousel_generate": 2, "ai_chat": 5},
+    "pro":        {"competitor_analysis": 50, "carousel_generate": 50, "ai_chat": 500},
     "business":   {"competitor_analysis": -1, "carousel_generate": -1, "ai_chat": -1},
     "club":       {},
 }
