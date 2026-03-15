@@ -4124,6 +4124,9 @@
             color: var(--text-muted);
             margin-bottom: 12px;
         }
+        #linkedAccountsList {
+            max-width: 480px;
+        }
         .linked-account-row {
             display: flex;
             align-items: center;
@@ -4815,54 +4818,33 @@
         <div class="tab-page" id="tab-settings">
             <div class="tab-page-content">
                 <div class="tab-page-title">Настройки</div>
-                <div class="tab-page-subtitle">Подключение n8n вебхуков и настройки приложения</div>
+                <div class="tab-page-subtitle">Управление аккаунтом и способами входа</div>
 
-                <div style="background:var(--bg-tertiary);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:24px;">
-                    <div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:12px;">n8n Webhooks</div>
-                    <div style="font-size:12px;color:var(--text-secondary);margin-bottom:16px;">
-                        Укажите URL вебхуков из n8n для работы AI-функций. Без них будет использоваться демо-режим.
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">Генератор заголовков (АГЕНТ 2)</label>
-                        <input type="text" class="form-input" id="settingsWebhookHeadlines" placeholder="https://your-n8n.com/webhook/headlines" value="">
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">Генератор текста (КОПИРАЙТЕР)</label>
-                        <input type="text" class="form-input" id="settingsWebhookCopywriter" placeholder="https://your-n8n.com/webhook/copywriter" value="">
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">Форматирование текста (FORMAT CAROUSEL TEXT)</label>
-                        <input type="text" class="form-input" id="settingsWebhookFormat" placeholder="https://your-n8n.com/webhook/format-text" value="">
-                    </div>
-
-                    <div class="form-group">
-                        <label class="form-label">AI Чат (Chat Webhook)</label>
-                        <input type="text" class="form-input" id="settingsWebhookChat" placeholder="https://your-n8n.com/webhook/carousel-chat" value="">
-                    </div>
-
-                    <button class="btn btn-primary" onclick="saveWebhookSettings()" style="width:100%;justify-content:center;">
-                        Сохранить настройки
-                    </button>
-                </div>
-
-                <div style="background:var(--bg-tertiary);border:1px solid var(--border);border-radius:10px;padding:20px;">
-                    <div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:12px;">Инструкция по настройке n8n</div>
-                    <div style="font-size:13px;color:var(--text-secondary);line-height:1.6;">
-                        <p style="margin-bottom:8px;">Для каждого workflow в n8n нужно добавить <b>Webhook</b> ноду:</p>
-                        <ol style="padding-left:20px;">
-                            <li style="margin-bottom:6px;">Откройте workflow в n8n</li>
-                            <li style="margin-bottom:6px;">Добавьте ноду "Webhook" (HTTP Method: POST)</li>
-                            <li style="margin-bottom:6px;">Подключите её параллельно к существующему executeWorkflowTrigger</li>
-                            <li style="margin-bottom:6px;">Скопируйте Production URL вебхука и вставьте выше</li>
-                        </ol>
-                        <p style="margin-top:12px;padding:10px;background:var(--bg-primary);border-radius:6px;font-family:monospace;font-size:11px;">
-                            Генератор заголовков: входные поля — user_text<br>
-                            Генератор текста: входные поля — user_text, selected_headline, slides_count<br>
-                            FORMAT TEXT: входные поля — user_text
-                        </p>
+                <div class="profile-section" id="linkedAccountsSection">
+                    <div class="profile-section-title">Привязанные аккаунты</div>
+                    <div class="profile-section-subtitle">Привяжите дополнительные способы входа, чтобы использовать один аккаунт</div>
+                    <div id="linkedAccountsList">
+                        <div class="linked-account-row">
+                            <div class="linked-account-info">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="#26A5E4"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.2-.08-.06-.19-.04-.28-.02-.12.03-2.02 1.28-5.69 3.77-.54.37-1.03.55-1.47.54-.48-.01-1.4-.27-2.09-.49-.84-.27-1.51-.42-1.45-.89.03-.24.38-.49 1.05-.74 4.11-1.79 6.85-2.97 8.24-3.54 3.93-1.62 4.74-1.9 5.27-1.91.12 0 .37.03.54.17.14.12.18.28.2.45-.01.06.01.24 0 .37z"/></svg>
+                                <span>Telegram</span>
+                            </div>
+                            <div class="linked-account-status" id="linkedTelegram">—</div>
+                        </div>
+                        <div class="linked-account-row">
+                            <div class="linked-account-info">
+                                <svg width="20" height="20" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+                                <span>Google</span>
+                            </div>
+                            <div class="linked-account-status" id="linkedGoogle">—</div>
+                        </div>
+                        <div class="linked-account-row" style="border-bottom:none;">
+                            <div class="linked-account-info">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0d0d0d" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                                <span>Email</span>
+                            </div>
+                            <div class="linked-account-status" id="linkedEmail">—</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -5043,33 +5025,6 @@
                     <span class="tv-title">Мой профиль</span>
                 </div>
                 <div class="admin-content" id="profileContent">
-                    <div class="profile-section" id="linkedAccountsSection">
-                        <div class="profile-section-title">Привязанные аккаунты</div>
-                        <div class="profile-section-subtitle">Привяжите дополнительные способы входа, чтобы использовать один аккаунт</div>
-                        <div id="linkedAccountsList">
-                            <div class="linked-account-row">
-                                <div class="linked-account-info">
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="#26A5E4"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.2-.08-.06-.19-.04-.28-.02-.12.03-2.02 1.28-5.69 3.77-.54.37-1.03.55-1.47.54-.48-.01-1.4-.27-2.09-.49-.84-.27-1.51-.42-1.45-.89.03-.24.38-.49 1.05-.74 4.11-1.79 6.85-2.97 8.24-3.54 3.93-1.62 4.74-1.9 5.27-1.91.12 0 .37.03.54.17.14.12.18.28.2.45-.01.06.01.24 0 .37z"/></svg>
-                                    <span>Telegram</span>
-                                </div>
-                                <div class="linked-account-status" id="linkedTelegram">—</div>
-                            </div>
-                            <div class="linked-account-row">
-                                <div class="linked-account-info">
-                                    <svg width="20" height="20" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-                                    <span>Google</span>
-                                </div>
-                                <div class="linked-account-status" id="linkedGoogle">—</div>
-                            </div>
-                            <div class="linked-account-row" style="border-bottom:none;">
-                                <div class="linked-account-info">
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0d0d0d" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
-                                    <span>Email</span>
-                                </div>
-                                <div class="linked-account-status" id="linkedEmail">—</div>
-                            </div>
-                        </div>
-                    </div>
                     <div class="profile-section">
                         <div class="profile-section-title">Что обо мне знает ИИ</div>
                         <div id="profileSummaryArea">
@@ -6266,9 +6221,6 @@
             summaryEl.textContent = 'Загрузка...';
             summaryEl.classList.add('profile-summary-empty');
 
-            // Render linked accounts section
-            renderLinkedAccounts();
-
             // Fetch fresh profile from server
             try {
                 const resp = await apiFetch(`${API_URL}/api/user/profile?user_id=${currentUser.id}`);
@@ -6570,6 +6522,11 @@
             document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
             const navItem = document.querySelector(`.nav-item[data-tab="${tabId}"]`);
             if (navItem) navItem.classList.add('active');
+
+            // Render linked accounts when switching to settings
+            if (tabId === 'settings' && currentUser) {
+                renderLinkedAccounts();
+            }
 
             // Show/hide editor sidebar and props panel
             const sidebarEditor = document.getElementById('sidebar-editor');
@@ -9969,7 +9926,7 @@
             // Hide/show settings tab based on admin status
             const settingsBtn = document.querySelector('.nav-item[data-tab="settings"]');
             if (settingsBtn) {
-                settingsBtn.style.display = currentUser.is_admin ? '' : 'none';
+                settingsBtn.style.display = '';
             }
 
             // Show project sidebar and update user section
