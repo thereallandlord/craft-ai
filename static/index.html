@@ -2667,7 +2667,7 @@
             .chat-msg { max-width: 92%; }
         }
 
-        /* === Login Modal (ChatGPT-style popup) === */
+        /* === Login Modal (ChatGPT-exact styles) === */
         .login-modal-backdrop {
             position: fixed;
             top: 0;
@@ -2677,148 +2677,168 @@
             background: rgba(0,0,0,0.5);
             z-index: 10000;
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             justify-content: center;
-            animation: fadeIn 0.2s ease;
+            padding-top: 36px;
         }
-
-        .login-modal-backdrop.hidden {
-            display: none;
-        }
-
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .login-modal-backdrop.hidden { display: none; }
 
         .login-card {
-            background: var(--bg-primary);
+            background: #fff;
             border-radius: 16px;
-            box-shadow: 0 24px 80px rgba(0,0,0,0.25);
-            text-align: center;
-            max-width: 400px;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.15);
+            max-width: 388px;
             width: 90%;
-            padding: 40px 32px 32px;
+            padding: 0;
             position: relative;
-            animation: slideUp 0.25s ease;
+            animation: slideUp 0.2s ease;
         }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 
-        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-
+        .login-card-header {
+            display: flex;
+            justify-content: flex-end;
+            padding: 10px 10px 0 16px;
+        }
         .login-close-btn {
-            position: absolute;
-            top: 12px;
-            right: 12px;
-            width: 32px;
-            height: 32px;
+            width: 36px;
+            height: 36px;
             border: none;
             background: none;
             font-size: 18px;
-            color: var(--text-muted);
+            color: #0d0d0d;
             cursor: pointer;
-            border-radius: 8px;
+            border-radius: 9999px;
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: background 0.15s, color 0.15s;
+            transition: background 0.15s;
         }
-        .login-close-btn:hover {
-            background: var(--bg-tertiary);
-            color: var(--text-primary);
+        .login-close-btn:hover { background: rgba(0,0,0,0.05); }
+
+        .login-card-content {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            padding: 0 24px 40px;
+            text-align: center;
         }
 
-        .login-logo {
-            font-size: 32px;
-            font-weight: 800;
-            letter-spacing: -1px;
-            color: var(--text-primary);
-            margin-bottom: 8px;
+        .login-title {
+            font-size: 30px;
+            font-weight: 400;
+            color: #0d0d0d;
+            line-height: 36px;
+            margin: 0;
         }
-
         .login-subtitle {
-            font-size: 15px;
-            color: var(--text-secondary);
-            margin-bottom: 28px;
-            line-height: 1.5;
+            font-size: 16px;
+            color: #0d0d0d;
+            line-height: 24px;
+            margin: 0 0 -4px;
         }
 
         .login-provider-btn {
-            display: flex;
+            display: inline-flex;
             align-items: center;
             justify-content: center;
             gap: 10px;
             width: 100%;
-            padding: 12px 16px;
-            border: 1px solid var(--border-color);
-            border-radius: 10px;
-            background: var(--bg-primary);
-            color: var(--text-primary);
-            font-size: 15px;
+            height: 52px;
+            padding: 0 12px;
+            border: 0.5px solid rgba(0,0,0,0.15);
+            border-radius: 9999px;
+            background: #fff;
+            color: #0d0d0d;
+            font-size: 16px;
             font-weight: 500;
             cursor: pointer;
-            transition: background 0.15s, border-color 0.15s;
-            margin-bottom: 10px;
+            transition: background 0.15s;
         }
-        .login-provider-btn:hover {
-            background: var(--bg-secondary);
-            border-color: var(--text-muted);
-        }
+        .login-provider-btn:hover { background: #f9f9f9; }
 
         .login-divider {
-            display: flex;
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
             align-items: center;
-            gap: 12px;
-            margin: 16px 0;
-            color: var(--text-muted);
-            font-size: 13px;
         }
-        .login-divider::before,
-        .login-divider::after {
-            content: '';
-            flex: 1;
+        .login-divider-line {
             height: 1px;
-            background: var(--border-color);
+            background: rgba(13,13,13,0.15);
+        }
+        .login-divider span {
+            font-size: 13px;
+            font-weight: 500;
+            color: #0d0d0d;
+            text-transform: uppercase;
+            padding: 0 24px;
         }
 
-        .login-email-section input {
-            width: 100%;
-            padding: 11px 14px;
-            border: 1px solid var(--border-color);
-            border-radius: 10px;
-            font-size: 14px;
-            outline: none;
-            background: var(--bg-primary);
-            color: var(--text-primary);
+        .login-email-wrap {
+            border: 0.5px solid rgba(13,13,13,0.15);
+            border-radius: 9999px;
+            overflow: hidden;
             transition: border-color 0.15s;
         }
-        .login-email-section input:focus {
-            border-color: var(--accent);
+        .login-email-wrap:focus-within {
+            border-color: #0d0d0d;
+        }
+        .login-email-wrap input {
+            width: 100%;
+            height: 52px;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 9999px;
+            font-size: 16px;
+            outline: none;
+            background: #fff;
+            color: #0d0d0d;
+        }
+        .login-email-wrap input::placeholder { color: #8f8f8f; }
+
+        .login-password-wrap {
+            border: 0.5px solid rgba(13,13,13,0.15);
+            border-radius: 9999px;
+            overflow: hidden;
+            transition: border-color 0.15s;
+        }
+        .login-password-wrap:focus-within { border-color: #0d0d0d; }
+        .login-password-wrap input {
+            width: 100%;
+            height: 52px;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 9999px;
+            font-size: 16px;
+            outline: none;
+            background: #fff;
+            color: #0d0d0d;
         }
 
-        .login-email-btn {
+        .login-continue-btn {
             width: 100%;
-            padding: 11px;
+            height: 52px;
             border: none;
-            border-radius: 10px;
-            background: var(--accent);
-            color: white;
-            font-size: 14px;
-            font-weight: 600;
+            border-radius: 9999px;
+            background: #0d0d0d;
+            color: #fff;
+            font-size: 16px;
+            font-weight: 500;
             cursor: pointer;
             transition: opacity 0.15s;
-            margin-top: 10px;
         }
-        .login-email-btn:hover { opacity: 0.9; }
+        .login-continue-btn:hover { opacity: 0.85; }
 
         .login-error {
-            margin-top: 16px;
             padding: 12px 16px;
             background: #fef2f2;
-            border: 1px solid #fecaca;
-            border-radius: 10px;
+            border: 0.5px solid #fecaca;
+            border-radius: 12px;
             color: #dc2626;
             font-size: 13px;
             display: none;
             text-align: left;
         }
-
         body.dark-theme .login-error {
             background: #451a1a;
             border-color: #7f1d1d;
@@ -2826,24 +2846,22 @@
         }
 
         .login-loading {
-            margin-top: 16px;
-            color: var(--text-secondary);
+            color: #8f8f8f;
             font-size: 14px;
             display: none;
         }
 
         .login-legal {
-            margin-top: 20px;
+            padding: 16px 24px;
             font-size: 12px;
-            color: var(--text-muted);
+            color: #8f8f8f;
             line-height: 1.5;
+            text-align: center;
         }
-        .login-legal a {
-            color: var(--text-secondary);
-            text-decoration: underline;
-        }
+        .login-legal a { color: #8f8f8f; text-decoration: underline; }
+        .login-legal a:hover { color: #0d0d0d; }
 
-        /* Header auth bar (anonymous users) */
+        /* Header auth bar (ChatGPT-exact) */
         .header-auth-bar {
             position: fixed;
             top: 0;
@@ -2852,66 +2870,71 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            padding: 12px 16px;
+            padding: 8px 16px;
         }
         .header-auth-bar.hidden { display: none; }
         .header-auth-btn {
-            padding: 8px 16px;
-            border-radius: 20px;
+            height: 36px;
+            padding: 0 12px;
+            border-radius: 9999px;
             font-size: 14px;
             font-weight: 500;
             cursor: pointer;
-            transition: all 0.15s;
-            border: none;
-        }
-        .header-auth-btn.secondary {
-            background: none;
-            color: var(--text-secondary);
-        }
-        .header-auth-btn.secondary:hover {
-            color: var(--text-primary);
+            transition: opacity 0.15s;
+            display: inline-flex;
+            align-items: center;
         }
         .header-auth-btn.primary {
-            background: var(--text-primary);
-            color: var(--bg-primary);
+            background: #0d0d0d;
+            color: #fff;
+            border: 0.5px solid transparent;
         }
-        .header-auth-btn.primary:hover {
-            opacity: 0.85;
+        .header-auth-btn.primary:hover { opacity: 0.85; }
+        .header-auth-btn.secondary {
+            background: #fff;
+            color: #0d0d0d;
+            border: 0.5px solid rgba(0,0,0,0.15);
         }
+        .header-auth-btn.secondary:hover { background: #f5f5f5; }
 
-        /* Sidebar CTA for anonymous users */
+        /* Sidebar CTA (ChatGPT-exact) */
         .ps-login-cta {
-            padding: 16px;
-            margin: 8px 12px;
-            border-radius: 12px;
-            background: var(--bg-secondary);
-            text-align: center;
+            padding: 12px 16px;
+            margin-top: auto;
+            text-align: left;
         }
         .ps-login-cta.hidden { display: none; }
+        .ps-login-cta-text {
+            margin-bottom: 24px;
+        }
         .ps-login-cta b {
             display: block;
-            font-size: 13px;
-            color: var(--text-primary);
-            margin-bottom: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #0d0d0d;
+            line-height: 20px;
+            margin-bottom: 8px;
         }
         .ps-login-cta p {
-            font-size: 12px;
-            color: var(--text-muted);
-            margin-bottom: 10px;
-            line-height: 1.4;
+            font-size: 14px;
+            color: #8f8f8f;
+            line-height: 20px;
+            margin: 0;
         }
         .ps-login-cta button {
             width: 100%;
-            padding: 8px;
-            border: none;
-            border-radius: 8px;
-            background: var(--accent);
-            color: white;
-            font-size: 13px;
+            height: 44px;
+            padding: 0 16px;
+            border: 0.5px solid rgba(0,0,0,0.15);
+            border-radius: 9999px;
+            background: #fff;
+            color: #0d0d0d;
+            font-size: 14px;
             font-weight: 500;
             cursor: pointer;
+            transition: background 0.15s;
         }
-        .ps-login-cta button:hover { opacity: 0.9; }
+        .ps-login-cta button:hover { background: #f5f5f5; }
 
         /* User info in nav bar */
         .nav-user {
@@ -4213,59 +4236,63 @@
     </style>
 </head>
 <body>
-    <!-- Login Modal (ChatGPT-style popup) -->
+    <!-- Login Modal (ChatGPT-exact popup) -->
     <div class="login-modal-backdrop hidden" id="loginModal" onclick="if(event.target===this)hideLoginModal()">
         <div class="login-card">
-            <button class="login-close-btn" onclick="hideLoginModal()">✕</button>
-            <div class="login-logo">CRAFT</div>
-            <div class="login-subtitle">Войдите или зарегистрируйтесь, чтобы сохранять чаты и генерировать контент</div>
+            <div class="login-card-header">
+                <button class="login-close-btn" onclick="hideLoginModal()">✕</button>
+            </div>
+            <div class="login-card-content">
+                <h2 class="login-title">Войти или зарегистрироваться</h2>
+                <p class="login-subtitle">Сохраняйте чаты, генерируйте контент и используйте AI-анализ.</p>
 
-            <!-- Provider buttons -->
-            <button class="login-provider-btn" onclick="googleLogin()">
-                <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
-                Продолжить с Google
-            </button>
+                <button class="login-provider-btn" onclick="googleLogin()">
+                    <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+                    Продолжить с Google
+                </button>
+                <button class="login-provider-btn" onclick="startBotLogin()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="#2AABEE"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/></svg>
+                    Продолжить с Telegram
+                </button>
 
-            <button class="login-provider-btn" onclick="startBotLogin()">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="#2AABEE"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/></svg>
-                Продолжить с Telegram
-            </button>
-
-            <div class="login-divider">или</div>
-
-            <!-- Email section -->
-            <div class="login-email-section" id="loginEmailSection">
-                <input type="email" id="loginEmail" placeholder="Адрес электронной почты" onkeydown="if(event.key==='Enter')handleEmailContinue()">
-                <input type="password" id="loginPassword" placeholder="Пароль" style="display:none;margin-top:10px;" onkeydown="if(event.key==='Enter')handleEmailContinue()">
-                <button class="login-email-btn" id="loginEmailBtn" onclick="handleEmailContinue()">Продолжить</button>
-                <div id="loginEmailSignupLink" style="display:none;margin-top:8px;font-size:13px;color:var(--text-muted);">
-                    Нет аккаунта? <a href="#" onclick="event.preventDefault();emailSignup()" style="color:var(--accent);text-decoration:none;font-weight:500;">Создать</a>
+                <div class="login-divider">
+                    <div class="login-divider-line"></div>
+                    <span>ИЛИ</span>
+                    <div class="login-divider-line"></div>
                 </div>
-            </div>
 
-            <!-- Telegram widget container (hidden by default, shown when Telegram chosen) -->
-            <div id="telegramLoginWidget" style="display:none"></div>
-            <div class="login-widget-loading" id="loginWidgetLoading" style="display:none;color:var(--text-muted);font-size:13px;padding:16px 0;">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="animation: spin 1s linear infinite; vertical-align: middle; margin-right:6px;"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-                Загрузка...
-            </div>
+                <div class="login-email-wrap" id="loginEmailWrap">
+                    <input type="email" id="loginEmail" placeholder="Адрес электронной почты" onkeydown="if(event.key==='Enter')handleEmailContinue()">
+                </div>
+                <div class="login-password-wrap" id="loginPasswordWrap" style="display:none">
+                    <input type="password" id="loginPassword" placeholder="Пароль" onkeydown="if(event.key==='Enter')handleEmailContinue()">
+                </div>
+                <button class="login-continue-btn" id="loginEmailBtn" onclick="handleEmailContinue()">Продолжить</button>
+                <div id="loginEmailSignupLink" style="display:none;font-size:13px;color:#8f8f8f;">
+                    Нет аккаунта? <a href="#" onclick="event.preventDefault();emailSignup()" style="color:#0d0d0d;text-decoration:none;font-weight:500;">Создать</a>
+                </div>
 
-            <div class="login-loading" id="loginLoading">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="animation: spin 1s linear infinite; vertical-align: middle;"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-                Проверяем данные...
+                <div id="telegramLoginWidget" style="display:none"></div>
+                <div id="loginWidgetLoading" style="display:none;color:#8f8f8f;font-size:13px;padding:16px 0;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="animation: spin 1s linear infinite; vertical-align: middle; margin-right:6px;"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                    Загрузка...
+                </div>
+                <div class="login-loading" id="loginLoading">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="animation: spin 1s linear infinite; vertical-align: middle;"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                    Проверяем данные...
+                </div>
+                <div class="login-error" id="loginError"></div>
             </div>
-            <div class="login-error" id="loginError"></div>
-
             <div class="login-legal">
                 Используя Craft AI, вы соглашаетесь с нашими <a href="/terms" target="_blank">условиями</a> и ознакомились с нашей <a href="/privacy" target="_blank">политикой конфиденциальности</a>.
             </div>
         </div>
     </div>
 
-    <!-- Header auth bar (anonymous users) -->
+    <!-- Header auth bar (ChatGPT-exact) -->
     <div class="header-auth-bar hidden" id="headerAuthBar">
-        <button class="header-auth-btn secondary" onclick="showLoginModal()">Войти</button>
-        <button class="header-auth-btn primary" onclick="showLoginModal()">Зарегистрироваться</button>
+        <button class="header-auth-btn primary" onclick="showLoginModal()">Войти</button>
+        <button class="header-auth-btn secondary" onclick="showLoginModal()">Зарегистрироваться бесплатно</button>
     </div>
 
     <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
@@ -4323,8 +4350,10 @@
             <div class="ps-projects" id="psProjectsList"></div>
             <!-- Sidebar CTA for anonymous users -->
             <div class="ps-login-cta hidden" id="psLoginCta">
-                <b>Получайте больше</b>
-                <p>Войдите, чтобы сохранять чаты и генерировать контент</p>
+                <div class="ps-login-cta-text">
+                    <b>Получайте ответы, адаптированные специально для вас</b>
+                    <p>Войдите в систему, чтобы сохранять чаты, генерировать контент и использовать AI-анализ.</p>
+                </div>
                 <button onclick="showLoginModal()">Войти</button>
             </div>
 
@@ -9385,9 +9414,9 @@
             // Reset to default state
             document.getElementById('loginEmail').value = '';
             document.getElementById('loginPassword').value = '';
-            document.getElementById('loginPassword').style.display = 'none';
+            document.getElementById('loginPasswordWrap').style.display = 'none';
             document.getElementById('loginEmailBtn').textContent = 'Продолжить';
-            document.getElementById('loginEmailSection').style.display = '';
+            document.getElementById('loginEmailWrap').style.display = '';
             document.getElementById('loginEmailSignupLink').style.display = 'none';
             document.getElementById('telegramLoginWidget').style.display = 'none';
             document.getElementById('loginLoading').style.display = 'none';
@@ -9410,9 +9439,10 @@
             const email = emailInput.value.trim();
             if (!email) { emailInput.focus(); return; }
 
-            if (passInput.style.display === 'none') {
+            const passWrap = document.getElementById('loginPasswordWrap');
+            if (passWrap.style.display === 'none') {
                 // Step 1: show password field
-                passInput.style.display = '';
+                passWrap.style.display = '';
                 passInput.focus();
                 document.getElementById('loginEmailBtn').textContent = 'Войти';
                 document.getElementById('loginEmailSignupLink').style.display = '';
