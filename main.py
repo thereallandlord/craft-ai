@@ -1175,6 +1175,14 @@ async def index():
     })
 
 
+@app.get("/privacy")
+async def privacy_page():
+    return FileResponse("static/privacy.html")
+
+@app.get("/terms")
+async def terms_page():
+    return FileResponse("static/terms.html")
+
 @app.get("/admin")
 async def admin_page():
     return FileResponse("static/admin.html", headers={
