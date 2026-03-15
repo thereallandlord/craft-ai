@@ -2762,13 +2762,28 @@ async def competitor_analyze(request: Request):
         transcript = None
         if analysis["is_video"] and config.get("transcript_endpoint"):
             try:
-                print(f"[competitor] Fetching transcript for {platform} video...")
+                print(f"[competitor] Fetching transcript for {platform} video: {url}")
+                # Try with normalized URL first
                 tr_resp = requests.get(
                     f"{SCRAPE_CREATORS_BASE}{config['transcript_endpoint']}",
                     params={"url": url},
                     headers={"x-api-key": SCRAPE_CREATORS_API_KEY},
                     timeout=30
                 )
+                print(f"[competitor] Transcript response: status={tr_resp.status_code}, body={tr_resp.text[:300]}")
+
+                # If normalized URL fails, try with original URL (before normalization)
+                if tr_resp.status_code != 200 and body.get("url", "").strip() != url:
+                    original_url = body.get("url", "").strip()
+                    print(f"[competitor] Retrying transcript with original URL: {original_url}")
+                    tr_resp = requests.get(
+                        f"{SCRAPE_CREATORS_BASE}{config['transcript_endpoint']}",
+                        params={"url": original_url},
+                        headers={"x-api-key": SCRAPE_CREATORS_API_KEY},
+                        timeout=30
+                    )
+                    print(f"[competitor] Transcript retry response: status={tr_resp.status_code}, body={tr_resp.text[:300]}")
+
                 if tr_resp.status_code == 200:
                     tr_data = tr_resp.json()
                     # Extract transcript text — different platforms may return different structures
@@ -2785,6 +2800,8 @@ async def competitor_analyze(request: Request):
                         ).strip()
                     if transcript:
                         print(f"[competitor] Got transcript: {len(transcript)} chars")
+                    else:
+                        print(f"[competitor] Transcript response OK but no text found in data: {str(tr_data)[:500]}")
                 else:
                     print(f"[competitor] Transcript unavailable (status {tr_resp.status_code})")
             except Exception as e:
