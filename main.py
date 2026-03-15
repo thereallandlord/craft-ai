@@ -148,6 +148,17 @@ if SUPABASE_URL:
 SCRAPE_CREATORS_API_KEY = os.getenv("SCRAPE_CREATORS_API_KEY", "")
 SCRAPE_CREATORS_BASE = "https://api.scrapecreators.com"
 
+# === Lava.top Payments ===
+LAVA_TOP_API_KEY = os.getenv("LAVA_TOP_API_KEY", "")
+LAVA_TOP_WEBHOOK_SECRET = os.getenv("LAVA_TOP_WEBHOOK_SECRET", "")
+LAVA_TOP_OFFER_PRO = os.getenv("LAVA_TOP_OFFER_PRO_MONTHLY", "")
+LAVA_TOP_OFFER_BUSINESS = os.getenv("LAVA_TOP_OFFER_BUSINESS_MONTHLY", "")
+LAVA_TOP_API_URL = "https://gate.lava.top"
+if LAVA_TOP_API_KEY:
+    print("✅ Lava.top configured")
+else:
+    print("⚠️ Lava.top not configured (LAVA_TOP_API_KEY missing)")
+
 PLATFORM_CONFIG = {
     "instagram": {
         "patterns": [r'instagram\.com/(p|reel|reels)/[\w-]+'],
@@ -1562,7 +1573,7 @@ async def render_slide(data: SlideData):
 
 
 @app.post("/generate")
-async def generate_carousel(request: GenerateRequest):
+async def generate_carousel(request: GenerateRequest, http_request: Request = None):
     """
     ПРАВИЛЬНАЯ ЛОГИКА v6.2:
     1. Первый слайд из request.slides → рендерится по INTRO template
@@ -1571,6 +1582,33 @@ async def generate_carousel(request: GenerateRequest):
 
     NEW v7.0: Поиск шаблона по template_id с fallback на template_name
     """
+    # --- Usage limit check ---
+    _auth_id_for_limit = None
+    _anon_token = None
+    if http_request:
+        _anon_token = _get_anon_token(http_request)
+        # Try user_id from query params
+        _uid = http_request.query_params.get("user_id", "")
+        if _uid:
+            try:
+                tg_id = int(_uid)
+                _acc = _get_auth_account_by_telegram(tg_id)
+                if _acc:
+                    _auth_id_for_limit = _acc["id"]
+            except (ValueError, TypeError):
+                pass
+        # Try JWT
+        if not _auth_id_for_limit:
+            _auth_header = http_request.headers.get("Authorization", "")
+            if _auth_header.startswith("Bearer "):
+                _claims = verify_supabase_jwt(_auth_header[7:])
+                if _claims and _claims.get("sub"):
+                    _auth_id_for_limit = _claims["sub"]
+    allowed, used, limit = await check_usage_limit(_auth_id_for_limit, _anon_token, "carousel_generate")
+    if not allowed:
+        raise HTTPException(status_code=429, detail={"error": "limit_reached", "used": used, "limit": limit, "action": "carousel_generate"})
+    await increment_usage(_auth_id_for_limit, _anon_token, "carousel_generate")
+
     # NEW: приоритет template_id над template_name
     template_identifier = request.template_id or request.template_name
     username = request.username or request.USERNAME or "@username"
@@ -2801,6 +2839,21 @@ async def competitor_analyze(request: Request):
     if not user_id:
         raise HTTPException(status_code=400, detail="user_id is required")
 
+    # --- Usage limit check ---
+    _auth_id_for_limit = None
+    _anon_token = _get_anon_token(request)
+    try:
+        tg_id = int(user_id)
+        _acc = _get_auth_account_by_telegram(tg_id)
+        if _acc:
+            _auth_id_for_limit = _acc["id"]
+    except (ValueError, TypeError):
+        pass
+    allowed, used, limit = await check_usage_limit(_auth_id_for_limit, _anon_token, "competitor_analysis")
+    if not allowed:
+        raise HTTPException(status_code=429, detail={"error": "limit_reached", "used": used, "limit": limit, "action": "competitor_analysis"})
+    await increment_usage(_auth_id_for_limit, _anon_token, "competitor_analysis")
+
     # Detect platform
     platform = detect_platform(url)
     if not platform:
@@ -3372,6 +3425,21 @@ async def ai_chat(request: Request):
         raise HTTPException(status_code=400, detail="user_id required")
     if not project_id and not sub_chat_id:
         raise HTTPException(status_code=400, detail="project_id or sub_chat_id required")
+
+    # --- Usage limit check ---
+    _auth_id_for_limit = None
+    _anon_token = _get_anon_token(request)
+    try:
+        tg_id = int(user_id)
+        _acc = _get_auth_account_by_telegram(tg_id)
+        if _acc:
+            _auth_id_for_limit = _acc["id"]
+    except (ValueError, TypeError):
+        pass
+    allowed, used, limit = await check_usage_limit(_auth_id_for_limit, _anon_token, "ai_chat")
+    if not allowed:
+        raise HTTPException(status_code=429, detail={"error": "limit_reached", "used": used, "limit": limit, "action": "ai_chat"})
+    await increment_usage(_auth_id_for_limit, _anon_token, "ai_chat")
 
     # === v3 mode: sub_chat_id ===
     if sub_chat_id:
@@ -4635,14 +4703,16 @@ async def check_usage_limit(auth_id: str | None, anon_token: str | None, action_
     if not supabase:
         return (True, 0, limit)
     try:
+        import datetime as _dt
+        today_str = _dt.date.today().isoformat()
         if auth_id:
             result = supabase.table("usage_tracking").select("count").eq(
                 "auth_id", auth_id
-            ).eq("action_type", action_type).eq("date", "today()").execute()
+            ).eq("action_type", action_type).eq("date", today_str).execute()
         elif anon_token:
             result = supabase.table("usage_tracking").select("count").eq(
                 "anon_token", anon_token
-            ).eq("action_type", action_type).eq("date", "today()").execute()
+            ).eq("action_type", action_type).eq("date", today_str).execute()
         else:
             return (limit > 0, 0, limit)
         used = result.data[0]["count"] if result.data else 0
@@ -5174,6 +5244,303 @@ async def auth_me(request: Request):
         },
         "auth_type": auth_type,
     }
+
+
+# ========================
+# PAYMENTS (Lava.top)
+# ========================
+
+PLAN_OFFER_MAP = {
+    "pro": LAVA_TOP_OFFER_PRO,
+    "business": LAVA_TOP_OFFER_BUSINESS,
+}
+
+
+@app.post("/api/payments/create-invoice")
+async def create_invoice(request: Request):
+    """Create a Lava.top invoice for plan upgrade."""
+    if not LAVA_TOP_API_KEY:
+        raise HTTPException(status_code=503, detail="Payments not configured")
+
+    auth_id, _ = await resolve_auth_id(request)
+    if not auth_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    # Read body manually since resolve_auth_id may have consumed it
+    body = await request.json()
+    plan = body.get("plan", "")
+    currency = body.get("currency", "USD")
+
+    if plan not in PLAN_OFFER_MAP:
+        raise HTTPException(status_code=400, detail=f"Invalid plan: {plan}. Must be 'pro' or 'business'")
+
+    offer_id = PLAN_OFFER_MAP[plan]
+    if not offer_id:
+        raise HTTPException(status_code=503, detail=f"Offer for plan '{plan}' not configured")
+
+    # Get user email
+    sb = require_supabase()
+    account = sb.table("auth_accounts").select("email").eq("id", auth_id).execute()
+    email = account.data[0]["email"] if account.data and account.data[0].get("email") else None
+    if not email:
+        raise HTTPException(status_code=400, detail="Email required for payment. Please link your email in Settings first.")
+
+    # Create invoice via Lava.top API
+    try:
+        resp = requests.post(
+            f"{LAVA_TOP_API_URL}/api/v3/invoice",
+            headers={"X-Api-Key": LAVA_TOP_API_KEY, "Content-Type": "application/json"},
+            json={
+                "email": email,
+                "offerId": offer_id,
+                "currency": currency,
+                "periodicity": "MONTHLY",
+                "buyerLanguage": "RU",
+                "clientUtm": {"auth_id": str(auth_id), "plan": plan},
+            },
+            timeout=15,
+        )
+        if resp.status_code == 201:
+            data = resp.json()
+            return {"paymentUrl": data.get("paymentUrl"), "invoiceId": data.get("id")}
+        else:
+            print(f"[lava] Create invoice error {resp.status_code}: {resp.text}")
+            raise HTTPException(status_code=502, detail="Payment service error")
+    except requests.exceptions.Timeout:
+        raise HTTPException(status_code=504, detail="Payment service timeout")
+    except Exception as e:
+        print(f"[lava] Create invoice exception: {e}")
+        raise HTTPException(status_code=500, detail="Payment error")
+
+
+@app.post("/api/payments/webhook")
+async def payments_webhook(request: Request):
+    """Handle Lava.top webhook events."""
+    import hashlib, hmac
+
+    body_bytes = await request.body()
+    body_str = body_bytes.decode("utf-8")
+
+    # Verify signature if webhook secret configured
+    if LAVA_TOP_WEBHOOK_SECRET:
+        signature = request.headers.get("signature", "")
+        expected = hmac.new(
+            LAVA_TOP_WEBHOOK_SECRET.encode(), body_str.encode(), hashlib.sha256
+        ).hexdigest()
+        if not hmac.compare_digest(signature, expected):
+            print(f"[lava webhook] Invalid signature")
+            raise HTTPException(status_code=403, detail="Invalid signature")
+
+    import json as json_mod
+    try:
+        payload = json_mod.loads(body_str)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON")
+
+    event_type = payload.get("eventType", "")
+    buyer_email = payload.get("buyer", {}).get("email", "")
+    contract_id = payload.get("contractId", "")
+    amount = payload.get("amount")
+    currency = payload.get("currency", "USD")
+    product_title = payload.get("product", {}).get("title", "")
+    client_utm = payload.get("clientUtm", {})
+
+    print(f"[lava webhook] {event_type} | email={buyer_email} | contract={contract_id} | product={product_title}")
+
+    sb = require_supabase()
+
+    # Find auth_account by email
+    auth_account = None
+    if buyer_email:
+        result = sb.table("auth_accounts").select("*").eq("email", buyer_email).execute()
+        if result.data:
+            auth_account = result.data[0]
+
+    if not auth_account:
+        print(f"[lava webhook] No auth_account found for email: {buyer_email}")
+        return {"status": "ok", "note": "no matching account"}
+
+    auth_id = auth_account["id"]
+
+    # Determine plan from UTM or product title
+    plan = client_utm.get("plan", "")
+    if not plan:
+        title_lower = product_title.lower()
+        if "business" in title_lower:
+            plan = "business"
+        elif "pro" in title_lower:
+            plan = "pro"
+        else:
+            plan = "pro"  # default
+
+    import datetime
+
+    if event_type == "payment.success":
+        # Activate subscription
+        sb.table("auth_accounts").update({
+            "plan": plan, "updated_at": datetime.datetime.utcnow().isoformat()
+        }).eq("id", auth_id).execute()
+
+        # Create/update subscription record
+        sb.table("subscriptions").upsert({
+            "auth_id": auth_id,
+            "plan": plan,
+            "status": "active",
+            "lava_subscription_id": contract_id,
+            "amount": int(amount * 100) if amount else 0,
+            "currency": currency,
+            "period_start": datetime.datetime.utcnow().isoformat(),
+            "period_end": (datetime.datetime.utcnow() + datetime.timedelta(days=30)).isoformat(),
+            "updated_at": datetime.datetime.utcnow().isoformat(),
+        }, on_conflict="auth_id").execute()
+
+        # Clear auth cache
+        _auth_cache.pop(auth_id, None)
+        print(f"[lava webhook] Activated {plan} for {buyer_email}")
+
+    elif event_type == "subscription.recurring.payment.success":
+        # Renew subscription
+        sb.table("auth_accounts").update({
+            "plan": plan, "updated_at": datetime.datetime.utcnow().isoformat()
+        }).eq("id", auth_id).execute()
+
+        sb.table("subscriptions").update({
+            "status": "active",
+            "period_start": datetime.datetime.utcnow().isoformat(),
+            "period_end": (datetime.datetime.utcnow() + datetime.timedelta(days=30)).isoformat(),
+            "updated_at": datetime.datetime.utcnow().isoformat(),
+        }).eq("auth_id", auth_id).execute()
+
+        _auth_cache.pop(auth_id, None)
+        print(f"[lava webhook] Renewed {plan} for {buyer_email}")
+
+    elif event_type == "subscription.cancelled":
+        sb.table("auth_accounts").update({
+            "plan": "free", "updated_at": datetime.datetime.utcnow().isoformat()
+        }).eq("id", auth_id).execute()
+
+        sb.table("subscriptions").update({
+            "status": "cancelled",
+            "updated_at": datetime.datetime.utcnow().isoformat(),
+        }).eq("auth_id", auth_id).execute()
+
+        _auth_cache.pop(auth_id, None)
+        print(f"[lava webhook] Cancelled for {buyer_email}")
+
+    elif event_type == "subscription.recurring.payment.failed":
+        sb.table("subscriptions").update({
+            "status": "past_due",
+            "updated_at": datetime.datetime.utcnow().isoformat(),
+        }).eq("auth_id", auth_id).execute()
+        print(f"[lava webhook] Payment failed for {buyer_email}")
+
+    return {"status": "ok"}
+
+
+@app.get("/api/payments/subscription")
+async def get_subscription(request: Request):
+    """Get user's subscription status and usage."""
+    auth_id, _ = await resolve_auth_id(request)
+    if not auth_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    sb = require_supabase()
+    account = sb.table("auth_accounts").select("plan,is_club_member").eq("id", auth_id).execute()
+    plan = "free"
+    is_club = False
+    if account.data:
+        plan = account.data[0].get("plan", "free")
+        is_club = account.data[0].get("is_club_member", False)
+
+    # Get subscription info
+    sub_data = None
+    sub = sb.table("subscriptions").select("*").eq("auth_id", auth_id).execute()
+    if sub.data:
+        s = sub.data[0]
+        sub_data = {
+            "status": s.get("status"),
+            "plan": s.get("plan"),
+            "period_end": s.get("period_end"),
+            "amount": s.get("amount"),
+            "currency": s.get("currency"),
+        }
+
+    # Get today's usage
+    import datetime
+    today = datetime.date.today().isoformat()
+    effective_plan = "club" if is_club else plan
+    limits = PLAN_LIMITS.get(effective_plan, {})
+
+    usage = {}
+    for action in ["ai_chat", "carousel_generate", "competitor_analysis"]:
+        try:
+            result = sb.table("usage_tracking").select("count").eq(
+                "auth_id", auth_id
+            ).eq("action_type", action).eq("date", today).execute()
+            used = result.data[0]["count"] if result.data else 0
+        except Exception:
+            used = 0
+        limit = limits.get(action, -1)
+        usage[action] = {"used": used, "limit": limit}
+
+    return {
+        "plan": plan,
+        "effective_plan": effective_plan,
+        "is_club_member": is_club,
+        "subscription": sub_data,
+        "usage": usage,
+    }
+
+
+@app.post("/api/payments/cancel")
+async def cancel_subscription(request: Request):
+    """Cancel user's subscription."""
+    import datetime
+    auth_id, _ = await resolve_auth_id(request)
+    if not auth_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    sb = require_supabase()
+
+    # Get subscription
+    sub = sb.table("subscriptions").select("*").eq("auth_id", auth_id).eq("status", "active").execute()
+    if not sub.data:
+        raise HTTPException(status_code=404, detail="No active subscription")
+
+    s = sub.data[0]
+    contract_id = s.get("lava_subscription_id")
+
+    # Get email
+    account = sb.table("auth_accounts").select("email").eq("id", auth_id).execute()
+    email = account.data[0]["email"] if account.data else ""
+
+    # Cancel on Lava.top
+    if LAVA_TOP_API_KEY and contract_id and email:
+        try:
+            resp = requests.delete(
+                f"{LAVA_TOP_API_URL}/api/v1/subscriptions",
+                headers={"X-Api-Key": LAVA_TOP_API_KEY},
+                params={"contractId": contract_id, "email": email},
+                timeout=15,
+            )
+            print(f"[lava] Cancel subscription: {resp.status_code}")
+        except Exception as e:
+            print(f"[lava] Cancel error: {e}")
+
+    # Update local DB
+    sb.table("subscriptions").update({
+        "status": "cancelled",
+        "updated_at": datetime.datetime.utcnow().isoformat(),
+    }).eq("auth_id", auth_id).execute()
+
+    sb.table("auth_accounts").update({
+        "plan": "free",
+        "updated_at": datetime.datetime.utcnow().isoformat(),
+    }).eq("id", auth_id).execute()
+
+    _auth_cache.pop(auth_id, None)
+
+    return {"status": "cancelled"}
 
 
 async def _ensure_webhook(request: Request):

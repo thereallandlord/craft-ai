@@ -1184,6 +1184,249 @@
             margin-bottom: 32px;
         }
 
+        /* Pricing page */
+        .pricing-cards {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+        .pricing-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 28px 24px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .pricing-card:hover {
+            border-color: var(--text-secondary);
+        }
+        .pricing-card-featured {
+            border-color: var(--accent-color, #000);
+            box-shadow: 0 0 0 1px var(--accent-color, #000);
+        }
+        .pricing-card-active {
+            border-color: #10b981;
+            box-shadow: 0 0 0 1px #10b981;
+        }
+        .pricing-badge {
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--accent-color, #000);
+            color: #fff;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 3px 12px;
+            border-radius: 9999px;
+            white-space: nowrap;
+        }
+        .pricing-card-header {
+            margin-bottom: 24px;
+        }
+        .pricing-plan-name {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+        .pricing-price {
+            display: flex;
+            align-items: baseline;
+            gap: 4px;
+            margin-bottom: 8px;
+        }
+        .pricing-amount {
+            font-size: 36px;
+            font-weight: 800;
+            color: var(--text-primary);
+            line-height: 1;
+        }
+        .pricing-period {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+        .pricing-desc {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+        .pricing-features {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 24px 0;
+            flex: 1;
+        }
+        .pricing-features li {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: var(--text-primary);
+            padding: 6px 0;
+        }
+        .pricing-features li svg {
+            flex-shrink: 0;
+            color: #10b981;
+        }
+        .pricing-btn {
+            width: 100%;
+            padding: 12px;
+            border-radius: 9999px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: opacity 0.2s;
+        }
+        .pricing-btn:hover { opacity: 0.85; }
+        .pricing-btn-current {
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+            cursor: default;
+        }
+        .pricing-btn-current:hover { opacity: 1; }
+        .pricing-btn-upgrade {
+            background: var(--accent-color, #000);
+            color: #fff;
+        }
+        .pricing-btn-manage {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+        }
+        .pricing-subscription-info {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px 24px;
+            margin-top: 24px;
+        }
+        .pricing-sub-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+        }
+        .pricing-sub-details {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 16px;
+        }
+        .pricing-btn-cancel {
+            background: transparent;
+            border: 1px solid #ef4444;
+            color: #ef4444;
+            padding: 8px 20px;
+            border-radius: 9999px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .pricing-btn-cancel:hover {
+            background: rgba(239,68,68,0.08);
+        }
+        .pricing-usage-bars {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .pricing-usage-row {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .pricing-usage-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+        .pricing-usage-bar {
+            height: 6px;
+            background: var(--bg-secondary);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .pricing-usage-fill {
+            height: 100%;
+            border-radius: 3px;
+            background: var(--accent-color, #000);
+            transition: width 0.3s;
+        }
+        .pricing-usage-fill.warning { background: #f59e0b; }
+        .pricing-usage-fill.danger { background: #ef4444; }
+
+        /* Plan badge */
+        .plan-badge {
+            display: inline-flex;
+            align-items: center;
+            font-size: 10px;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 9999px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .plan-badge-free { background: var(--bg-secondary); color: var(--text-secondary); }
+        .plan-badge-pro { background: #dbeafe; color: #2563eb; }
+        .plan-badge-business { background: #fef3c7; color: #d97706; }
+        .plan-badge-club { background: #ede9fe; color: #7c3aed; }
+
+        /* Upgrade modal */
+        .upgrade-modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .upgrade-modal {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 32px;
+            max-width: 420px;
+            width: 90%;
+            text-align: center;
+        }
+        .upgrade-modal h3 {
+            font-size: 20px;
+            font-weight: 700;
+            margin: 0 0 8px 0;
+            color: var(--text-primary);
+        }
+        .upgrade-modal p {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin: 0 0 24px 0;
+        }
+        .upgrade-modal-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+        }
+        .upgrade-modal-actions button {
+            padding: 10px 24px;
+            border-radius: 9999px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+        }
+
+        @media (max-width: 768px) {
+            .pricing-cards {
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
+        }
+
         .form-group {
             margin-bottom: 20px;
         }
@@ -4431,6 +4674,10 @@
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M2 12h20"/><path d="M12 2v20"/><path d="m2 2 10 10"/></svg>
                         Персонализация
                     </button>
+                    <button class="ps-user-menu-item" onclick="event.stopPropagation(); switchTab('pricing'); closeUserMenu();">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 17a5 5 0 0 0 10 0c0-2.76-2.5-5-5-3l-1.9-1.9"/><path d="M15.7 13.3 22 7l-3-3-6.3 6.3"/><path d="m4.5 19.5-.5.5"/><path d="m10.1 13.9-.1.1"/><path d="m22 2-4 4"/></svg>
+                        Тарифы
+                    </button>
                     <button class="ps-user-menu-item" onclick="event.stopPropagation(); switchTab('settings'); closeUserMenu();">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
                         Настройки
@@ -4443,6 +4690,7 @@
                 </div>
                 <img class="ps-user-avatar" id="psUserAvatar" src="" alt="" onerror="this.style.display='none'">
                 <span class="ps-user-name" id="psUserName"></span>
+                <span class="plan-badge" id="planBadge" style="display:none"></span>
             </div>
         </aside>
 
@@ -4475,6 +4723,10 @@
             <button class="nav-item" data-tab="history" onclick="switchTab('history')">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                 <span class="nav-tooltip">История</span>
+            </button>
+            <button class="nav-item" data-tab="pricing" onclick="switchTab('pricing')">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 17a5 5 0 0 0 10 0c0-2.76-2.5-5-5-3l-1.9-1.9"/><path d="M15.7 13.3 22 7l-3-3-6.3 6.3"/><path d="m4.5 19.5-.5.5"/><path d="m10.1 13.9-.1.1"/><path d="m22 2-4 4"/></svg>
+                <span class="nav-tooltip">Тарифы</span>
             </button>
             <button class="nav-item" data-tab="settings" onclick="switchTab('settings')">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -4845,6 +5097,87 @@
         </div>
 
         <!-- === TAB: Settings === -->
+        <!-- === TAB: Pricing === -->
+        <div class="tab-page" id="tab-pricing">
+            <div class="tab-page-content">
+                <div class="tab-page-title">Тарифы</div>
+                <div class="tab-page-subtitle">Выберите подходящий план для вашего бизнеса</div>
+
+                <div class="pricing-cards" id="pricingCards">
+                    <!-- Free -->
+                    <div class="pricing-card" id="pricingFree">
+                        <div class="pricing-card-header">
+                            <div class="pricing-plan-name">Free</div>
+                            <div class="pricing-price">
+                                <span class="pricing-amount">$0</span>
+                                <span class="pricing-period">/ навсегда</span>
+                            </div>
+                            <div class="pricing-desc">Для знакомства с платформой</div>
+                        </div>
+                        <ul class="pricing-features">
+                            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>5 анализов конкурентов / день</li>
+                            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>3 генерации каруселей / день</li>
+                            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>20 сообщений ИИ / день</li>
+                            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>Все шаблоны</li>
+                        </ul>
+                        <button class="pricing-btn pricing-btn-current" id="pricingBtnFree" disabled>Текущий план</button>
+                    </div>
+
+                    <!-- Pro -->
+                    <div class="pricing-card pricing-card-featured" id="pricingPro">
+                        <div class="pricing-badge">Популярный</div>
+                        <div class="pricing-card-header">
+                            <div class="pricing-plan-name">Pro</div>
+                            <div class="pricing-price">
+                                <span class="pricing-amount">$9</span>
+                                <span class="pricing-period">/ месяц</span>
+                            </div>
+                            <div class="pricing-desc">Для активного создания контента</div>
+                        </div>
+                        <ul class="pricing-features">
+                            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>50 анализов конкурентов / день</li>
+                            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>30 генераций каруселей / день</li>
+                            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>200 сообщений ИИ / день</li>
+                            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>Приоритетная поддержка</li>
+                        </ul>
+                        <button class="pricing-btn pricing-btn-upgrade" id="pricingBtnPro" onclick="subscribePlan('pro')">Обновить</button>
+                    </div>
+
+                    <!-- Business -->
+                    <div class="pricing-card" id="pricingBusiness">
+                        <div class="pricing-card-header">
+                            <div class="pricing-plan-name">Business</div>
+                            <div class="pricing-price">
+                                <span class="pricing-amount">$29</span>
+                                <span class="pricing-period">/ месяц</span>
+                            </div>
+                            <div class="pricing-desc">Для команд и агентств</div>
+                        </div>
+                        <ul class="pricing-features">
+                            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>Безлимитные анализы</li>
+                            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>Безлимитные генерации</li>
+                            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>Безлимитные сообщения ИИ</li>
+                            <li><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>Приоритетная поддержка</li>
+                        </ul>
+                        <button class="pricing-btn pricing-btn-upgrade" id="pricingBtnBusiness" onclick="subscribePlan('business')">Обновить</button>
+                    </div>
+                </div>
+
+                <!-- Current subscription info -->
+                <div class="pricing-subscription-info" id="pricingSubInfo" style="display:none;">
+                    <div class="pricing-sub-title">Текущая подписка</div>
+                    <div class="pricing-sub-details" id="pricingSubDetails"></div>
+                    <button class="pricing-btn-cancel" id="pricingCancelBtn" onclick="cancelSubscription()">Отменить подписку</button>
+                </div>
+
+                <!-- Usage stats -->
+                <div class="pricing-usage" id="pricingUsage" style="margin-top:32px;">
+                    <div class="pricing-sub-title">Использование сегодня</div>
+                    <div class="pricing-usage-bars" id="pricingUsageBars"></div>
+                </div>
+            </div>
+        </div>
+
         <div class="tab-page" id="tab-settings">
             <div class="tab-page-content">
                 <div class="tab-page-title">Настройки</div>
@@ -6295,6 +6628,9 @@
                         currentUser.telegram_id = user.telegram_id;
                         currentUser.google_id = user.google_id;
                         currentUser.email = user.email;
+                        currentUser.plan = user.plan || 'free';
+                        localStorage.setItem('craft_user', JSON.stringify(currentUser));
+                        updatePlanBadge();
                     }
                 }
             } catch(e) {
@@ -6599,6 +6935,175 @@
             btn.textContent = 'Привязать';
         }
 
+        // ==================== PRICING & SUBSCRIPTION ====================
+
+        async function loadPricingPage() {
+            const plan = (currentUser && currentUser.plan) || 'free';
+            // Update card active states
+            document.querySelectorAll('.pricing-card').forEach(c => c.classList.remove('pricing-card-active'));
+            document.querySelectorAll('.pricing-btn').forEach(b => { b.disabled = false; b.className = 'pricing-btn pricing-btn-upgrade'; b.textContent = 'Обновить'; });
+
+            const activeCard = document.getElementById('pricing' + plan.charAt(0).toUpperCase() + plan.slice(1));
+            if (activeCard) {
+                activeCard.classList.add('pricing-card-active');
+                const btn = activeCard.querySelector('.pricing-btn');
+                if (btn) { btn.className = 'pricing-btn pricing-btn-current'; btn.textContent = 'Текущий план'; btn.disabled = true; }
+            }
+
+            // For plans above current, show "upgrade"; for below, show "текущий план лучше"
+            const planOrder = ['free', 'pro', 'business'];
+            const currentIdx = planOrder.indexOf(plan);
+            planOrder.forEach((p, idx) => {
+                const btn = document.getElementById('pricingBtn' + p.charAt(0).toUpperCase() + p.slice(1));
+                if (!btn) return;
+                if (idx === currentIdx) {
+                    btn.className = 'pricing-btn pricing-btn-current'; btn.textContent = 'Текущий план'; btn.disabled = true;
+                } else if (idx < currentIdx) {
+                    btn.className = 'pricing-btn pricing-btn-current'; btn.textContent = 'Включён в текущий'; btn.disabled = true;
+                } else {
+                    btn.className = 'pricing-btn pricing-btn-upgrade'; btn.textContent = 'Обновить'; btn.disabled = false;
+                }
+            });
+
+            // Load subscription info
+            if (currentUser) {
+                try {
+                    const resp = await fetch(`${API_URL}/api/payments/subscription?user_id=${currentUser.id}`);
+                    if (resp.ok) {
+                        const data = await resp.json();
+                        // Show sub info if on paid plan
+                        const subInfo = document.getElementById('pricingSubInfo');
+                        if (data.subscription && data.subscription.status === 'active') {
+                            const periodEnd = data.subscription.period_end ? new Date(data.subscription.period_end).toLocaleDateString('ru') : '—';
+                            document.getElementById('pricingSubDetails').innerHTML =
+                                `План: <strong>${data.plan.toUpperCase()}</strong> · Следующий платёж: ${periodEnd}`;
+                            subInfo.style.display = '';
+                        } else {
+                            subInfo.style.display = 'none';
+                        }
+
+                        // Render usage bars
+                        renderUsageBars(data.usage || {});
+                    }
+                } catch(e) {
+                    console.error('[pricing] Failed to load subscription:', e);
+                }
+            }
+        }
+
+        function renderUsageBars(usage) {
+            const container = document.getElementById('pricingUsageBars');
+            if (!container) return;
+            const labels = {
+                ai_chat: 'Сообщения ИИ',
+                carousel_generate: 'Генерации каруселей',
+                competitor_analysis: 'Анализы конкурентов'
+            };
+            let html = '';
+            for (const [key, label] of Object.entries(labels)) {
+                const u = usage[key] || { used: 0, limit: -1 };
+                const used = u.used || 0;
+                const limit = u.limit;
+                const limitText = limit === -1 ? '∞' : limit;
+                const pct = limit === -1 ? 0 : (limit > 0 ? Math.min(100, (used / limit) * 100) : 100);
+                const fillClass = pct >= 90 ? 'danger' : pct >= 70 ? 'warning' : '';
+                html += `<div class="pricing-usage-row">
+                    <div class="pricing-usage-label"><span>${label}</span><span>${used} / ${limitText}</span></div>
+                    <div class="pricing-usage-bar"><div class="pricing-usage-fill ${fillClass}" style="width:${pct}%"></div></div>
+                </div>`;
+            }
+            container.innerHTML = html;
+        }
+
+        async function subscribePlan(plan) {
+            if (!currentUser) {
+                showLoginModal();
+                return;
+            }
+            if (!currentUser.email) {
+                showToast('Привяжите email в Настройках, чтобы оформить подписку', 'warning');
+                switchTab('settings');
+                return;
+            }
+            try {
+                const resp = await fetch(`${API_URL}/api/payments/create-invoice`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ plan, user_id: String(currentUser.id), currency: 'USD' })
+                });
+                if (resp.ok) {
+                    const data = await resp.json();
+                    if (data.paymentUrl) {
+                        window.open(data.paymentUrl, '_blank');
+                    }
+                } else {
+                    const err = await resp.json().catch(() => ({}));
+                    showToast(err.detail || 'Ошибка создания платежа', 'error');
+                }
+            } catch(e) {
+                console.error('[subscribe] error:', e);
+                showToast('Ошибка создания платежа', 'error');
+            }
+        }
+
+        async function cancelSubscription() {
+            if (!confirm('Вы уверены, что хотите отменить подписку? Доступ сохранится до конца оплаченного периода.')) return;
+            try {
+                const resp = await fetch(`${API_URL}/api/payments/cancel`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: String(currentUser.id) })
+                });
+                if (resp.ok) {
+                    showToast('Подписка отменена', 'success');
+                    currentUser.plan = 'free';
+                    localStorage.setItem('craft_user', JSON.stringify(currentUser));
+                    updatePlanBadge();
+                    loadPricingPage();
+                } else {
+                    const err = await resp.json().catch(() => ({}));
+                    showToast(err.detail || 'Ошибка отмены подписки', 'error');
+                }
+            } catch(e) {
+                console.error('[cancel-sub] error:', e);
+                showToast('Ошибка отмены подписки', 'error');
+            }
+        }
+
+        function showUpgradeModal(detail) {
+            const actionLabels = {
+                ai_chat: 'сообщений ИИ',
+                carousel_generate: 'генераций каруселей',
+                competitor_analysis: 'анализов конкурентов'
+            };
+            const actionLabel = actionLabels[detail.action] || detail.action;
+            const overlay = document.createElement('div');
+            overlay.className = 'upgrade-modal-overlay';
+            overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+            overlay.innerHTML = `<div class="upgrade-modal">
+                <h3>Лимит достигнут</h3>
+                <p>Вы использовали ${detail.used} из ${detail.limit} ${actionLabel} сегодня. Обновите план для продолжения работы.</p>
+                <div class="upgrade-modal-actions">
+                    <button style="background:var(--bg-secondary);color:var(--text-primary);" onclick="this.closest('.upgrade-modal-overlay').remove()">Закрыть</button>
+                    <button style="background:var(--accent-color,#000);color:#fff;" onclick="this.closest('.upgrade-modal-overlay').remove();switchTab('pricing')">Обновить план</button>
+                </div>
+            </div>`;
+            document.body.appendChild(overlay);
+        }
+
+        function updatePlanBadge() {
+            const plan = (currentUser && currentUser.plan) || 'free';
+            const badge = document.getElementById('planBadge');
+            if (badge) {
+                const labels = { free: 'Free', pro: 'Pro', business: 'Business', club: 'Club' };
+                badge.textContent = labels[plan] || plan;
+                badge.className = 'plan-badge plan-badge-' + plan;
+                badge.style.display = plan === 'free' ? 'none' : '';
+            }
+        }
+
+        // ==================== END PRICING ====================
+
         function editProfileSummary() {
             const areaEl = document.getElementById('profileSummaryArea');
             const editorEl = document.getElementById('profileSummaryEditor');
@@ -6682,6 +7187,9 @@
             // Render linked accounts when switching to settings
             if (tabId === 'settings' && currentUser) {
                 renderLinkedAccounts();
+            }
+            if (tabId === 'pricing') {
+                loadPricingPage();
             }
 
             // Show/hide editor sidebar and props panel
@@ -9587,20 +10095,34 @@
             const fullUrl = url.startsWith('http') ? url : API_URL + url;
 
             // Add auth headers
+            let resp;
             if (_supabaseSession?.access_token) {
                 options.headers = {
                     ...options.headers,
                     'Authorization': `Bearer ${_supabaseSession.access_token}`
                 };
+                resp = await fetch(fullUrl, options);
             } else if (currentUser?.id) {
                 // Legacy Telegram fallback: add user_id as query param
                 const urlObj = new URL(fullUrl);
                 if (!urlObj.searchParams.has('user_id')) {
                     urlObj.searchParams.set('user_id', String(currentUser.id));
                 }
-                return fetch(urlObj.toString(), options);
+                resp = await fetch(urlObj.toString(), options);
+            } else {
+                resp = await fetch(fullUrl, options);
             }
-            return fetch(fullUrl, options);
+
+            // Global 429 handler — show upgrade modal
+            if (resp.status === 429) {
+                try {
+                    const errData = await resp.clone().json();
+                    if (errData.detail && errData.detail.error === 'limit_reached') {
+                        showUpgradeModal(errData.detail);
+                    }
+                } catch(e) { /* ignore parse errors */ }
+            }
+            return resp;
         }
 
         // State
@@ -10105,6 +10627,9 @@
                 psAvatar.style.display = 'block';
             }
 
+            // Update plan badge
+            updatePlanBadge();
+
             // Load projects & topics
             loadProjects();
             loadTopics();
@@ -10154,6 +10679,9 @@
             if (savedUser) {
                 try { currentUser = JSON.parse(savedUser); } catch(e) { localStorage.removeItem('craft_user'); }
             }
+
+            // Update plan badge if user restored from localStorage
+            if (currentUser) updatePlanBadge();
 
             // Start auth immediately (don't await — runs in parallel)
             initAuth();
