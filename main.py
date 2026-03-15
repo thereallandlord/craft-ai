@@ -137,6 +137,7 @@ PLATFORM_CONFIG = {
     "instagram": {
         "patterns": [r'instagram\.com/(p|reel|reels)/[\w-]+'],
         "post_endpoint": "/v1/instagram/post",
+        "reel_endpoint": "/v2/instagram/reel",
         "transcript_endpoint": "/v2/instagram/media/transcript",
     },
     "youtube": {
@@ -1853,6 +1854,27 @@ SYSTEM_PROMPT_COMPETITOR_REWRITE = """Ты — AI контент-менедже�
 
 Пиши кратко, ёмко. Пиши на языке оригинального поста, если пользователь не указал иное."""
 
+OCR_SLIDES_PROMPT = """Извлеки ТОЛЬКО контентный текст с каждого слайда карусели.
+
+ИГНОРИРУЙ элементы интерфейса Instagram:
+- Имя пользователя и @username вверху слайда
+- Аватар пользователя
+- Счётчик слайдов (1/7, 2/10 и т.д.)
+- Иконки (лайк, комментарий, поделиться, сохранить)
+- Любые элементы навигации и UI
+
+Извлекай ТОЛЬКО текст, который является частью дизайна/контента слайда.
+Сохраняй оригинальный язык текста. Не добавляй своих комментариев.
+
+Формат ответа:
+Слайд 1:
+<контентный текст с первого изображения>
+
+Слайд 2:
+<контентный текст со второго изображения>
+
+Если на слайде нет контентного текста, напиши: (нет текста)"""
+
 
 def get_system_prompt(status: str, slides_count: int = 7, custom_prompts: dict = None) -> str:
     cp = custom_prompts or {}
@@ -2086,6 +2108,7 @@ def get_system_prompt_v3(chat_type: str, has_slides: bool = False, variables: di
         'headlines': SYSTEM_PROMPT_HEADLINES_GEN,
         'text': SYSTEM_PROMPT_TEXT_GEN,
         'competitor_rewrite': SYSTEM_PROMPT_COMPETITOR_REWRITE,
+        'ocr_slides': OCR_SLIDES_PROMPT,
         'format_text': open(os.path.join(os.path.dirname(__file__), "prompts", "format_carousel_text.txt"), encoding="utf-8").read() if os.path.exists(os.path.join(os.path.dirname(__file__), "prompts", "format_carousel_text.txt")) else "Parse text into JSON array of slides with TITLE and DESCRIPTION fields."
     }
 
@@ -2095,7 +2118,7 @@ def get_system_prompt_v3(chat_type: str, has_slides: bool = False, variables: di
         model = prompt_data.get("model", "openai/gpt-4o")
     else:
         template = fallbacks.get(prompt_key, SYSTEM_PROMPT_HEADLINES_GEN)
-        fallback_models = {'format_text': 'openai/gpt-4o-mini', 'memory_extract': 'openai/gpt-4o-mini', 'profile_summarize': 'openai/gpt-4o-mini'}
+        fallback_models = {'format_text': 'openai/gpt-4o-mini', 'memory_extract': 'openai/gpt-4o-mini', 'profile_summarize': 'openai/gpt-4o-mini', 'ocr_slides': 'google/gemini-2.0-flash-001'}
         model = fallback_models.get(prompt_key, "openai/gpt-4o")
 
     if variables:
@@ -2141,17 +2164,12 @@ def _extract_slides_text(images: list, user_id: int = None) -> list:
     if not image_items:
         return []
 
+    # Load OCR prompt from admin panel (with fallback to hardcoded)
+    ocr_prompt, _ocr_model = get_system_prompt_v3("ocr_slides")
+
     # Build multimodal message with image URLs
     content_parts = [
-        {"type": "text", "text": (
-            "Извлеки весь текст с каждого слайда карусели. "
-            "Для каждого слайда выведи его номер и весь текст, который видишь на изображении. "
-            "Сохраняй оригинальный язык текста. Не добавляй своих комментариев.\n\n"
-            "Формат ответа:\n"
-            "Слайд 1:\n<весь текст с первого изображения>\n\n"
-            "Слайд 2:\n<весь текст со второго изображения>\n\n"
-            "Если на слайде нет текста, напиши: (нет текста)"
-        )}
+        {"type": "text", "text": ocr_prompt}
     ]
     for img in image_items:
         content_parts.append({
@@ -2160,8 +2178,6 @@ def _extract_slides_text(images: list, user_id: int = None) -> list:
         })
 
     messages = [{"role": "user", "content": content_parts}]
-
-    _ocr_model = "google/gemini-2.0-flash-001"
 
     try:
         content, usage = _call_openrouter(
@@ -2695,6 +2711,14 @@ async def competitor_analyze(request: Request):
 
     config = PLATFORM_CONFIG[platform]
 
+    # Normalize URL — remove query params and trailing slashes for cleaner API calls
+    from urllib.parse import urlparse, urlunparse
+    parsed_url = urlparse(url)
+    clean_path = parsed_url.path.rstrip('/')
+    url = urlunparse((parsed_url.scheme, parsed_url.netloc, clean_path, '', '', ''))
+
+    is_reel_url = bool(re.search(r'/(reel|reels)/', url))
+
     try:
         # 1. Fetch post data
         print(f"[competitor] Fetching {platform} post: {url[:80]}...")
@@ -2704,6 +2728,18 @@ async def competitor_analyze(request: Request):
             headers={"x-api-key": SCRAPE_CREATORS_API_KEY},
             timeout=30
         )
+
+        # Fallback: if post endpoint fails for reels, try reel-specific endpoint
+        if resp.status_code != 200 and platform == "instagram" and is_reel_url and config.get("reel_endpoint"):
+            print(f"[competitor] Post endpoint failed ({resp.status_code}), trying reel endpoint...")
+            reel_resp = requests.get(
+                f"{SCRAPE_CREATORS_BASE}{config['reel_endpoint']}",
+                params={"url": url},
+                headers={"x-api-key": SCRAPE_CREATORS_API_KEY},
+                timeout=30
+            )
+            if reel_resp.status_code == 200:
+                resp = reel_resp
 
         if resp.status_code != 200:
             print(f"[competitor] Scrape Creators error {resp.status_code}: {resp.text[:500]}")
@@ -3827,6 +3863,16 @@ TITLE - это первая строка/фраза если:
 
 ГЛАВНОЕ: Сохрани ВЕСЬ текст пользователя БЕЗ ИЗМЕНЕНИЙ!""",
              "variables": []},
+            {"prompt_key": "ocr_slides", "title": "OCR: извлечение текста со слайдов",
+             "description": "Извлекает контентный текст с изображений карусели (Gemini Vision). Игнорирует UI Instagram.",
+             "model": "google/gemini-2.0-flash-001",
+             "content": OCR_SLIDES_PROMPT,
+             "variables": []},
+            {"prompt_key": "competitor_rewrite", "title": "Рерайт конкурента",
+             "description": "Переписывает пост конкурента в уникальную карусель в стиле пользователя",
+             "model": "google/gemini-2.5-flash",
+             "content": SYSTEM_PROMPT_COMPETITOR_REWRITE,
+             "variables": [{"name": "slides_count", "description": "Количество слайдов"}]},
         ]
     # Upsert: insert missing, update existing defaults that haven't been manually edited
     defaults_by_key = {d["prompt_key"]: d for d in defaults}
