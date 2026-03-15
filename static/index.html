@@ -8509,6 +8509,13 @@
                     const resp = await fetch(`${API_URL}/api/payments/subscription?user_id=${currentUser.id}`);
                     if (resp.ok) {
                         const data = await resp.json();
+                        // Update plan from effective_plan (accounts for club membership)
+                        if (data.effective_plan && currentUser) {
+                            currentUser.plan = data.effective_plan;
+                            currentUser.is_club_member = data.is_club_member || false;
+                            localStorage.setItem('craft_user', JSON.stringify(currentUser));
+                            updatePlanBadge();
+                        }
                         // Show sub info if on paid plan
                         const subInfo = document.getElementById('pricingSubInfo');
                         if (data.subscription && data.subscription.status === 'active') {

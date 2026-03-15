@@ -5727,7 +5727,10 @@ async def telegram_webhook(request: Request):
             "is_admin": is_admin,
         }
         if sb_user:
-            user_response["plan"] = auth_account.get("plan", "free") if auth_account else sb_user.get("plan", "free")
+            is_club = auth_account.get("is_club_member", False) if auth_account else False
+            raw_plan = auth_account.get("plan", "free") if auth_account else sb_user.get("plan", "free")
+            user_response["plan"] = "business" if is_club else raw_plan
+            user_response["is_club_member"] = is_club
             user_response["carousels_used"] = sb_user.get("carousels_used", 0)
             user_response["carousels_limit"] = sb_user.get("carousels_limit", 10)
             user_response["profile_summary"] = sb_user.get("profile_summary")
@@ -5786,7 +5789,10 @@ async def auth_telegram(data: dict):
         "is_admin": is_admin,
     }
     if sb_user:
-        user_response["plan"] = auth_account.get("plan", "free") if auth_account else sb_user.get("plan", "free")
+        is_club = auth_account.get("is_club_member", False) if auth_account else False
+        raw_plan = auth_account.get("plan", "free") if auth_account else sb_user.get("plan", "free")
+        user_response["plan"] = "business" if is_club else raw_plan
+        user_response["is_club_member"] = is_club
         user_response["carousels_used"] = sb_user.get("carousels_used", 0)
         user_response["carousels_limit"] = sb_user.get("carousels_limit", 10)
         user_response["profile_summary"] = sb_user.get("profile_summary")
@@ -5860,7 +5866,10 @@ async def auth_miniapp(request: Request):
         "is_admin": is_admin,
     }
     if sb_user:
-        user_response["plan"] = auth_account.get("plan", "free") if auth_account else sb_user.get("plan", "free")
+        is_club = auth_account.get("is_club_member", False) if auth_account else False
+        raw_plan = auth_account.get("plan", "free") if auth_account else sb_user.get("plan", "free")
+        user_response["plan"] = "business" if is_club else raw_plan
+        user_response["is_club_member"] = is_club
         user_response["carousels_used"] = sb_user.get("carousels_used", 0)
         user_response["carousels_limit"] = sb_user.get("carousels_limit", 10)
         user_response["profile_summary"] = sb_user.get("profile_summary")
