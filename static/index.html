@@ -3456,31 +3456,38 @@
         }
 
         .ps-upgrade-btn {
-            padding: 4px 12px;
-            border: 1px solid var(--border-color);
+            padding: 0 10px;
+            height: 28px;
+            border: 1px solid rgba(0, 0, 0, 0.15);
             border-radius: 9999px;
-            background: transparent;
+            background: var(--bg-primary);
             color: var(--text-primary);
             font-size: 12px;
+            font-weight: 500;
             cursor: pointer;
             white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
         }
 
         .ps-upgrade-btn:hover {
             background: var(--bg-hover);
         }
 
+        [data-theme="dark"] .ps-upgrade-btn {
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
         .upgrade-banner {
-            display: flex;
+            display: inline-flex;
             align-items: center;
-            justify-content: center;
             gap: 4px;
-            padding: 6px 16px;
-            border: 1px solid var(--border-color);
+            padding: 8px 12px 8px 10px;
+            border: none;
             border-radius: 9999px;
-            background: var(--bg-primary);
-            color: var(--accent, #7c3aed);
-            font-size: 13px;
+            background: #F1F1FB;
+            color: #5D5BD0;
+            font-size: 14px;
             font-weight: 500;
             cursor: pointer;
             position: fixed;
@@ -3491,7 +3498,16 @@
         }
 
         .upgrade-banner:hover {
-            background: var(--bg-hover);
+            background: #E4E4F6;
+        }
+
+        [data-theme="dark"] .upgrade-banner {
+            background: #373669;
+            color: #DCDBF6;
+        }
+
+        [data-theme="dark"] .upgrade-banner:hover {
+            background: #414071;
         }
 
         .ps-user-menu {
@@ -4811,7 +4827,8 @@
         </nav>
 
         <div class="upgrade-banner" id="upgradeBanner" style="display:none" onclick="switchTab('pricing')">
-            ✦ <span data-i18n="banner.upgradePro">Перейти на Pro</span>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+            <span data-i18n="banner.upgradePro">Перейти на Pro</span>
         </div>
 
         <div class="content-area">
@@ -8672,10 +8689,16 @@
                 upgradeBtn.style.display = (plan === 'free') ? '' : 'none';
                 upgradeBtn.textContent = t('sidebar.upgrade');
             }
-            // Show/hide upgrade banner (only for free)
+            // Show/hide upgrade banner (only for free + only on home page)
+            updateUpgradeBanner();
+        }
+
+        function updateUpgradeBanner() {
+            const plan = (currentUser && currentUser.plan) || 'free';
             const banner = document.getElementById('upgradeBanner');
             if (banner) {
-                banner.style.display = (plan === 'free') ? '' : 'none';
+                const showBanner = (plan === 'free') && (currentTab === 'create');
+                banner.style.display = showBanner ? '' : 'none';
             }
         }
 
@@ -8746,6 +8769,9 @@
             if (window.location.hash !== '#' + tabId) {
                 history.replaceState(null, '', '#' + tabId);
             }
+
+            // Update upgrade banner visibility (only on home page)
+            if (typeof updateUpgradeBanner === 'function') updateUpgradeBanner();
 
             // Close overlay views when switching to a tab
             if (typeof closeAllViews === 'function') closeAllViews();
