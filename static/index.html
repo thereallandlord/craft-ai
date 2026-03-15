@@ -1121,6 +1121,9 @@
             margin: 0 auto;
             width: 100%;
         }
+        #tab-pricing .tab-page-content {
+            max-width: 1060px;
+        }
 
         .btn-ai-process {
             width: 100%;
@@ -1190,9 +1193,6 @@
             grid-template-columns: repeat(3, 1fr);
             gap: 24px;
             margin-bottom: 32px;
-            max-width: 960px;
-            margin-left: auto;
-            margin-right: auto;
         }
         .pricing-card {
             background: var(--card-bg);
@@ -1243,12 +1243,16 @@
             align-items: baseline;
             gap: 4px;
             margin-bottom: 8px;
+            white-space: nowrap;
         }
         .pricing-amount {
-            font-size: 36px;
+            font-size: 32px;
             font-weight: 800;
             color: var(--text-primary);
             line-height: 1;
+        }
+        .pricing-amount-old {
+            white-space: nowrap;
         }
         .pricing-period {
             font-size: 14px;
