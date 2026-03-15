@@ -4698,7 +4698,7 @@ def _get_user_plan(auth_id: str | None) -> str:
     if not account:
         return "free"
     if account.get("is_club_member"):
-        return "club"
+        return "business"
     return account.get("plan", "free")
 
 
@@ -5491,7 +5491,7 @@ async def get_subscription(request: Request):
     # Get today's usage
     import datetime
     today = datetime.date.today().isoformat()
-    effective_plan = "club" if is_club else plan
+    effective_plan = "business" if is_club else plan
     limits = PLAN_LIMITS.get(effective_plan, {})
 
     usage = {}

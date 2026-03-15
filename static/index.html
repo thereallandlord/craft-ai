@@ -3438,10 +3438,60 @@
         .ps-user-name {
             font-size: 14px;
             color: var(--text-primary);
-            flex: 1;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+        }
+
+        .ps-user-info {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .ps-user-plan {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .ps-upgrade-btn {
+            padding: 4px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 9999px;
+            background: transparent;
+            color: var(--text-primary);
+            font-size: 12px;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .ps-upgrade-btn:hover {
+            background: var(--bg-hover);
+        }
+
+        .upgrade-banner {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            padding: 6px 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 9999px;
+            background: var(--bg-primary);
+            color: var(--accent, #7c3aed);
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            position: fixed;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 5;
+        }
+
+        .upgrade-banner:hover {
+            background: var(--bg-hover);
         }
 
         .ps-user-menu {
@@ -4701,8 +4751,11 @@
                     </button>
                 </div>
                 <img class="ps-user-avatar" id="psUserAvatar" src="" alt="" onerror="this.style.display='none'">
-                <span class="ps-user-name" id="psUserName"></span>
-                <span class="plan-badge" id="planBadge" style="display:none"></span>
+                <div class="ps-user-info">
+                    <span class="ps-user-name" id="psUserName"></span>
+                    <span class="ps-user-plan" id="psUserPlan">Free</span>
+                </div>
+                <button class="ps-upgrade-btn" id="psUpgradeBtn" onclick="event.stopPropagation(); switchTab('pricing'); closeUserMenu();" style="display:none">Обновить</button>
             </div>
         </aside>
 
@@ -4756,6 +4809,10 @@
                 </button>
             </div>
         </nav>
+
+        <div class="upgrade-banner" id="upgradeBanner" style="display:none" onclick="switchTab('pricing')">
+            ✦ <span data-i18n="banner.upgradePro">Перейти на Pro</span>
+        </div>
 
         <div class="content-area">
 
@@ -5482,8 +5539,10 @@
             'sidebar.pricing': 'Тарифы',
             'sidebar.settings': 'Настройки',
             'sidebar.logout': 'Выйти',
+            'sidebar.upgrade': 'Обновить',
             'sidebar.collapse': 'Свернуть',
             'sidebar.lang': 'Язык',
+            'banner.upgradePro': 'Перейти на Pro',
             // Sidebar login CTA
             'sidebar.loginCta.title': 'Получайте ответы, адаптированные специально для вас',
             'sidebar.loginCta.text': 'Войдите в систему, чтобы сохранять чаты, генерировать контент и использовать AI-анализ.',
@@ -6146,8 +6205,10 @@
             'sidebar.pricing': 'Pricing',
             'sidebar.settings': 'Settings',
             'sidebar.logout': 'Log out',
+            'sidebar.upgrade': 'Upgrade',
             'sidebar.collapse': 'Collapse',
             'sidebar.lang': 'Language',
+            'banner.upgradePro': 'Upgrade to Pro',
             // Sidebar login CTA
             'sidebar.loginCta.title': 'Get answers tailored just for you',
             'sidebar.loginCta.text': 'Sign in to save chats, generate content and use AI analysis.',
@@ -8599,12 +8660,22 @@
 
         function updatePlanBadge() {
             const plan = (currentUser && currentUser.plan) || 'free';
-            const badge = document.getElementById('planBadge');
-            if (badge) {
-                const labels = { free: 'Free', pro: 'Pro', business: 'Business', club: 'Club' };
-                badge.textContent = labels[plan] || plan;
-                badge.className = 'plan-badge plan-badge-' + plan;
-                badge.style.display = plan === 'free' ? 'none' : '';
+            // Update plan text under name
+            const planEl = document.getElementById('psUserPlan');
+            if (planEl) {
+                const labels = { free: 'Free', pro: 'Pro', business: 'Business' };
+                planEl.textContent = labels[plan] || plan;
+            }
+            // Show/hide upgrade button (only for free)
+            const upgradeBtn = document.getElementById('psUpgradeBtn');
+            if (upgradeBtn) {
+                upgradeBtn.style.display = (plan === 'free') ? '' : 'none';
+                upgradeBtn.textContent = t('sidebar.upgrade');
+            }
+            // Show/hide upgrade banner (only for free)
+            const banner = document.getElementById('upgradeBanner');
+            if (banner) {
+                banner.style.display = (plan === 'free') ? '' : 'none';
             }
         }
 
