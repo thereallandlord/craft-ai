@@ -5321,15 +5321,12 @@ async def payments_webhook(request: Request):
     body_bytes = await request.body()
     body_str = body_bytes.decode("utf-8")
 
-    # Verify signature if webhook secret configured
+    # Verify API key — Lava.top sends our secret in X-Api-Key header
     if LAVA_TOP_WEBHOOK_SECRET:
-        signature = request.headers.get("signature", "")
-        expected = hmac.new(
-            LAVA_TOP_WEBHOOK_SECRET.encode(), body_str.encode(), hashlib.sha256
-        ).hexdigest()
-        if not hmac.compare_digest(signature, expected):
-            print(f"[lava webhook] Invalid signature")
-            raise HTTPException(status_code=403, detail="Invalid signature")
+        incoming_key = request.headers.get("X-Api-Key", "")
+        if not hmac.compare_digest(incoming_key, LAVA_TOP_WEBHOOK_SECRET):
+            print(f"[lava webhook] Invalid API key")
+            raise HTTPException(status_code=403, detail="Invalid API key")
 
     import json as json_mod
     try:
