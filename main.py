@@ -35,6 +35,7 @@ import arabic_reshaper
 from bidi.algorithm import get_display
 import re
 import uuid
+import jwt as pyjwt
 from pilmoji.source import AppleEmojiSource
 
 # Apple emoji source + image cache for manual emoji rendering
@@ -128,6 +129,10 @@ if DATABASE_URL:
     print("✅ DATABASE_URL configured (direct PG)")
 else:
     print("⚠️ DATABASE_URL not set — ai_logs will not work")
+
+# === Supabase Auth (JWT) ===
+SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET", "")
+SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")
 
 # === Scrape Creators API ===
 SCRAPE_CREATORS_API_KEY = os.getenv("SCRAPE_CREATORS_API_KEY", "")
@@ -252,8 +257,15 @@ app.add_middleware(
 )
 
 @app.middleware("http")
-async def telegram_headers(request: Request, call_next):
+async def anon_token_and_headers(request: Request, call_next):
     response = await call_next(request)
+    # Set anonymous tracking cookie if not present
+    if "craft_anon_token" not in request.cookies and request.url.path.startswith("/api/"):
+        anon_token = str(uuid.uuid4())
+        response.set_cookie(
+            "craft_anon_token", anon_token,
+            httponly=True, samesite="lax", max_age=86400 * 365
+        )
     # Allow Telegram Web to iframe the app
     response.headers["Content-Security-Policy"] = (
         "frame-ancestors 'self' https://web.telegram.org https://*.telegram.org"
@@ -4458,6 +4470,188 @@ async def update_user_settings(request: Request):
     return {"ok": True}
 
 
+# === SaaS Auth: JWT verification, identity resolution, usage limits ===
+
+# Plan limits: -1 = unlimited, missing key = unlimited (club)
+PLAN_LIMITS = {
+    "anonymous":  {"competitor_analysis": 1, "carousel_generate": 0, "ai_chat": 0},
+    "free":       {"competitor_analysis": 5, "carousel_generate": 3, "ai_chat": 20},
+    "pro":        {"competitor_analysis": 50, "carousel_generate": 30, "ai_chat": 200},
+    "business":   {"competitor_analysis": -1, "carousel_generate": -1, "ai_chat": -1},
+    "club":       {},
+}
+
+
+def verify_supabase_jwt(token: str) -> dict | None:
+    """Verify a Supabase Auth JWT and return decoded claims."""
+    if not SUPABASE_JWT_SECRET:
+        return None
+    try:
+        return pyjwt.decode(token, SUPABASE_JWT_SECRET, algorithms=["HS256"], audience="authenticated")
+    except pyjwt.ExpiredSignatureError:
+        print("[jwt] Token expired")
+        return None
+    except pyjwt.InvalidTokenError as e:
+        print(f"[jwt] Invalid token: {e}")
+        return None
+
+
+# Cache: auth_id → auth_account dict, TTL 60s
+_auth_cache: dict = {}
+_AUTH_CACHE_TTL = 60
+
+
+def _get_auth_account(auth_id: str) -> dict | None:
+    """Get auth_account by id with short cache."""
+    import time
+    now = time.time()
+    cached = _auth_cache.get(auth_id)
+    if cached and now - cached["_ts"] < _AUTH_CACHE_TTL:
+        return cached
+    if not supabase:
+        return None
+    try:
+        result = supabase.table("auth_accounts").select("*").eq("id", auth_id).execute()
+        if result.data:
+            account = result.data[0]
+            account["_ts"] = now
+            _auth_cache[auth_id] = account
+            return account
+    except Exception as e:
+        print(f"[auth] Failed to get auth_account {auth_id}: {e}")
+    return None
+
+
+def _get_auth_account_by_telegram(telegram_id: int) -> dict | None:
+    """Get auth_account by telegram_id."""
+    if not supabase:
+        return None
+    try:
+        result = supabase.table("auth_accounts").select("*").eq("telegram_id", telegram_id).execute()
+        if result.data:
+            return result.data[0]
+    except Exception as e:
+        print(f"[auth] Failed to get auth_account by telegram_id {telegram_id}: {e}")
+    return None
+
+
+async def resolve_auth_id(request: Request) -> tuple[str | None, str]:
+    """Resolve the auth_id from request. Returns (auth_id, auth_type).
+    auth_type: 'jwt', 'telegram', 'anonymous'
+    """
+    # 1. Check JWT (Authorization: Bearer <token>)
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        token = auth_header[7:]
+        claims = verify_supabase_jwt(token)
+        if claims and claims.get("sub"):
+            return (claims["sub"], "jwt")
+
+    # 2. Check legacy user_id query param (Telegram ID)
+    user_id_param = request.query_params.get("user_id", "")
+    if not user_id_param:
+        # Also check in JSON body for POST requests
+        if request.method == "POST":
+            try:
+                body = await request.json()
+                user_id_param = str(body.get("user_id", ""))
+            except Exception:
+                pass
+    if user_id_param:
+        try:
+            telegram_id = int(user_id_param)
+            account = _get_auth_account_by_telegram(telegram_id)
+            if account:
+                return (account["id"], "telegram")
+        except (ValueError, TypeError):
+            pass
+
+    # 3. Anonymous — use cookie token
+    return (None, "anonymous")
+
+
+def _get_anon_token(request: Request) -> str | None:
+    """Get anonymous tracking token from cookie or header."""
+    return request.cookies.get("craft_anon_token") or request.headers.get("X-Anon-Token")
+
+
+def _get_user_plan(auth_id: str | None) -> str:
+    """Get effective plan for user (with club override)."""
+    if not auth_id:
+        return "anonymous"
+    account = _get_auth_account(auth_id)
+    if not account:
+        return "free"
+    if account.get("is_club_member"):
+        return "club"
+    return account.get("plan", "free")
+
+
+async def check_usage_limit(auth_id: str | None, anon_token: str | None, action_type: str) -> tuple[bool, int, int]:
+    """Check if user is within usage limit. Returns (allowed, used, limit).
+    limit = -1 means unlimited.
+    """
+    plan = _get_user_plan(auth_id)
+    limits = PLAN_LIMITS.get(plan, {})
+    limit = limits.get(action_type, -1)  # missing = unlimited
+    if limit == -1:
+        return (True, 0, -1)
+
+    # Count today's usage
+    if not supabase:
+        return (True, 0, limit)
+    try:
+        if auth_id:
+            result = supabase.table("usage_tracking").select("count").eq(
+                "auth_id", auth_id
+            ).eq("action_type", action_type).eq("date", "today()").execute()
+        elif anon_token:
+            result = supabase.table("usage_tracking").select("count").eq(
+                "anon_token", anon_token
+            ).eq("action_type", action_type).eq("date", "today()").execute()
+        else:
+            return (limit > 0, 0, limit)
+        used = result.data[0]["count"] if result.data else 0
+        return (used < limit, used, limit)
+    except Exception as e:
+        print(f"[usage] Check error: {e}")
+        return (True, 0, limit)
+
+
+async def increment_usage(auth_id: str | None, anon_token: str | None, action_type: str):
+    """Increment usage counter for today."""
+    if not supabase:
+        return
+    try:
+        import datetime
+        today = datetime.date.today().isoformat()
+        if auth_id:
+            # Try upsert
+            existing = supabase.table("usage_tracking").select("id,count").eq(
+                "auth_id", auth_id
+            ).eq("action_type", action_type).eq("date", today).execute()
+            if existing.data:
+                row = existing.data[0]
+                supabase.table("usage_tracking").update({"count": row["count"] + 1}).eq("id", row["id"]).execute()
+            else:
+                supabase.table("usage_tracking").insert({
+                    "auth_id": auth_id, "action_type": action_type, "date": today, "count": 1
+                }).execute()
+        elif anon_token:
+            existing = supabase.table("usage_tracking").select("id,count").eq(
+                "anon_token", anon_token
+            ).eq("action_type", action_type).eq("date", today).execute()
+            if existing.data:
+                row = existing.data[0]
+                supabase.table("usage_tracking").update({"count": row["count"] + 1}).eq("id", row["id"]).execute()
+            else:
+                supabase.table("usage_tracking").insert({
+                    "anon_token": anon_token, "action_type": action_type, "date": today, "count": 1
+                }).execute()
+    except Exception as e:
+        print(f"[usage] Increment error: {e}")
+
+
 # === Telegram Auth ===
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_BOT_USERNAME = os.getenv("TELEGRAM_BOT_USERNAME", "")
@@ -4530,10 +4724,226 @@ def upsert_user_to_supabase(user_id: int, first_name: str = "", username: str = 
     return None
 
 
+def _ensure_auth_account(telegram_id: int, display_name: str = "", avatar_url: str = "", is_club_member: bool = False, email: str = "") -> dict | None:
+    """Ensure auth_accounts row exists for a Telegram user. Returns the auth_account."""
+    if not supabase:
+        return None
+    try:
+        # Check if already exists
+        existing = supabase.table("auth_accounts").select("*").eq("telegram_id", telegram_id).execute()
+        if existing.data:
+            # Update club membership and name
+            account = existing.data[0]
+            updates = {"is_club_member": is_club_member, "club_checked_at": "now()"}
+            if display_name:
+                updates["display_name"] = display_name
+            if avatar_url:
+                updates["avatar_url"] = avatar_url
+            supabase.table("auth_accounts").update(updates).eq("id", account["id"]).execute()
+            account.update(updates)
+            return account
+        # Create new
+        new_account = {
+            "telegram_id": telegram_id,
+            "display_name": display_name,
+            "avatar_url": avatar_url,
+            "plan": "free",
+            "is_club_member": is_club_member,
+            "club_checked_at": "now()",
+        }
+        if email:
+            new_account["email"] = email
+        result = supabase.table("auth_accounts").insert(new_account).execute()
+        if result.data:
+            account = result.data[0]
+            # Link to users table
+            supabase.table("users").update({"auth_id": account["id"]}).eq("user_id", str(telegram_id)).execute()
+            return account
+    except Exception as e:
+        print(f"[auth] _ensure_auth_account error for telegram_id={telegram_id}: {e}")
+    return None
+
+
 @app.get("/api/auth/config")
 async def auth_config():
-    """Return auth config for frontend (bot username)."""
-    return {"bot_username": TELEGRAM_BOT_USERNAME}
+    """Return auth config for frontend."""
+    return {
+        "bot_username": TELEGRAM_BOT_USERNAME,
+        "supabase_url": SUPABASE_URL,
+        "supabase_anon_key": SUPABASE_ANON_KEY,
+    }
+
+
+@app.post("/api/auth/register-account")
+async def register_account(request: Request):
+    """Create or link auth_accounts entry after Supabase Auth signup (email/Google).
+    Called by frontend right after supabase.auth.signUp() or signInWithOAuth() succeeds.
+    JWT must be present in Authorization header.
+    """
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="JWT required")
+    claims = verify_supabase_jwt(auth_header[7:])
+    if not claims or not claims.get("sub"):
+        raise HTTPException(status_code=401, detail="Invalid JWT")
+
+    supabase_uid = claims["sub"]
+    email = claims.get("email", "")
+
+    sb = require_supabase()
+
+    # Check if auth_account already exists with this id
+    existing = sb.table("auth_accounts").select("*").eq("id", supabase_uid).execute()
+    if existing.data:
+        return {"auth_account": existing.data[0]}
+
+    # Check if email already exists (e.g., user signed up with email, then Google with same email)
+    if email:
+        email_existing = sb.table("auth_accounts").select("*").eq("email", email).execute()
+        if email_existing.data:
+            # Update the id to match Supabase Auth UID
+            account = email_existing.data[0]
+            sb.table("auth_accounts").update({"id": supabase_uid}).eq("id", account["id"]).execute()
+            account["id"] = supabase_uid
+            return {"auth_account": account}
+
+    # Create new auth_account with Supabase Auth UID as id
+    display_name = claims.get("user_metadata", {}).get("full_name") or claims.get("user_metadata", {}).get("name") or email.split("@")[0] if email else ""
+    avatar_url = claims.get("user_metadata", {}).get("avatar_url", "")
+
+    new_account = {
+        "id": supabase_uid,
+        "email": email or None,
+        "display_name": display_name,
+        "avatar_url": avatar_url,
+        "plan": "free",
+        "is_club_member": False,
+    }
+    # Also set google_id if provider is google
+    provider = claims.get("app_metadata", {}).get("provider", "")
+    if provider == "google":
+        google_id = claims.get("user_metadata", {}).get("provider_id") or claims.get("sub")
+        new_account["google_id"] = google_id
+
+    result = sb.table("auth_accounts").insert(new_account).execute()
+    if not result.data:
+        raise HTTPException(status_code=500, detail="Failed to create auth account")
+
+    # Also create a users row for backward compatibility
+    account = result.data[0]
+    try:
+        # Use a negative hash of UUID as pseudo-user_id for non-Telegram users
+        pseudo_id = abs(hash(supabase_uid)) % (10**15)
+        sb.table("users").upsert({
+            "user_id": str(pseudo_id),
+            "auth_id": supabase_uid,
+            "first_name": display_name,
+            "photo_url": avatar_url,
+            "last_active": "now()",
+        }, on_conflict="user_id").execute()
+    except Exception as e:
+        print(f"[auth] users row creation error (non-fatal): {e}")
+
+    return {"auth_account": account}
+
+
+@app.post("/api/auth/link-telegram")
+async def link_telegram(request: Request):
+    """Link Telegram account to an existing auth_account (email/Google user).
+    Requires JWT + Telegram auth data.
+    """
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="JWT required")
+    claims = verify_supabase_jwt(auth_header[7:])
+    if not claims or not claims.get("sub"):
+        raise HTTPException(status_code=401, detail="Invalid JWT")
+
+    auth_id = claims["sub"]
+    body = await request.json()
+    telegram_data = body.get("telegram_data", {})
+    if not telegram_data:
+        raise HTTPException(status_code=400, detail="telegram_data required")
+
+    # Verify Telegram hash
+    if not verify_telegram_hash(telegram_data):
+        raise HTTPException(status_code=401, detail="Invalid Telegram auth data")
+
+    telegram_id = int(telegram_data.get("id", 0))
+    if not telegram_id:
+        raise HTTPException(status_code=400, detail="Invalid telegram user id")
+
+    sb = require_supabase()
+
+    # Check if this telegram_id is already linked to another account
+    existing_tg = sb.table("auth_accounts").select("id").eq("telegram_id", telegram_id).execute()
+    if existing_tg.data:
+        old_auth_id = existing_tg.data[0]["id"]
+        if old_auth_id != auth_id:
+            # Merge: update old auth_account's telegram_id to NULL, set it on new account
+            sb.table("auth_accounts").update({"telegram_id": None}).eq("id", old_auth_id).execute()
+            # Also update users table: link old user's auth_id to the new one
+            sb.table("users").update({"auth_id": auth_id}).eq("auth_id", old_auth_id).execute()
+
+    # Update current auth_account with telegram_id
+    is_club_member = check_club_membership(telegram_id)
+    sb.table("auth_accounts").update({
+        "telegram_id": telegram_id,
+        "is_club_member": is_club_member,
+        "club_checked_at": "now()",
+    }).eq("id", auth_id).execute()
+
+    # Clear cache
+    _auth_cache.pop(auth_id, None)
+
+    updated = sb.table("auth_accounts").select("*").eq("id", auth_id).execute()
+    return {
+        "auth_account": updated.data[0] if updated.data else None,
+        "is_club_member": is_club_member,
+    }
+
+
+@app.get("/api/auth/me")
+async def auth_me(request: Request):
+    """Get current user profile based on JWT or user_id."""
+    auth_id, auth_type = await resolve_auth_id(request)
+    if not auth_id:
+        return {"user": None, "auth_type": "anonymous"}
+
+    account = _get_auth_account(auth_id)
+    if not account:
+        return {"user": None, "auth_type": auth_type}
+
+    # Also get legacy user data
+    user_data = {}
+    if account.get("telegram_id"):
+        try:
+            result = supabase.table("users").select("*").eq("user_id", str(account["telegram_id"])).execute()
+            if result.data:
+                user_data = result.data[0]
+        except Exception:
+            pass
+
+    is_admin = str(account.get("telegram_id", "")) in get_admin_ids() if account.get("telegram_id") else False
+
+    return {
+        "user": {
+            "id": account.get("telegram_id") or user_data.get("user_id"),
+            "auth_id": account["id"],
+            "email": account.get("email"),
+            "first_name": account.get("display_name") or user_data.get("first_name", ""),
+            "last_name": user_data.get("last_name", ""),
+            "username": user_data.get("username", ""),
+            "photo_url": account.get("avatar_url") or user_data.get("photo_url", ""),
+            "is_club_member": account.get("is_club_member", False),
+            "is_admin": is_admin,
+            "plan": account.get("plan", "free"),
+            "carousels_used": user_data.get("carousels_used", 0),
+            "carousels_limit": user_data.get("carousels_limit", 10),
+            "profile_summary": user_data.get("profile_summary"),
+        },
+        "auth_type": auth_type,
+    }
 
 
 async def _ensure_webhook(request: Request):
@@ -4679,8 +5089,15 @@ async def telegram_webhook(request: Request):
             last_name=tg_user.get("last_name", ""), photo_url=photo_url
         )
 
+        # Ensure auth_account exists
+        auth_account = _ensure_auth_account(
+            user_id, display_name=tg_user.get("first_name", ""),
+            avatar_url=photo_url, is_club_member=is_club_member
+        )
+
         user_response = {
             "id": user_id,
+            "auth_id": auth_account["id"] if auth_account else None,
             "first_name": tg_user.get("first_name", ""),
             "last_name": tg_user.get("last_name", ""),
             "username": tg_user.get("username", ""),
@@ -4689,7 +5106,7 @@ async def telegram_webhook(request: Request):
             "is_admin": is_admin,
         }
         if sb_user:
-            user_response["plan"] = sb_user.get("plan", "free")
+            user_response["plan"] = auth_account.get("plan", "free") if auth_account else sb_user.get("plan", "free")
             user_response["carousels_used"] = sb_user.get("carousels_used", 0)
             user_response["carousels_limit"] = sb_user.get("carousels_limit", 10)
             user_response["profile_summary"] = sb_user.get("profile_summary")
@@ -4731,8 +5148,15 @@ async def auth_telegram(data: dict):
         last_name=data.get("last_name", ""), photo_url=data.get("photo_url", "")
     )
 
+    # Ensure auth_account exists
+    auth_account = _ensure_auth_account(
+        user_id, display_name=data.get("first_name", ""),
+        avatar_url=data.get("photo_url", ""), is_club_member=is_club_member
+    )
+
     user_response = {
         "id": user_id,
+        "auth_id": auth_account["id"] if auth_account else None,
         "first_name": data.get("first_name", ""),
         "last_name": data.get("last_name", ""),
         "username": data.get("username", ""),
@@ -4741,7 +5165,7 @@ async def auth_telegram(data: dict):
         "is_admin": is_admin,
     }
     if sb_user:
-        user_response["plan"] = sb_user.get("plan", "free")
+        user_response["plan"] = auth_account.get("plan", "free") if auth_account else sb_user.get("plan", "free")
         user_response["carousels_used"] = sb_user.get("carousels_used", 0)
         user_response["carousels_limit"] = sb_user.get("carousels_limit", 10)
         user_response["profile_summary"] = sb_user.get("profile_summary")
@@ -4798,8 +5222,15 @@ async def auth_miniapp(request: Request):
         last_name=data["user"].get("last_name", ""), photo_url=data["user"].get("photo_url", "")
     )
 
+    # Ensure auth_account exists
+    auth_account = _ensure_auth_account(
+        user_id, display_name=data["user"].get("first_name", ""),
+        avatar_url=data["user"].get("photo_url", ""), is_club_member=is_club_member
+    )
+
     user_response = {
         "id": user_id,
+        "auth_id": auth_account["id"] if auth_account else None,
         "first_name": data["user"].get("first_name", ""),
         "last_name": data["user"].get("last_name", ""),
         "username": data["user"].get("username", ""),
@@ -4808,7 +5239,7 @@ async def auth_miniapp(request: Request):
         "is_admin": is_admin,
     }
     if sb_user:
-        user_response["plan"] = sb_user.get("plan", "free")
+        user_response["plan"] = auth_account.get("plan", "free") if auth_account else sb_user.get("plan", "free")
         user_response["carousels_used"] = sb_user.get("carousels_used", 0)
         user_response["carousels_limit"] = sb_user.get("carousels_limit", 10)
         user_response["profile_summary"] = sb_user.get("profile_summary")
