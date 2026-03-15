@@ -4988,9 +4988,10 @@ async def link_email(request: Request):
     """
     body = await request.json()
 
-    # 1. Resolve current auth_id from user_id
+    # 1. Resolve current auth_id from user_id (try telegram_id first, then auth_id)
     user_id_str = str(body.get("user_id", ""))
     auth_id = None
+    sb = require_supabase()
     if user_id_str:
         try:
             telegram_id = int(user_id_str)
@@ -4999,6 +5000,11 @@ async def link_email(request: Request):
                 auth_id = account["id"]
         except (ValueError, TypeError):
             pass
+        # Fallback: try as auth_id directly
+        if not auth_id:
+            existing = sb.table("auth_accounts").select("id").eq("id", user_id_str).execute()
+            if existing.data:
+                auth_id = existing.data[0]["id"]
     if not auth_id:
         raise HTTPException(status_code=401, detail="Not authenticated — user_id required")
 
@@ -5015,8 +5021,6 @@ async def link_email(request: Request):
     email = claims.get("email", "")
     if not email:
         raise HTTPException(status_code=400, detail="Email not found in token")
-
-    sb = require_supabase()
 
     # 3. Check if supabase_uid already linked to another account
     existing = sb.table("auth_accounts").select("id").eq("id", supabase_uid).execute()

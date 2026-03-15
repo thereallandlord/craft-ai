@@ -4295,7 +4295,10 @@
                 <h2 style="font-size: 22px; font-weight: 700; margin-bottom: 8px;">Привязка Email</h2>
                 <p style="font-size: 14px; color: #8f8f8f; margin-bottom: 24px;">Введите email и пароль для привязки к вашему аккаунту</p>
                 <input type="email" id="linkEmailInput" placeholder="Email" style="width: 100%; height: 48px; border: 0.5px solid rgba(0,0,0,0.15); border-radius: 12px; padding: 0 16px; font-size: 15px; margin-bottom: 12px; box-sizing: border-box; outline: none;" onkeydown="if(event.key==='Enter')document.getElementById('linkEmailPassword').focus()">
-                <input type="password" id="linkEmailPassword" placeholder="Пароль (мин. 6 символов)" style="width: 100%; height: 48px; border: 0.5px solid rgba(0,0,0,0.15); border-radius: 12px; padding: 0 16px; font-size: 15px; margin-bottom: 12px; box-sizing: border-box; outline: none;" onkeydown="if(event.key==='Enter')submitLinkEmail()">
+                <div style="position: relative; margin-bottom: 12px;">
+                    <input type="password" id="linkEmailPassword" placeholder="Пароль (мин. 6 символов)" style="width: 100%; height: 48px; border: 0.5px solid rgba(0,0,0,0.15); border-radius: 12px; padding: 0 110px 0 16px; font-size: 15px; box-sizing: border-box; outline: none;" onkeydown="if(event.key==='Enter')submitLinkEmail()">
+                    <button onclick="generatePassword()" style="position: absolute; right: 6px; top: 50%; transform: translateY(-50%); height: 36px; padding: 0 12px; border-radius: 9999px; border: 0.5px solid rgba(0,0,0,0.15); background: #f5f5f5; color: #0d0d0d; font-size: 12px; font-weight: 500; cursor: pointer; white-space: nowrap;">Сгенерировать</button>
+                </div>
                 <div id="linkEmailError" style="color: #e53e3e; font-size: 13px; min-height: 18px; margin-bottom: 8px;"></div>
                 <button id="linkEmailSubmitBtn" onclick="submitLinkEmail()" style="width: 100%; height: 48px; background: #0d0d0d; color: #fff; border: none; border-radius: 9999px; font-size: 15px; font-weight: 600; cursor: pointer;">Привязать</button>
             </div>
@@ -6472,8 +6475,8 @@
 
         // === Link Email ===
         function linkEmail() {
-            if (!currentUser || !currentUser.telegram_id) {
-                alert('Для привязки Email необходимо быть авторизованным через Telegram');
+            if (!currentUser) {
+                alert('Необходимо войти в аккаунт');
                 return;
             }
             if (!_supabaseClient) {
@@ -6489,6 +6492,15 @@
                 modal.style.display = 'flex';
                 document.getElementById('linkEmailInput').focus();
             }
+        }
+
+        function generatePassword() {
+            const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%';
+            let pw = '';
+            for (let i = 0; i < 16; i++) pw += chars[Math.floor(Math.random() * chars.length)];
+            const input = document.getElementById('linkEmailPassword');
+            input.value = pw;
+            input.type = 'text'; // show generated password
         }
 
         function closeLinkEmailModal() {
