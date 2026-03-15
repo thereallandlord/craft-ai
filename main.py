@@ -4914,10 +4914,7 @@ async def link_telegram(request: Request):
     if existing_tg.data:
         old_auth_id = existing_tg.data[0]["id"]
         if old_auth_id != auth_id:
-            # Merge: update old auth_account's telegram_id to NULL, set it on new account
-            sb.table("auth_accounts").update({"telegram_id": None}).eq("id", old_auth_id).execute()
-            # Also update users table: link old user's auth_id to the new one
-            sb.table("users").update({"auth_id": auth_id}).eq("auth_id", old_auth_id).execute()
+            raise HTTPException(status_code=409, detail="Этот Telegram-аккаунт уже привязан к другому профилю")
 
     # Update current auth_account with telegram_id
     is_club_member = check_club_membership(telegram_id)
@@ -4935,6 +4932,131 @@ async def link_telegram(request: Request):
         "auth_account": updated.data[0] if updated.data else None,
         "is_club_member": is_club_member,
     }
+
+
+@app.post("/api/auth/link-telegram-by-id")
+async def link_telegram_by_id(request: Request):
+    """Link Telegram account to existing auth_account using verified telegram_id.
+    Called after bot deep link flow confirms Telegram identity.
+    Requires JWT (proves email/Google identity) + telegram_id (verified via bot).
+    """
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="JWT required")
+    claims = verify_supabase_jwt(auth_header[7:])
+    if not claims or not claims.get("sub"):
+        raise HTTPException(status_code=401, detail="Invalid JWT")
+
+    auth_id = claims["sub"]
+    body = await request.json()
+    telegram_id = body.get("telegram_id")
+    if not telegram_id:
+        raise HTTPException(status_code=400, detail="telegram_id required")
+    telegram_id = int(telegram_id)
+
+    sb = require_supabase()
+
+    # Check if this telegram_id is already linked to another account
+    existing_tg = sb.table("auth_accounts").select("id").eq("telegram_id", telegram_id).execute()
+    if existing_tg.data:
+        old_auth_id = existing_tg.data[0]["id"]
+        if old_auth_id != auth_id:
+            raise HTTPException(status_code=409, detail="Этот Telegram-аккаунт уже привязан к другому профилю")
+
+    # Update current auth_account with telegram_id
+    is_club_member = check_club_membership(telegram_id)
+    sb.table("auth_accounts").update({
+        "telegram_id": telegram_id,
+        "is_club_member": is_club_member,
+        "club_checked_at": "now()",
+    }).eq("id", auth_id).execute()
+
+    # Clear cache
+    _auth_cache.pop(auth_id, None)
+
+    updated = sb.table("auth_accounts").select("*").eq("id", auth_id).execute()
+    return {
+        "auth_account": updated.data[0] if updated.data else None,
+        "is_club_member": is_club_member,
+    }
+
+
+@app.post("/api/auth/link-google")
+async def link_google(request: Request):
+    """Link Google/Email account to an existing auth_account (Telegram user).
+    Requires user_id (Telegram ID) + supabase_token (Google OAuth JWT) in body.
+    """
+    # Read body once (resolve_auth_id also reads body, so we do manual resolution)
+    body = await request.json()
+
+    # 1. Resolve current auth_id from user_id in body
+    user_id_str = str(body.get("user_id", ""))
+    auth_id = None
+    if user_id_str:
+        try:
+            telegram_id = int(user_id_str)
+            account = _get_auth_account_by_telegram(telegram_id)
+            if account:
+                auth_id = account["id"]
+        except (ValueError, TypeError):
+            pass
+    if not auth_id:
+        raise HTTPException(status_code=401, detail="Not authenticated — user_id required")
+
+    # 2. Get Supabase JWT from body (proves Google/Email identity)
+    supabase_token = body.get("supabase_token")
+    if not supabase_token:
+        raise HTTPException(status_code=400, detail="supabase_token required")
+
+    claims = verify_supabase_jwt(supabase_token)
+    if not claims or not claims.get("sub"):
+        raise HTTPException(status_code=401, detail="Invalid Supabase token")
+
+    supabase_uid = claims["sub"]
+    email = claims.get("email", "")
+    provider = claims.get("app_metadata", {}).get("provider", "")
+    google_id = claims.get("user_metadata", {}).get("provider_id") if provider == "google" else None
+
+    sb = require_supabase()
+
+    # 3. Check if supabase_uid already linked to another account
+    existing = sb.table("auth_accounts").select("id").eq("id", supabase_uid).execute()
+    if existing.data and existing.data[0]["id"] != auth_id:
+        raise HTTPException(status_code=409, detail="Этот Google-аккаунт уже привязан к другому профилю")
+
+    # Check email conflict
+    if email:
+        email_existing = sb.table("auth_accounts").select("id").eq("email", email).execute()
+        if email_existing.data and email_existing.data[0]["id"] != auth_id:
+            raise HTTPException(status_code=409, detail="Этот email уже привязан к другому профилю")
+
+    # 4. Update auth_account: set email, google_id, and change id to supabase_uid
+    old_auth_id = auth_id
+    updates = {}
+    if email:
+        updates["email"] = email
+    if google_id:
+        updates["google_id"] = google_id
+
+    # Change the auth_account id to match Supabase Auth UID
+    # so JWT-based auth (Google/Email login) finds this same account
+    updates["id"] = supabase_uid
+    sb.table("auth_accounts").update(updates).eq("id", old_auth_id).execute()
+
+    # Update users table reference
+    sb.table("users").update({"auth_id": supabase_uid}).eq("auth_id", old_auth_id).execute()
+
+    # Update usage_tracking references
+    try:
+        sb.table("usage_tracking").update({"auth_id": supabase_uid}).eq("auth_id", old_auth_id).execute()
+    except Exception:
+        pass  # Non-fatal
+
+    # Clear cache
+    _auth_cache.pop(old_auth_id, None)
+
+    updated = sb.table("auth_accounts").select("*").eq("id", supabase_uid).execute()
+    return {"auth_account": updated.data[0] if updated.data else None}
 
 
 @app.get("/api/auth/me")
@@ -4965,6 +5087,8 @@ async def auth_me(request: Request):
             "id": account.get("telegram_id") or user_data.get("user_id"),
             "auth_id": account["id"],
             "email": account.get("email"),
+            "telegram_id": account.get("telegram_id"),
+            "google_id": account.get("google_id"),
             "first_name": account.get("display_name") or user_data.get("first_name", ""),
             "last_name": user_data.get("last_name", ""),
             "username": user_data.get("username", ""),

@@ -4124,6 +4124,41 @@
             color: var(--text-muted);
             margin-bottom: 12px;
         }
+        .linked-account-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 0;
+            border-bottom: 0.5px solid rgba(0,0,0,0.08);
+        }
+        .linked-account-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #0d0d0d;
+        }
+        .linked-account-status {
+            font-size: 13px;
+            color: #8f8f8f;
+        }
+        .linked-account-status .linked-active {
+            color: #16a34a;
+            font-weight: 500;
+        }
+        .link-account-btn {
+            height: 32px;
+            padding: 0 14px;
+            border-radius: 9999px;
+            border: 0.5px solid rgba(0,0,0,0.15);
+            background: #fff;
+            color: #0d0d0d;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        .link-account-btn:hover { background: #f9f9f9; }
         .profile-summary-text {
             font-size: 14px;
             line-height: 1.6;
@@ -5008,6 +5043,33 @@
                     <span class="tv-title">Мой профиль</span>
                 </div>
                 <div class="admin-content" id="profileContent">
+                    <div class="profile-section" id="linkedAccountsSection">
+                        <div class="profile-section-title">Привязанные аккаунты</div>
+                        <div class="profile-section-subtitle">Привяжите дополнительные способы входа, чтобы использовать один аккаунт</div>
+                        <div id="linkedAccountsList">
+                            <div class="linked-account-row">
+                                <div class="linked-account-info">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="#26A5E4"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.2-.08-.06-.19-.04-.28-.02-.12.03-2.02 1.28-5.69 3.77-.54.37-1.03.55-1.47.54-.48-.01-1.4-.27-2.09-.49-.84-.27-1.51-.42-1.45-.89.03-.24.38-.49 1.05-.74 4.11-1.79 6.85-2.97 8.24-3.54 3.93-1.62 4.74-1.9 5.27-1.91.12 0 .37.03.54.17.14.12.18.28.2.45-.01.06.01.24 0 .37z"/></svg>
+                                    <span>Telegram</span>
+                                </div>
+                                <div class="linked-account-status" id="linkedTelegram">—</div>
+                            </div>
+                            <div class="linked-account-row">
+                                <div class="linked-account-info">
+                                    <svg width="20" height="20" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+                                    <span>Google</span>
+                                </div>
+                                <div class="linked-account-status" id="linkedGoogle">—</div>
+                            </div>
+                            <div class="linked-account-row" style="border-bottom:none;">
+                                <div class="linked-account-info">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0d0d0d" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                                    <span>Email</span>
+                                </div>
+                                <div class="linked-account-status" id="linkedEmail">—</div>
+                            </div>
+                        </div>
+                    </div>
                     <div class="profile-section">
                         <div class="profile-section-title">Что обо мне знает ИИ</div>
                         <div id="profileSummaryArea">
@@ -6204,6 +6266,9 @@
             summaryEl.textContent = 'Загрузка...';
             summaryEl.classList.add('profile-summary-empty');
 
+            // Render linked accounts section
+            renderLinkedAccounts();
+
             // Fetch fresh profile from server
             try {
                 const resp = await apiFetch(`${API_URL}/api/user/profile?user_id=${currentUser.id}`);
@@ -6223,6 +6288,207 @@
                 summaryEl.textContent = 'ИИ пока ничего о вас не знает. Добавьте информацию ниже или начните общение — система запомнит автоматически.';
                 summaryEl.classList.add('profile-summary-empty');
             }
+        }
+
+        // === Linked Accounts ===
+        async function renderLinkedAccounts() {
+            if (!currentUser) return;
+            const tgEl = document.getElementById('linkedTelegram');
+            const googleEl = document.getElementById('linkedGoogle');
+            const emailEl = document.getElementById('linkedEmail');
+            if (!tgEl || !googleEl || !emailEl) return;
+
+            // Fetch fresh auth_account data
+            try {
+                const headers = {};
+                if (_supabaseSession) {
+                    headers['Authorization'] = `Bearer ${_supabaseSession.access_token}`;
+                }
+                const resp = await apiFetch(`${API_URL}/api/auth/me?user_id=${currentUser.id}`, { headers });
+                if (resp.ok) {
+                    const data = await resp.json();
+                    const user = data.user;
+                    if (user) {
+                        // Update currentUser with fresh linked info
+                        currentUser.telegram_id = user.telegram_id;
+                        currentUser.google_id = user.google_id;
+                        currentUser.email = user.email;
+                    }
+                }
+            } catch(e) {
+                console.error('[profile] Failed to fetch linked accounts:', e);
+            }
+
+            // Telegram
+            if (currentUser.telegram_id) {
+                const username = currentUser.username ? `@${currentUser.username}` : `ID: ${currentUser.telegram_id}`;
+                tgEl.innerHTML = `<span class="linked-active">Привязан</span> · ${username}`;
+            } else {
+                tgEl.innerHTML = `<button class="link-account-btn" onclick="linkTelegram()">Привязать</button>`;
+            }
+
+            // Google
+            if (currentUser.google_id) {
+                const emailDisplay = currentUser.email || 'Привязан';
+                googleEl.innerHTML = `<span class="linked-active">Привязан</span> · ${emailDisplay}`;
+            } else {
+                googleEl.innerHTML = `<button class="link-account-btn" onclick="linkGoogle()">Привязать</button>`;
+            }
+
+            // Email
+            if (currentUser.email) {
+                emailEl.innerHTML = currentUser.email;
+            } else {
+                emailEl.innerHTML = '—';
+            }
+        }
+
+        async function linkTelegram() {
+            // For linking Telegram, we need JWT (user must be logged in via Google/Email)
+            if (!_supabaseSession) {
+                alert('Для привязки Telegram необходимо быть авторизованным через Google или Email');
+                return;
+            }
+
+            // Open Telegram bot deep link for auth
+            if (!_tgBotUsername) {
+                alert('Telegram бот не настроен');
+                return;
+            }
+
+            try {
+                // Request a login token
+                const tokenResp = await fetch(`${API_URL}/api/auth/create-login-token`);
+                const tokenData = await tokenResp.json();
+                const token = tokenData.token;
+
+                // Open Telegram deep link
+                window.open(`https://t.me/${_tgBotUsername}?start=login_${token}`, '_blank');
+
+                // Poll for completion
+                const linkedTgEl = document.getElementById('linkedTelegram');
+                linkedTgEl.innerHTML = '<span style="color:#8f8f8f;">Ожидание авторизации в Telegram...</span>';
+
+                let attempts = 0;
+                const pollInterval = setInterval(async () => {
+                    attempts++;
+                    if (attempts > 60) { // 2 minutes timeout
+                        clearInterval(pollInterval);
+                        linkedTgEl.innerHTML = `<button class="link-account-btn" onclick="linkTelegram()">Привязать</button>`;
+                        return;
+                    }
+                    try {
+                        const checkResp = await fetch(`${API_URL}/api/auth/check-login-token/${token}`);
+                        const checkData = await checkResp.json();
+                        if (checkData.user) {
+                            clearInterval(pollInterval);
+                            // Now link telegram to current account using verified telegram_id
+                            const telegramId = checkData.user.id;
+                            const linkResp = await fetch(`${API_URL}/api/auth/link-telegram-by-id`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${_supabaseSession.access_token}`
+                                },
+                                body: JSON.stringify({ telegram_id: telegramId })
+                            });
+                            if (linkResp.ok) {
+                                const linkData = await linkResp.json();
+                                currentUser.telegram_id = linkData.auth_account?.telegram_id;
+                                currentUser.is_club_member = linkData.is_club_member;
+                                if (checkData.user.username) currentUser.username = checkData.user.username;
+                                localStorage.setItem('craft_user', JSON.stringify(currentUser));
+                                renderLinkedAccounts();
+                            } else if (linkResp.status === 409) {
+                                const err = await linkResp.json();
+                                alert(err.detail || 'Этот Telegram-аккаунт уже привязан к другому профилю');
+                                linkedTgEl.innerHTML = `<button class="link-account-btn" onclick="linkTelegram()">Привязать</button>`;
+                            } else {
+                                alert('Ошибка привязки Telegram');
+                                linkedTgEl.innerHTML = `<button class="link-account-btn" onclick="linkTelegram()">Привязать</button>`;
+                            }
+                        }
+                    } catch(e) {
+                        console.error('[link-tg] poll error:', e);
+                    }
+                }, 2000);
+            } catch(e) {
+                console.error('[link-tg] error:', e);
+                alert('Ошибка привязки Telegram');
+            }
+        }
+
+        async function linkGoogle() {
+            // For linking Google, user must be logged in via Telegram
+            if (!currentUser || !currentUser.telegram_id) {
+                alert('Для привязки Google необходимо быть авторизованным через Telegram');
+                return;
+            }
+            if (!_supabaseClient) {
+                alert('Supabase Auth не настроен');
+                return;
+            }
+
+            try {
+                // Use Supabase OAuth with redirect
+                // After redirect back, we'll detect link_google=1 param and complete linking
+                const redirectUrl = window.location.origin + window.location.pathname + '?link_google=1';
+                const { data, error } = await _supabaseClient.auth.signInWithOAuth({
+                    provider: 'google',
+                    options: { redirectTo: redirectUrl }
+                });
+                if (error) {
+                    console.error('[link-google] OAuth error:', error);
+                    alert('Ошибка авторизации Google: ' + error.message);
+                }
+                // User will be redirected to Google, then back with link_google=1
+            } catch(e) {
+                console.error('[link-google] error:', e);
+                alert('Ошибка привязки Google');
+            }
+        }
+
+        async function _completeLinkGoogle(session) {
+            // Called after OAuth redirect with link_google=1 param
+            try {
+                const resp = await fetch(`${API_URL}/api/auth/link-google`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: String(currentUser.id),
+                        supabase_token: session.access_token
+                    })
+                });
+                if (resp.ok) {
+                    const data = await resp.json();
+                    const account = data.auth_account;
+                    if (account) {
+                        currentUser.auth_id = account.id;
+                        currentUser.email = account.email;
+                        currentUser.google_id = account.google_id;
+                        localStorage.setItem('craft_user', JSON.stringify(currentUser));
+                    }
+                    // Store session for future JWT-based auth
+                    _supabaseSession = session;
+                    alert('Google аккаунт успешно привязан!');
+                    renderLinkedAccounts();
+                } else if (resp.status === 409) {
+                    const err = await resp.json();
+                    alert(err.detail || 'Этот Google-аккаунт уже привязан к другому профилю');
+                    // Sign out from the Google session since linking failed
+                    await _supabaseClient.auth.signOut();
+                    _supabaseSession = null;
+                } else {
+                    const err = await resp.text();
+                    console.error('[link-google] error:', err);
+                    alert('Ошибка привязки Google');
+                }
+            } catch(e) {
+                console.error('[link-google] complete error:', e);
+                alert('Ошибка привязки Google');
+            }
+            // Clean URL
+            window.history.replaceState({}, '', window.location.pathname);
         }
 
         function editProfileSummary() {
@@ -9291,6 +9557,18 @@
                             console.log('[auth] State change:', event);
                             _supabaseSession = session;
                             if (event === 'SIGNED_IN' && session) {
+                                // Check if this is a link-google callback
+                                const urlParams = new URLSearchParams(window.location.search);
+                                if (urlParams.get('link_google') === '1') {
+                                    if (!currentUser) {
+                                        const saved = localStorage.getItem('craft_user');
+                                        if (saved) { try { currentUser = JSON.parse(saved); } catch(e) {} }
+                                    }
+                                    if (currentUser && currentUser.telegram_id) {
+                                        await _completeLinkGoogle(session);
+                                        return;
+                                    }
+                                }
                                 await _handleSupabaseSignIn(session);
                             } else if (event === 'SIGNED_OUT') {
                                 _supabaseSession = null;
@@ -9300,6 +9578,19 @@
                         const { data: { session } } = await _supabaseClient.auth.getSession();
                         if (session) {
                             _supabaseSession = session;
+                            // Check if this is a link-google callback
+                            const urlParams = new URLSearchParams(window.location.search);
+                            if (urlParams.get('link_google') === '1') {
+                                // Restore currentUser from localStorage before linking
+                                if (!currentUser) {
+                                    const saved = localStorage.getItem('craft_user');
+                                    if (saved) { try { currentUser = JSON.parse(saved); } catch(e) {} }
+                                }
+                                if (currentUser && currentUser.telegram_id) {
+                                    await _completeLinkGoogle(session);
+                                    return;
+                                }
+                            }
                             await _handleSupabaseSignIn(session);
                             return;
                         }
