@@ -1175,6 +1175,10 @@ async def index():
     })
 
 
+@app.get("/google47e4976f6f044658.html")
+async def google_verification():
+    return FileResponse("static/google47e4976f6f044658.html")
+
 @app.get("/privacy")
 async def privacy_page():
     return FileResponse("static/privacy.html")
