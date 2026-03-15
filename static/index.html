@@ -1188,14 +1188,18 @@
         .pricing-cards {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 20px;
+            gap: 24px;
             margin-bottom: 32px;
+            max-width: 960px;
+            margin-left: auto;
+            margin-right: auto;
         }
         .pricing-card {
             background: var(--card-bg);
             border: 1px solid var(--border-color);
             border-radius: 16px;
-            padding: 28px 24px;
+            padding: 32px 28px;
+            min-width: 0;
             display: flex;
             flex-direction: column;
             position: relative;
@@ -5103,19 +5107,21 @@
                 <div class="tab-page-title">Тарифы</div>
                 <div class="tab-page-subtitle">Выберите подходящий план для вашего бизнеса</div>
 
-                <div class="pricing-currency-toggle" style="display:flex;justify-content:center;gap:4px;margin-bottom:24px;background:var(--bg-secondary);border-radius:12px;padding:4px;width:fit-content;margin-left:auto;margin-right:auto;">
-                    <button class="pricing-currency-btn active" id="currencyBtnRUB" onclick="setPricingCurrency('RUB')" style="padding:8px 20px;border-radius:10px;border:none;cursor:pointer;font-size:14px;font-weight:600;transition:all .2s;">₽ Рубли</button>
-                    <button class="pricing-currency-btn" id="currencyBtnUSD" onclick="setPricingCurrency('USD')" style="padding:8px 20px;border-radius:10px;border:none;cursor:pointer;font-size:14px;font-weight:600;transition:all .2s;">$ USD</button>
+                <div style="display:flex;justify-content:flex-end;margin-bottom:8px;">
+                    <button id="currencyToggleBtn" onclick="togglePricingCurrency()" style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1px solid var(--border-color);background:var(--card-bg);cursor:pointer;font-size:13px;color:var(--text-secondary);transition:all .2s;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                        <span id="currencyToggleLabel">₽ RUB</span>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+                    </button>
                 </div>
-                <div class="pricing-currency-note" style="text-align:center;margin-bottom:20px;font-size:13px;color:var(--text-muted);" id="pricingCurrencyNote">Оплата в рублях — доступны карты, СБП и другие способы</div>
 
                 <div class="pricing-cards" id="pricingCards">
                     <!-- Free -->
                     <div class="pricing-card" id="pricingFree">
                         <div class="pricing-card-header">
                             <div class="pricing-plan-name">Free</div>
-                            <div class="pricing-price">
-                                <span class="pricing-amount">$0</span>
+                            <div class="pricing-price" id="freePriceBlock">
+                                <span class="pricing-amount">0 ₽</span>
                                 <span class="pricing-period">/ навсегда</span>
                             </div>
                             <div class="pricing-desc">Для знакомства с платформой</div>
@@ -7043,47 +7049,47 @@
         let _selectedCurrency = (navigator.language || '').startsWith('ru') ? 'RUB' : 'USD';
         const PRICING_DATA = {
             RUB: {
+                free:     { price: '0 ₽' },
                 pro:      { old: '2 900 ₽', price: '1 900 ₽' },
                 business: { old: '4 900 ₽', price: '3 900 ₽' },
-                note: 'Оплата в рублях — доступны карты, СБП и другие способы'
+                label: '₽ RUB'
             },
             USD: {
+                free:     { price: '$0' },
                 pro:      { old: '$29', price: '$19' },
                 business: { old: '$49', price: '$39' },
-                note: 'Payment in USD — Visa, Mastercard, PayPal, Stripe'
+                label: '$ USD'
             }
         };
+
+        function togglePricingCurrency() {
+            const next = _selectedCurrency === 'RUB' ? 'USD' : 'RUB';
+            setPricingCurrency(next);
+        }
 
         function setPricingCurrency(cur) {
             _selectedCurrency = cur;
             const d = PRICING_DATA[cur];
-            // Update prices
+            // Free price
+            const freeBlock = document.getElementById('freePriceBlock');
+            if (freeBlock) {
+                freeBlock.querySelector('.pricing-amount').textContent = d.free.price;
+            }
+            // Pro price
             const proBlock = document.getElementById('proPriceBlock');
             if (proBlock) {
                 proBlock.querySelector('.pricing-amount-old').textContent = d.pro.old;
                 proBlock.querySelector('.pricing-amount').textContent = d.pro.price;
             }
+            // Business price
             const bizBlock = document.getElementById('businessPriceBlock');
             if (bizBlock) {
                 bizBlock.querySelector('.pricing-amount-old').textContent = d.business.old;
                 bizBlock.querySelector('.pricing-amount').textContent = d.business.price;
             }
-            // Toggle active button
-            document.getElementById('currencyBtnRUB').className = 'pricing-currency-btn' + (cur === 'RUB' ? ' active' : '');
-            document.getElementById('currencyBtnUSD').className = 'pricing-currency-btn' + (cur === 'USD' ? ' active' : '');
-            // Note
-            const note = document.getElementById('pricingCurrencyNote');
-            if (note) note.textContent = d.note;
-            // Style buttons
-            document.querySelectorAll('.pricing-currency-btn').forEach(btn => {
-                if (btn.classList.contains('active')) {
-                    btn.style.background = 'var(--accent-primary, #6C5CE7)';
-                    btn.style.color = '#fff';
-                } else {
-                    btn.style.background = 'transparent';
-                    btn.style.color = 'var(--text-secondary)';
-                }
-            });
+            // Toggle button label
+            const label = document.getElementById('currencyToggleLabel');
+            if (label) label.textContent = d.label;
         }
 
         async function subscribePlan(plan) {
