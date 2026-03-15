@@ -4107,6 +4107,17 @@
 
         /* === Admin Prompts View === */
         /* === Profile View === */
+        .admin-view {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+        .admin-content {
+            padding: 24px 40px 40px;
+            max-width: 680px;
+            margin: 0 auto;
+            width: 100%;
+        }
         .profile-section {
             border: 1px solid var(--border);
             border-radius: 12px;
@@ -9992,6 +10003,13 @@
         }
 
         async function init() {
+            // Restore currentUser from localStorage FIRST (before any routing)
+            // This prevents race conditions where switchTab shows login modal
+            const savedUser = localStorage.getItem('craft_user');
+            if (savedUser) {
+                try { currentUser = JSON.parse(savedUser); } catch(e) { localStorage.removeItem('craft_user'); }
+            }
+
             // Start auth immediately (don't await — runs in parallel)
             initAuth();
             // Preload templates in background so they're ready when user clicks "Шаблоны"
