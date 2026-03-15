@@ -5509,6 +5509,7 @@
                     content += '</div>';
                 }
                 if (msg.message_type === 'analysis' && msg.message_data) {
+                    msg.message_data._sub_chat_id = currentSubChatId || '';
                     content = renderAnalysisMessageCard(msg.message_data);
                 }
                 // Action buttons under assistant messages (ChatGPT style)
@@ -8310,6 +8311,15 @@
         // Comment SVG icon
         const COMMENT_ICON_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>';
 
+        // Link icon for "Copy source URL"
+        const LINK_ICON_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>';
+
+        // Helper: link copy button
+        function _linkBtn(url) {
+            const safeUrl = escapeHtml(url).replace(/'/g, "\\'");
+            return `<button class="msg-action-btn" onclick="copyToClipboard('${safeUrl}', this)" style="position:relative;color:var(--text-muted);">${LINK_ICON_SVG}<span class="ma-tooltip">Скопировать ссылку</span></button>`;
+        }
+
         // Helper: copy button with tooltip
         function _copyBtn(onclickExpr) {
             return `<button class="msg-action-btn" onclick="${onclickExpr}" style="position:relative;">${COPY_ICON_SVG}<span class="ma-tooltip">Копировать</span></button>`;
@@ -8558,7 +8568,7 @@
                                 <div style="font-size:12px;color:var(--text-muted);">${date ? date : ''}${date && typeLabel ? ' · ' : ''}${typeLabel}${data.images && data.images.length > 1 ? ' (' + data.images.length + ')' : ''}</div>
                             </div>
                         </div>
-                        ${platformIcon ? `<div style="flex-shrink:0;">${platformIcon}</div>` : ''}
+                        <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">${data.source_url ? _linkBtn(data.source_url) : ''}${platformIcon || ''}</div>
                     </div>
 
                     <!-- Caption -->
@@ -8689,7 +8699,7 @@
             } else if (data.transcript && data.transcript.length > 50) {
                 processedHtml = `
                     <div id="${uid}_ai_container">
-                        <button class="btn-ai-process" onclick="processTranscriptAI(_analysisDataStore['${uid}'].transcript, '', '', '${uid}_ai_container')">
+                        <button class="btn-ai-process" onclick="processTranscriptAI(_analysisDataStore['${uid}'].transcript, '', _analysisDataStore['${uid}']._sub_chat_id || '', '${uid}_ai_container')">
                             Обработать ИИ (очистка + анализ структуры)
                         </button>
                     </div>`;
@@ -8705,7 +8715,7 @@
                                 <div style="font-size:12px;color:var(--text-muted);">${date ? date : ''}${date && typeLabel ? ' · ' : ''}${typeLabel}${data.images && data.images.length > 1 ? ' (' + data.images.length + ')' : ''}</div>
                             </div>
                         </div>
-                        ${platformIcon ? `<div style="flex-shrink:0;">${platformIcon}</div>` : ''}
+                        <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">${data.source_url ? _linkBtn(data.source_url) : ''}${platformIcon || ''}</div>
                     </div>
                     ${captionHtml}
                     ${imagesHtml}

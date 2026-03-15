@@ -2999,7 +2999,7 @@ async def process_transcript(request: Request):
     # 3. Update stored message_data if sub_chat_id provided
     if sub_chat_id and supabase and (processed_transcript or video_structure):
         try:
-            msgs = supabase.table("sub_chat_messages").select("id,message_data").eq(
+            msgs = supabase.table("project_messages").select("id,message_data").eq(
                 "sub_chat_id", sub_chat_id
             ).eq("message_type", "analysis").order("created_at", desc=True).limit(1).execute()
             if msgs.data:
@@ -3009,7 +3009,7 @@ async def process_transcript(request: Request):
                     msg_data["processed_transcript"] = processed_transcript
                 if video_structure:
                     msg_data["video_structure"] = video_structure
-                supabase.table("sub_chat_messages").update(
+                supabase.table("project_messages").update(
                     {"message_data": json.dumps(msg_data) if isinstance(msg_data, dict) else msg_data}
                 ).eq("id", msg["id"]).execute()
                 print(f"[process-transcript] Updated message {msg['id']} with processed data")
