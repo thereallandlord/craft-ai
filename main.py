@@ -2516,7 +2516,7 @@ def _parse_instagram(data: dict) -> dict:
     }
 
 
-def _parse_youtube(data: dict) -> dict:
+def _parse_youtube(data: dict, source_url: str = "") -> dict:
     """Parse Scrape Creators YouTube response into normalized format."""
     video = data.get("data", data)
     if isinstance(video, list) and video:
@@ -2532,7 +2532,8 @@ def _parse_youtube(data: dict) -> dict:
 
     images = [{"url": thumbnail, "is_video": True}] if thumbnail else []
 
-    is_short = "/shorts/" in str(video.get("url", ""))
+    # Check both API response URL and original source URL for /shorts/
+    is_short = "/shorts/" in str(video.get("url", "")) or "/shorts/" in source_url
     return {
         "platform": "youtube",
         "username": video.get("channelName", "") or video.get("author", "") or video.get("ownerChannelName", ""),
@@ -2816,7 +2817,10 @@ async def competitor_analyze(request: Request):
 
         # 2. Parse with platform-specific parser
         parser = _PLATFORM_PARSERS.get(platform)
-        analysis = parser(raw_data)
+        if platform == "youtube":
+            analysis = parser(raw_data, source_url=url)
+        else:
+            analysis = parser(raw_data)
         if not analysis:
             raise HTTPException(status_code=404, detail="Пост не найден или недоступен")
 
