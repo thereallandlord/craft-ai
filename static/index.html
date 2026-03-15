@@ -4136,7 +4136,6 @@
             margin-bottom: 12px;
         }
         #linkedAccountsList {
-            max-width: 480px;
         }
         .linked-account-row {
             display: flex;
@@ -4286,6 +4285,23 @@
 </head>
 <body>
     <!-- Login Modal (ChatGPT-exact popup) -->
+    <!-- Link Email Modal -->
+    <div class="login-modal-backdrop" id="linkEmailModal" style="display:none" onclick="if(event.target===this)closeLinkEmailModal()">
+        <div class="login-card" style="max-width: 400px;">
+            <div class="login-card-header">
+                <button class="login-close-btn" onclick="closeLinkEmailModal()">✕</button>
+            </div>
+            <div style="padding: 0 32px 32px; text-align: center;">
+                <h2 style="font-size: 22px; font-weight: 700; margin-bottom: 8px;">Привязка Email</h2>
+                <p style="font-size: 14px; color: #8f8f8f; margin-bottom: 24px;">Введите email и пароль для привязки к вашему аккаунту</p>
+                <input type="email" id="linkEmailInput" placeholder="Email" style="width: 100%; height: 48px; border: 0.5px solid rgba(0,0,0,0.15); border-radius: 12px; padding: 0 16px; font-size: 15px; margin-bottom: 12px; box-sizing: border-box; outline: none;" onkeydown="if(event.key==='Enter')document.getElementById('linkEmailPassword').focus()">
+                <input type="password" id="linkEmailPassword" placeholder="Пароль (мин. 6 символов)" style="width: 100%; height: 48px; border: 0.5px solid rgba(0,0,0,0.15); border-radius: 12px; padding: 0 16px; font-size: 15px; margin-bottom: 12px; box-sizing: border-box; outline: none;" onkeydown="if(event.key==='Enter')submitLinkEmail()">
+                <div id="linkEmailError" style="color: #e53e3e; font-size: 13px; min-height: 18px; margin-bottom: 8px;"></div>
+                <button id="linkEmailSubmitBtn" onclick="submitLinkEmail()" style="width: 100%; height: 48px; background: #0d0d0d; color: #fff; border: none; border-radius: 9999px; font-size: 15px; font-weight: 600; cursor: pointer;">Привязать</button>
+            </div>
+        </div>
+    </div>
+
     <div class="login-modal-backdrop hidden" id="loginModal" onclick="if(event.target===this)hideLoginModal()">
         <div class="login-card">
             <div class="login-card-header">
@@ -6300,9 +6316,9 @@
 
             // Email
             if (currentUser.email) {
-                emailEl.innerHTML = currentUser.email;
+                emailEl.innerHTML = `<span class="linked-active">Привязан</span> · ${currentUser.email}`;
             } else {
-                emailEl.innerHTML = '—';
+                emailEl.innerHTML = `<button class="link-account-btn" onclick="linkEmail()">Привязать</button>`;
             }
         }
 
@@ -6452,6 +6468,123 @@
             }
             // Clean URL
             window.history.replaceState({}, '', window.location.pathname);
+        }
+
+        // === Link Email ===
+        function linkEmail() {
+            if (!currentUser || !currentUser.telegram_id) {
+                alert('Для привязки Email необходимо быть авторизованным через Telegram');
+                return;
+            }
+            if (!_supabaseClient) {
+                alert('Supabase Auth не настроен');
+                return;
+            }
+            // Show modal
+            const modal = document.getElementById('linkEmailModal');
+            if (modal) {
+                document.getElementById('linkEmailInput').value = '';
+                document.getElementById('linkEmailPassword').value = '';
+                document.getElementById('linkEmailError').textContent = '';
+                modal.style.display = 'flex';
+                document.getElementById('linkEmailInput').focus();
+            }
+        }
+
+        function closeLinkEmailModal() {
+            const modal = document.getElementById('linkEmailModal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        async function submitLinkEmail() {
+            const email = document.getElementById('linkEmailInput').value.trim();
+            const password = document.getElementById('linkEmailPassword').value;
+            const errorEl = document.getElementById('linkEmailError');
+            const btn = document.getElementById('linkEmailSubmitBtn');
+
+            if (!email || !password) {
+                errorEl.textContent = 'Введите email и пароль';
+                return;
+            }
+            if (password.length < 6) {
+                errorEl.textContent = 'Пароль должен быть не менее 6 символов';
+                return;
+            }
+
+            errorEl.textContent = '';
+            btn.disabled = true;
+            btn.textContent = 'Привязка...';
+
+            try {
+                // Try signUp first (new email user)
+                let { data, error } = await _supabaseClient.auth.signUp({ email, password });
+
+                if (error) {
+                    // If user already exists, try signIn
+                    if (error.message.includes('already registered') || error.message.includes('already been registered')) {
+                        const signIn = await _supabaseClient.auth.signInWithPassword({ email, password });
+                        if (signIn.error) {
+                            errorEl.textContent = signIn.error.message;
+                            btn.disabled = false;
+                            btn.textContent = 'Привязать';
+                            return;
+                        }
+                        data = signIn.data;
+                    } else {
+                        errorEl.textContent = error.message;
+                        btn.disabled = false;
+                        btn.textContent = 'Привязать';
+                        return;
+                    }
+                }
+
+                const session = data.session;
+                if (!session) {
+                    errorEl.textContent = 'Подтвердите email по ссылке в письме, затем повторите привязку';
+                    btn.disabled = false;
+                    btn.textContent = 'Привязать';
+                    return;
+                }
+
+                // Call backend to link email to Telegram account
+                const resp = await fetch(`${API_URL}/api/auth/link-email`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: String(currentUser.id),
+                        supabase_token: session.access_token
+                    })
+                });
+
+                if (resp.ok) {
+                    const result = await resp.json();
+                    const account = result.auth_account;
+                    if (account) {
+                        currentUser.auth_id = account.id;
+                        currentUser.email = account.email;
+                        localStorage.setItem('craft_user', JSON.stringify(currentUser));
+                    }
+                    _supabaseSession = session;
+                    closeLinkEmailModal();
+                    showToast('Email успешно привязан!', 'success');
+                    renderLinkedAccounts();
+                } else if (resp.status === 409) {
+                    const err = await resp.json();
+                    errorEl.textContent = err.detail || 'Этот email уже привязан к другому профилю';
+                    await _supabaseClient.auth.signOut();
+                    _supabaseSession = null;
+                } else {
+                    const err = await resp.text();
+                    console.error('[link-email] error:', err);
+                    errorEl.textContent = 'Ошибка привязки email';
+                }
+            } catch(e) {
+                console.error('[link-email] error:', e);
+                errorEl.textContent = 'Ошибка привязки email';
+            }
+
+            btn.disabled = false;
+            btn.textContent = 'Привязать';
         }
 
         function editProfileSummary() {

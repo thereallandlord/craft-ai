@@ -4981,6 +4981,74 @@ async def link_telegram_by_id(request: Request):
     }
 
 
+@app.post("/api/auth/link-email")
+async def link_email(request: Request):
+    """Link Email/Password account to an existing auth_account (Telegram user).
+    Requires user_id (Telegram ID) + supabase_token (Email JWT) in body.
+    """
+    body = await request.json()
+
+    # 1. Resolve current auth_id from user_id
+    user_id_str = str(body.get("user_id", ""))
+    auth_id = None
+    if user_id_str:
+        try:
+            telegram_id = int(user_id_str)
+            account = _get_auth_account_by_telegram(telegram_id)
+            if account:
+                auth_id = account["id"]
+        except (ValueError, TypeError):
+            pass
+    if not auth_id:
+        raise HTTPException(status_code=401, detail="Not authenticated — user_id required")
+
+    # 2. Get Supabase JWT from body (proves Email identity)
+    supabase_token = body.get("supabase_token")
+    if not supabase_token:
+        raise HTTPException(status_code=400, detail="supabase_token required")
+
+    claims = verify_supabase_jwt(supabase_token)
+    if not claims or not claims.get("sub"):
+        raise HTTPException(status_code=401, detail="Invalid Supabase token")
+
+    supabase_uid = claims["sub"]
+    email = claims.get("email", "")
+    if not email:
+        raise HTTPException(status_code=400, detail="Email not found in token")
+
+    sb = require_supabase()
+
+    # 3. Check if supabase_uid already linked to another account
+    existing = sb.table("auth_accounts").select("id").eq("id", supabase_uid).execute()
+    if existing.data and existing.data[0]["id"] != auth_id:
+        raise HTTPException(status_code=409, detail="Этот email-аккаунт уже привязан к другому профилю")
+
+    # Check email conflict
+    email_existing = sb.table("auth_accounts").select("id").eq("email", email).execute()
+    if email_existing.data and email_existing.data[0]["id"] != auth_id:
+        raise HTTPException(status_code=409, detail="Этот email уже привязан к другому профилю")
+
+    # 4. Update auth_account: set email and change id to supabase_uid
+    old_auth_id = auth_id
+    updates = {"email": email, "id": supabase_uid}
+    sb.table("auth_accounts").update(updates).eq("id", old_auth_id).execute()
+
+    # Update users table reference
+    sb.table("users").update({"auth_id": supabase_uid}).eq("auth_id", old_auth_id).execute()
+
+    # Update usage_tracking references
+    try:
+        sb.table("usage_tracking").update({"auth_id": supabase_uid}).eq("auth_id", old_auth_id).execute()
+    except Exception:
+        pass  # Non-fatal
+
+    # Clear cache
+    _auth_cache.pop(old_auth_id, None)
+
+    updated = sb.table("auth_accounts").select("*").eq("id", supabase_uid).execute()
+    return {"auth_account": updated.data[0] if updated.data else None}
+
+
 @app.post("/api/auth/link-google")
 async def link_google(request: Request):
     """Link Google/Email account to an existing auth_account (Telegram user).
