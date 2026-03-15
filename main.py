@@ -5439,7 +5439,18 @@ async def get_subscription(request: Request):
     """Get user's subscription status and usage."""
     auth_id, _ = await resolve_auth_id(request)
     if not auth_id:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+        # Return free plan info for unauthenticated users instead of 401
+        anon_limits = PLAN_LIMITS.get("anonymous", {})
+        return {
+            "plan": "free",
+            "effective_plan": "anonymous",
+            "is_club_member": False,
+            "subscription": None,
+            "usage": {
+                action: {"used": 0, "limit": anon_limits.get(action, 0)}
+                for action in ["ai_chat", "carousel_generate", "competitor_analysis"]
+            },
+        }
 
     sb = require_supabase()
     account = sb.table("auth_accounts").select("plan,is_club_member").eq("id", auth_id).execute()
