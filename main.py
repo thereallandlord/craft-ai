@@ -2688,25 +2688,6 @@ async def image_proxy(url: str):
         raise HTTPException(502, f"Image proxy error: {str(e)}")
 
 
-@app.get("/api/debug/transcript")
-async def debug_transcript(url: str):
-    """Temporary debug: test transcript API directly."""
-    if not SCRAPE_CREATORS_API_KEY:
-        return {"error": "no API key"}
-    results = {}
-    for endpoint in ["/v2/instagram/media/transcript", "/v1/instagram/media/transcript"]:
-        try:
-            resp = requests.get(
-                f"{SCRAPE_CREATORS_BASE}{endpoint}",
-                params={"url": url},
-                headers={"x-api-key": SCRAPE_CREATORS_API_KEY},
-                timeout=15
-            )
-            results[endpoint] = {"status": resp.status_code, "body": resp.text[:500]}
-        except Exception as e:
-            results[endpoint] = {"error": str(e)}
-    return results
-
 @app.post("/api/competitor/analyze")
 async def competitor_analyze(request: Request):
     """Analyze a social media post via Scrape Creators API. Creates Topic + analysis sub-chat."""
@@ -2781,46 +2762,42 @@ async def competitor_analyze(request: Request):
         transcript = None
         if analysis["is_video"] and config.get("transcript_endpoint"):
             try:
-                print(f"[competitor] Fetching transcript for {platform} video: {url}")
-                # Try with normalized URL first
+                print(f"[competitor] Fetching transcript for {platform} video...")
                 tr_resp = requests.get(
                     f"{SCRAPE_CREATORS_BASE}{config['transcript_endpoint']}",
                     params={"url": url},
                     headers={"x-api-key": SCRAPE_CREATORS_API_KEY},
                     timeout=30
                 )
-                print(f"[competitor] Transcript response: status={tr_resp.status_code}, body={tr_resp.text[:300]}")
-
-                # If normalized URL fails, try with original URL (before normalization)
-                if tr_resp.status_code != 200 and body.get("url", "").strip() != url:
-                    original_url = body.get("url", "").strip()
-                    print(f"[competitor] Retrying transcript with original URL: {original_url}")
-                    tr_resp = requests.get(
-                        f"{SCRAPE_CREATORS_BASE}{config['transcript_endpoint']}",
-                        params={"url": original_url},
-                        headers={"x-api-key": SCRAPE_CREATORS_API_KEY},
-                        timeout=30
-                    )
-                    print(f"[competitor] Transcript retry response: status={tr_resp.status_code}, body={tr_resp.text[:300]}")
 
                 if tr_resp.status_code == 200:
-                    tr_data = tr_resp.json()
-                    # Extract transcript text — different platforms may return different structures
-                    if isinstance(tr_data.get("data"), str):
-                        transcript = tr_data["data"]
-                    elif isinstance(tr_data.get("data"), dict):
-                        transcript = tr_data["data"].get("transcript", "") or tr_data["data"].get("text", "")
-                    elif isinstance(tr_data.get("data"), list):
-                        # List of segments
-                        segments = tr_data["data"]
-                        transcript = " ".join(
-                            seg.get("text", "") if isinstance(seg, dict) else str(seg)
-                            for seg in segments
-                        ).strip()
-                    if transcript:
-                        print(f"[competitor] Got transcript: {len(transcript)} chars")
+                    # Try to parse as JSON, fall back to plain text
+                    try:
+                        tr_data = tr_resp.json()
+                    except Exception:
+                        # v1 endpoint returns plain text
+                        transcript = tr_resp.text.strip()
+                        if transcript:
+                            print(f"[competitor] Got transcript (plain text): {len(transcript)} chars")
                     else:
-                        print(f"[competitor] Transcript response OK but no text found in data: {str(tr_data)[:500]}")
+                        # v2 endpoint: {"success": true, "transcripts": [{"text": "..."}]}
+                        if isinstance(tr_data.get("transcripts"), list) and tr_data["transcripts"]:
+                            transcript = tr_data["transcripts"][0].get("text", "")
+                        # Fallback: try "data" field (other platforms)
+                        elif isinstance(tr_data.get("data"), str):
+                            transcript = tr_data["data"]
+                        elif isinstance(tr_data.get("data"), dict):
+                            transcript = tr_data["data"].get("transcript", "") or tr_data["data"].get("text", "")
+                        elif isinstance(tr_data.get("data"), list):
+                            segments = tr_data["data"]
+                            transcript = " ".join(
+                                seg.get("text", "") if isinstance(seg, dict) else str(seg)
+                                for seg in segments
+                            ).strip()
+                        if transcript:
+                            print(f"[competitor] Got transcript: {len(transcript)} chars")
+                        else:
+                            print(f"[competitor] Transcript response OK but empty: {str(tr_data)[:300]}")
                 else:
                     print(f"[competitor] Transcript unavailable (status {tr_resp.status_code})")
             except Exception as e:
