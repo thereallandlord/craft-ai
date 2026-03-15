@@ -8255,27 +8255,29 @@
 
             // Build images preview (all slides via proxy)
             let imagesHtml = '';
-            if (data.images && data.images.length > 0) {
+            if (data.images && data.images.length > 0 && !data.is_video) {
                 const allImages = data.images.filter(img => !img.is_video);
-                imagesHtml = `<div style="display:flex;gap:6px;margin-bottom:8px;overflow-x:auto;padding-bottom:4px;">
-                    ${allImages.map((img, idx) => `
-                        <div style="flex-shrink:0;width:120px;height:120px;border-radius:8px;overflow:hidden;background:var(--bg-tertiary);position:relative;">
-                            <img src="${API_URL}/api/image-proxy?url=${encodeURIComponent(img.url)}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;"
-                                 onclick="window.open('${API_URL}/api/image-proxy?url=${encodeURIComponent(img.url)}','_blank')"
-                                 onerror="this.parentElement.innerHTML='<div style=\\'display:flex;align-items:center;justify-content:center;height:100%;font-size:10px;color:var(--text-muted)\\'>Нет фото</div>'"
-                                 loading="lazy">
-                            <div style="position:absolute;top:4px;left:4px;background:rgba(0,0,0,0.6);color:white;font-size:9px;padding:1px 5px;border-radius:3px;">${idx + 1}</div>
-                        </div>
-                    `).join('')}
-                </div>
-                <button onclick="downloadAllSlides()" style="width:100%;padding:8px;background:var(--bg-tertiary);border:1px solid var(--border);border-radius:6px;font-size:12px;cursor:pointer;margin-bottom:12px;color:var(--text-primary);">
-                    ⬇️ Скачать все слайды (${allImages.length})
-                </button>`;
+                if (allImages.length > 0) {
+                    imagesHtml = `<div style="display:flex;gap:6px;margin-bottom:8px;overflow-x:auto;padding-bottom:4px;">
+                        ${allImages.map((img, idx) => `
+                            <div style="flex-shrink:0;width:120px;height:120px;border-radius:8px;overflow:hidden;background:var(--bg-tertiary);position:relative;">
+                                <img src="${API_URL}/api/image-proxy?url=${encodeURIComponent(img.url)}" style="width:100%;height:100%;object-fit:cover;cursor:pointer;"
+                                     onclick="window.open('${API_URL}/api/image-proxy?url=${encodeURIComponent(img.url)}','_blank')"
+                                     onerror="this.parentElement.innerHTML='<div style=\\'display:flex;align-items:center;justify-content:center;height:100%;font-size:10px;color:var(--text-muted)\\'>Нет фото</div>'"
+                                     loading="lazy">
+                                <div style="position:absolute;top:4px;left:4px;background:rgba(0,0,0,0.6);color:white;font-size:9px;padding:1px 5px;border-radius:3px;">${idx + 1}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <button onclick="downloadAllSlides()" style="width:100%;padding:8px;background:var(--bg-tertiary);border:1px solid var(--border);border-radius:6px;font-size:12px;cursor:pointer;margin-bottom:12px;color:var(--text-primary);">
+                        ⬇️ Скачать все слайды (${allImages.length})
+                    </button>`;
+                }
             }
 
-            // Slides text (OCR)
+            // Slides text (OCR) — only for non-video content
             let slidesTextHtml = '';
-            if (data.slides_text && data.slides_text.length > 0) {
+            if (data.slides_text && data.slides_text.length > 0 && !data.is_video) {
                 const showAll = data.slides_text.length <= 3;
                 const visibleSlides = showAll ? data.slides_text : data.slides_text.slice(0, 2);
                 const hiddenSlides = showAll ? [] : data.slides_text.slice(2);
@@ -8378,9 +8380,9 @@
             // Date
             const date = data.taken_at ? new Date(data.taken_at * 1000).toLocaleDateString('ru-RU', {day:'numeric', month:'long', year:'numeric'}) : '';
 
-            // Images preview
+            // Images preview — only for non-video content (carousels)
             let imagesHtml = '';
-            if (data.images && data.images.length > 0) {
+            if (data.images && data.images.length > 0 && !data.is_video) {
                 const allImages = data.images.filter(img => !img.is_video);
                 if (allImages.length > 0) {
                     imagesHtml = `<div style="display:flex;gap:6px;margin-bottom:8px;overflow-x:auto;padding-bottom:4px;">
@@ -8401,9 +8403,9 @@
                 }
             }
 
-            // Slides text (OCR) — always available
+            // Slides text (OCR) — only for non-video content
             let slidesTextHtml = '';
-            if (data.slides_text && data.slides_text.length > 0) {
+            if (data.slides_text && data.slides_text.length > 0 && !data.is_video) {
                 const showAll = data.slides_text.length <= 3;
                 const visibleSlides = showAll ? data.slides_text : data.slides_text.slice(0, 2);
                 const hiddenSlides = showAll ? [] : data.slides_text.slice(2);
