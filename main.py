@@ -1447,7 +1447,7 @@ async def save_template(template: TemplateData):
         return {"success": True, "name": template.name, "template_id": tid, "type": "personal"}
     except Exception as e:
         print(f"Error saving template: {e}")
-        raise HTTPException(status_code=500, detail=f"Ошибка сохранения: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"error.save: {str(e)}")
 
 
 @app.put("/templates/{identifier}/publish")
@@ -2857,7 +2857,7 @@ async def competitor_analyze(request: Request):
     # Detect platform
     platform = detect_platform(url)
     if not platform:
-        raise HTTPException(status_code=400, detail="Неподдерживаемая ссылка. Поддерживаются: Instagram, YouTube, TikTok, Twitter/X, LinkedIn, Facebook")
+        raise HTTPException(status_code=400, detail="error.unsupported_link")
 
     config = PLATFORM_CONFIG[platform]
 
@@ -2897,8 +2897,8 @@ async def competitor_analyze(request: Request):
         if resp.status_code != 200:
             print(f"[competitor] Scrape Creators error {resp.status_code}: {resp.text[:500]}")
             if resp.status_code == 404:
-                raise HTTPException(status_code=404, detail="Пост не найден. Возможно, он удалён или доступен только подписчикам (приватный аккаунт)")
-            raise HTTPException(status_code=502, detail=f"Ошибка загрузки поста (код {resp.status_code})")
+                raise HTTPException(status_code=404, detail="error.post_not_found")
+            raise HTTPException(status_code=502, detail=f"error.post_load_failed: {resp.status_code}")
 
         raw_data = resp.json()
 
@@ -2909,7 +2909,7 @@ async def competitor_analyze(request: Request):
         else:
             analysis = parser(raw_data)
         if not analysis:
-            raise HTTPException(status_code=404, detail="Пост не найден или недоступен")
+            raise HTTPException(status_code=404, detail="error.post_unavailable")
 
         # 3. Try to get transcript for video content
         transcript = None
@@ -3029,13 +3029,13 @@ async def competitor_analyze(request: Request):
     except HTTPException:
         raise
     except requests.Timeout:
-        raise HTTPException(status_code=504, detail="Таймаут при загрузке поста")
+        raise HTTPException(status_code=504, detail="error.timeout")
     except requests.RequestException as e:
         print(f"[competitor] Network error: {e}")
-        raise HTTPException(status_code=502, detail=f"Ошибка сети: {str(e)}")
+        raise HTTPException(status_code=502, detail=f"error.network: {str(e)}")
     except Exception as e:
         print(f"[competitor] Unexpected error: {e}")
-        raise HTTPException(status_code=500, detail=f"Ошибка анализа: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"error.analysis: {str(e)}")
 
 
 @app.post("/api/competitor/process-transcript")
@@ -3051,7 +3051,7 @@ async def process_transcript(request: Request):
     sub_chat_id = body.get("sub_chat_id")
 
     if not transcript or len(transcript) < 30:
-        raise HTTPException(status_code=400, detail="Транскрипция слишком короткая для обработки")
+        raise HTTPException(status_code=400, detail="error.transcription_short")
 
     # Truncate to avoid token limits
     transcript_input = transcript[:8000]
@@ -4352,7 +4352,7 @@ async def list_ai_logs(request: Request, limit: int = 100, offset: int = 0,
         raise
     except Exception as e:
         print(f"[admin/logs] Error: {e}")
-        raise HTTPException(status_code=500, detail=f"Ошибка загрузки логов: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"error.load: {str(e)}")
 
 
 @app.get("/api/admin/logs/{log_id}")
@@ -4370,7 +4370,7 @@ async def get_ai_log_detail(log_id: str, request: Request):
         raise
     except Exception as e:
         print(f"[admin/logs/{log_id}] Error: {e}")
-        raise HTTPException(status_code=500, detail=f"Ошибка: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"error: {str(e)}")
 
 
 @app.get("/api/admin/users")
@@ -4392,7 +4392,7 @@ async def list_admin_users(request: Request):
         raise
     except Exception as e:
         print(f"[admin/users] Error: {e}")
-        raise HTTPException(status_code=500, detail=f"Ошибка: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"error: {str(e)}")
 
 
 @app.get("/api/admin/users/{target_user_id}/topics")
@@ -4557,6 +4557,16 @@ async def update_user_settings(request: Request):
         update["instagram_usernames"] = body["instagram_usernames"]
     if update:
         sb.table("users").update(update).eq("user_id", str(user_id)).execute()
+    # Language preference — stored in auth_accounts table
+    if "language" in body:
+        lang = body["language"]
+        if lang in ("ru", "en", None):
+            try:
+                auth_id, _ = await resolve_auth_id(request)
+                if auth_id:
+                    sb.table("auth_accounts").update({"language": lang}).eq("id", auth_id).execute()
+            except Exception as e:
+                print(f"[i18n] Error saving language: {e}")
     return {"ok": True}
 
 
@@ -4987,7 +4997,7 @@ async def link_telegram(request: Request):
     if existing_tg.data:
         old_auth_id = existing_tg.data[0]["id"]
         if old_auth_id != auth_id:
-            raise HTTPException(status_code=409, detail="Этот Telegram-аккаунт уже привязан к другому профилю")
+            raise HTTPException(status_code=409, detail="error.account_already_linked")
 
     # Update current auth_account with telegram_id
     is_club_member = check_club_membership(telegram_id)
@@ -5034,7 +5044,7 @@ async def link_telegram_by_id(request: Request):
     if existing_tg.data:
         old_auth_id = existing_tg.data[0]["id"]
         if old_auth_id != auth_id:
-            raise HTTPException(status_code=409, detail="Этот Telegram-аккаунт уже привязан к другому профилю")
+            raise HTTPException(status_code=409, detail="error.account_already_linked")
 
     # Update current auth_account with telegram_id
     is_club_member = check_club_membership(telegram_id)
@@ -5098,12 +5108,12 @@ async def link_email(request: Request):
     # 3. Check if supabase_uid already linked to another account
     existing = sb.table("auth_accounts").select("id").eq("id", supabase_uid).execute()
     if existing.data and existing.data[0]["id"] != auth_id:
-        raise HTTPException(status_code=409, detail="Этот email-аккаунт уже привязан к другому профилю")
+        raise HTTPException(status_code=409, detail="error.account_already_linked")
 
     # Check email conflict
     email_existing = sb.table("auth_accounts").select("id").eq("email", email).execute()
     if email_existing.data and email_existing.data[0]["id"] != auth_id:
-        raise HTTPException(status_code=409, detail="Этот email уже привязан к другому профилю")
+        raise HTTPException(status_code=409, detail="error.account_already_linked")
 
     # 4. Update auth_account: set email and change id to supabase_uid
     old_auth_id = auth_id
@@ -5167,13 +5177,13 @@ async def link_google(request: Request):
     # 3. Check if supabase_uid already linked to another account
     existing = sb.table("auth_accounts").select("id").eq("id", supabase_uid).execute()
     if existing.data and existing.data[0]["id"] != auth_id:
-        raise HTTPException(status_code=409, detail="Этот Google-аккаунт уже привязан к другому профилю")
+        raise HTTPException(status_code=409, detail="error.account_already_linked")
 
     # Check email conflict
     if email:
         email_existing = sb.table("auth_accounts").select("id").eq("email", email).execute()
         if email_existing.data and email_existing.data[0]["id"] != auth_id:
-            raise HTTPException(status_code=409, detail="Этот email уже привязан к другому профилю")
+            raise HTTPException(status_code=409, detail="error.account_already_linked")
 
     # 4. Update auth_account: set email, google_id, and change id to supabase_uid
     old_auth_id = auth_id
@@ -5456,12 +5466,14 @@ async def get_subscription(request: Request):
         }
 
     sb = require_supabase()
-    account = sb.table("auth_accounts").select("plan,is_club_member").eq("id", auth_id).execute()
+    account = sb.table("auth_accounts").select("plan,is_club_member,language").eq("id", auth_id).execute()
     plan = "free"
     is_club = False
+    user_language = None
     if account.data:
         plan = account.data[0].get("plan", "free")
         is_club = account.data[0].get("is_club_member", False)
+        user_language = account.data[0].get("language")
 
     # Get subscription info
     sub_data = None
@@ -5500,6 +5512,7 @@ async def get_subscription(request: Request):
         "is_club_member": is_club,
         "subscription": sub_data,
         "usage": usage,
+        "language": user_language,
     }
 
 

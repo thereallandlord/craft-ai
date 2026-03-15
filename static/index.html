@@ -6838,7 +6838,7 @@
             if (lbl) lbl.textContent = lang.toUpperCase();
             // Sync to server if logged in
             if (typeof currentUser !== 'undefined' && currentUser && currentUser.id) {
-                apiFetch(API_URL + '/api/user_settings', {
+                apiFetch(API_URL + '/api/user/settings', {
                     method: 'PATCH',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({user_id: String(currentUser.id), language: lang})
