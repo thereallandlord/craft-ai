@@ -5922,11 +5922,26 @@
         // --- Topics loading (replaces loadProjects for sidebar) ---
         async function loadTopics() {
             if (!currentUser) return;
+
+            // Show cached topics instantly
+            const cacheKey = 'craft_topics_v1_' + currentUser.id;
+            if (!projectsCache.length) {
+                try {
+                    const cached = localStorage.getItem(cacheKey);
+                    if (cached) {
+                        projectsCache = JSON.parse(cached);
+                        renderTopicsList();
+                    }
+                } catch(e) { /* ignore */ }
+            }
+
+            // Fetch fresh data in background
             try {
                 const resp = await apiFetch(`${API_URL}/api/topics?user_id=${currentUser.id}`);
                 if (resp.ok) {
                     projectsCache = await resp.json();
                     renderTopicsList();
+                    try { localStorage.setItem(cacheKey, JSON.stringify(projectsCache)); } catch(e) {}
                 }
             } catch(e) { console.log('Failed to load topics', e); }
         }
@@ -10680,8 +10695,36 @@
                 try { currentUser = JSON.parse(savedUser); } catch(e) { localStorage.removeItem('craft_user'); }
             }
 
-            // Update plan badge if user restored from localStorage
-            if (currentUser) updatePlanBadge();
+            // Restore UI from cache immediately (avatar, name, sidebar, plan badge)
+            if (currentUser) {
+                updatePlanBadge();
+                // Show avatar and name immediately from cached data
+                const _psUser = document.getElementById('psUserSection');
+                const _psAvatar = document.getElementById('psUserAvatar');
+                const _psName = document.getElementById('psUserName');
+                const _navUser = document.getElementById('navUser');
+                const _navAvatar = document.getElementById('navUserAvatar');
+                const _navName = document.getElementById('navUserName');
+                if (_psUser) _psUser.style.display = 'flex';
+                if (_psName) _psName.textContent = currentUser.first_name || currentUser.username || '';
+                if (_psAvatar && currentUser.photo_url) {
+                    let _aUrl = currentUser.photo_url;
+                    if (!_aUrl || _aUrl.includes('api.telegram.org/file/bot')) _aUrl = `${API_URL}/api/user/avatar/${currentUser.id}`;
+                    _psAvatar.src = _aUrl;
+                    _psAvatar.style.display = 'block';
+                }
+                if (_navUser) _navUser.style.display = 'flex';
+                if (_navName) _navName.textContent = currentUser.first_name || currentUser.username || '';
+                if (_navAvatar && currentUser.photo_url) {
+                    _navAvatar.src = currentUser.photo_url;
+                    _navAvatar.style.display = 'block';
+                }
+                // Show sidebar
+                const _ps = document.getElementById('projectSidebar');
+                if (_ps) _ps.classList.remove('hidden');
+                // Load cached topics immediately
+                loadTopics();
+            }
 
             // Start auth immediately (don't await — runs in parallel)
             initAuth();
