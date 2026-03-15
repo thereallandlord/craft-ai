@@ -1116,9 +1116,58 @@
         .tab-page-content {
             flex: 1;
             padding: 40px;
-            max-width: 720px;
+            max-width: 860px;
             margin: 0 auto;
             width: 100%;
+        }
+
+        .btn-ai-process {
+            width: 100%;
+            margin-top: 8px;
+            padding: 10px;
+            background: var(--bg-tertiary);
+            border: 1px dashed var(--border);
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+        .btn-ai-process:hover {
+            background: var(--bg-secondary);
+        }
+
+        .analysis-section {
+            margin-top: 8px;
+            padding: 12px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        .analysis-section-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .analysis-card-footer {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            font-size: 12px;
+            color: var(--text-muted);
+            border-top: 1px solid var(--border);
+            padding-top: 8px;
+            margin-top: 12px;
+        }
+        .analysis-card-footer span {
+            display: flex;
+            align-items: center;
+            gap: 4px;
         }
 
         .tab-page-title {
@@ -8241,13 +8290,45 @@
             }
         }
 
-        // Copy text to clipboard with button feedback
+        // SVG icons for platforms
+        const PLATFORM_ICONS = {
+            instagram: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><defs><linearGradient id="ig-grad" x1="0" y1="24" x2="24" y2="0"><stop offset="0%" stop-color="#feda75"/><stop offset="25%" stop-color="#fa7e1e"/><stop offset="50%" stop-color="#d62976"/><stop offset="75%" stop-color="#962fbf"/><stop offset="100%" stop-color="#4f5bd5"/></linearGradient></defs><rect x="2" y="2" width="20" height="20" rx="5" stroke="url(#ig-grad)" stroke-width="2"/><circle cx="12" cy="12" r="5" stroke="url(#ig-grad)" stroke-width="2"/><circle cx="17.5" cy="6.5" r="1.5" fill="url(#ig-grad)"/></svg>',
+            youtube: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.94 2C5.12 20 12 20 12 20s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z" fill="#FF0000"/><polygon points="9.75,15.02 15.5,12 9.75,8.98" fill="#fff"/></svg>',
+            tiktok: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.27 6.27 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.34-6.34V9.4a8.16 8.16 0 0 0 4.76 1.52V7.48a4.82 4.82 0 0 1-1-.79z" fill="#0d0d0d"/></svg>',
+            twitter: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" fill="#0d0d0d"/></svg>',
+            linkedin: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452z" fill="#0A66C2"/></svg>',
+            facebook: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" fill="#1877F2"/></svg>'
+        };
+
+        // Copy SVG icon HTML (Lucide copy icon)
+        const COPY_ICON_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+
+        // Heart SVG icon
+        const HEART_ICON_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>';
+
+        // Comment SVG icon
+        const COMMENT_ICON_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>';
+
+        // Helper: copy button with tooltip
+        function _copyBtn(onclickExpr) {
+            return `<button class="msg-action-btn" onclick="${onclickExpr}" style="position:relative;">${COPY_ICON_SVG}<span class="ma-tooltip">Копировать</span></button>`;
+        }
+
+        // Copy text to clipboard with tooltip feedback
         function copyToClipboard(text, btnEl) {
             navigator.clipboard.writeText(text).then(() => {
                 if (btnEl) {
-                    const orig = btnEl.textContent;
-                    btnEl.textContent = 'Скопировано!';
-                    setTimeout(() => { btnEl.textContent = orig; }, 1500);
+                    const tooltip = btnEl.querySelector('.ma-tooltip');
+                    if (tooltip) {
+                        const orig = tooltip.textContent;
+                        tooltip.textContent = 'Скопировано!';
+                        tooltip.style.opacity = '1';
+                        setTimeout(() => { tooltip.textContent = orig; tooltip.style.opacity = ''; }, 1500);
+                    } else {
+                        const orig = btnEl.textContent;
+                        btnEl.textContent = 'Скопировано!';
+                        setTimeout(() => { btnEl.textContent = orig; }, 1500);
+                    }
                 }
             }).catch(e => {
                 console.error('[copy] Failed:', e);
@@ -8259,7 +8340,7 @@
         async function processTranscriptAI(transcript, topicId, subChatId, containerId) {
             const container = document.getElementById(containerId);
             if (!container) return;
-            container.innerHTML = '<div style="text-align:center;padding:12px;font-size:12px;color:var(--text-muted);">⏳ Обработка ИИ...</div>';
+            container.innerHTML = '<div style="text-align:center;padding:12px;font-size:12px;color:var(--text-muted);">Обработка ИИ...</div>';
             try {
                 const resp = await fetch(`${API_URL}/api/competitor/process-transcript`, {
                     method: 'POST',
@@ -8268,14 +8349,18 @@
                 });
                 if (!resp.ok) throw new Error('Ошибка обработки');
                 const result = await resp.json();
+                // Store for copy buttons
+                const puid = 'pt_' + Math.random().toString(36).substr(2, 8);
+                _analysisDataStore[puid] = result;
+
                 let html = '';
                 if (result.processed_transcript) {
-                    html += `<div style="margin-bottom:12px;padding:10px;background:var(--bg-tertiary);border-radius:6px;">
+                    html += `<div class="analysis-section" style="margin-bottom:8px;">
                         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-                            <div style="font-size:11px;font-weight:600;color:var(--text-secondary);">✨ Обработанная транскрипция</div>
-                            <button onclick="copyToClipboard(this.closest('[data-processed-text]').getAttribute('data-processed-text'), this)" style="background:none;border:none;color:var(--accent);font-size:10px;cursor:pointer;padding:2px 6px;">Копировать</button>
+                            <div class="analysis-section-title">Обработанная транскрипция</div>
+                            ${_copyBtn("copyToClipboard(_analysisDataStore['" + puid + "'].processed_transcript, this)")}
                         </div>
-                        <div data-processed-text="${escapeHtml(result.processed_transcript).replace(/"/g, '&quot;')}" style="font-size:12px;color:var(--text-primary);line-height:1.5;white-space:pre-wrap;">${escapeHtml(result.processed_transcript)}</div>
+                        <div style="font-size:13px;color:var(--text-primary);line-height:1.6;white-space:pre-wrap;">${escapeHtml(result.processed_transcript)}</div>
                     </div>`;
                 }
                 if (result.video_structure) {
@@ -8283,12 +8368,12 @@
                         .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
                         .replace(/\n- /g, '\n• ')
                         .replace(/\n/g, '<br>');
-                    html += `<div style="padding:10px;background:var(--bg-tertiary);border-radius:6px;">
+                    html += `<div class="analysis-section">
                         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-                            <div style="font-size:11px;font-weight:600;color:var(--text-secondary);">🔍 Анализ структуры видео</div>
-                            <button onclick="copyToClipboard(${JSON.stringify(result.video_structure).replace(/</g, '\\x3c')}, this)" style="background:none;border:none;color:var(--accent);font-size:10px;cursor:pointer;padding:2px 6px;">Копировать</button>
+                            <div class="analysis-section-title">Анализ структуры видео</div>
+                            ${_copyBtn("copyToClipboard(_analysisDataStore['" + puid + "'].video_structure, this)")}
                         </div>
-                        <div style="font-size:12px;color:var(--text-primary);line-height:1.5;">${structureHtml}</div>
+                        <div style="font-size:13px;color:var(--text-primary);line-height:1.6;">${structureHtml}</div>
                     </div>`;
                 }
                 if (!html) html = '<div style="font-size:12px;color:var(--text-muted);padding:8px;">Не удалось обработать транскрипцию</div>';
@@ -8308,12 +8393,12 @@
         function _renderProcessedSections(data, uid) {
             let html = '';
             if (data.processed_transcript) {
-                html += `<div style="margin-top:8px;padding:10px;background:var(--bg-tertiary);border-radius:6px;">
+                html += `<div class="analysis-section" style="margin-bottom:8px;">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-                        <div style="font-size:11px;font-weight:600;color:var(--text-secondary);">✨ Обработанная транскрипция</div>
-                        <button onclick="copyToClipboard(_analysisDataStore['${uid}'].processed_transcript, this)" style="background:none;border:none;color:var(--accent);font-size:10px;cursor:pointer;padding:2px 6px;">Копировать</button>
+                        <div class="analysis-section-title">Обработанная транскрипция</div>
+                        ${_copyBtn("copyToClipboard(_analysisDataStore['" + uid + "'].processed_transcript, this)")}
                     </div>
-                    <div style="font-size:12px;color:var(--text-primary);line-height:1.5;white-space:pre-wrap;">${escapeHtml(data.processed_transcript)}</div>
+                    <div style="font-size:13px;color:var(--text-primary);line-height:1.6;white-space:pre-wrap;">${escapeHtml(data.processed_transcript)}</div>
                 </div>`;
             }
             if (data.video_structure) {
@@ -8321,12 +8406,12 @@
                     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
                     .replace(/\n- /g, '\n• ')
                     .replace(/\n/g, '<br>');
-                html += `<div style="margin-top:8px;padding:10px;background:var(--bg-tertiary);border-radius:6px;">
+                html += `<div class="analysis-section">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-                        <div style="font-size:11px;font-weight:600;color:var(--text-secondary);">🔍 Анализ структуры видео</div>
-                        <button onclick="copyToClipboard(_analysisDataStore['${uid}'].video_structure, this)" style="background:none;border:none;color:var(--accent);font-size:10px;cursor:pointer;padding:2px 6px;">Копировать</button>
+                        <div class="analysis-section-title">Анализ структуры видео</div>
+                        ${_copyBtn("copyToClipboard(_analysisDataStore['" + uid + "'].video_structure, this)")}
                     </div>
-                    <div style="font-size:12px;color:var(--text-primary);line-height:1.5;">${structureHtml}</div>
+                    <div style="font-size:13px;color:var(--text-primary);line-height:1.6;">${structureHtml}</div>
                 </div>`;
             }
             return html;
@@ -8339,19 +8424,12 @@
             const uid = 'rca_' + Math.random().toString(36).substr(2, 8);
             _analysisDataStore[uid] = data;
 
-            // Platform badge
-            const platformLabels = {
-                instagram: 'Instagram', youtube: 'YouTube', tiktok: 'TikTok',
-                twitter: 'Twitter/X', linkedin: 'LinkedIn', facebook: 'Facebook'
-            };
-            const platformLabel = platformLabels[data.platform] || data.platform;
-
-            // Post type label
-            const typeLabels = {
-                carousel: 'Карусель', reel: 'Рилс', post: 'Пост',
-                video: 'Видео', short: 'Шортс', tweet: 'Твит'
-            };
+            // Post type label (English)
+            const typeLabels = { carousel: 'Carousel', reel: 'Reel', post: 'Post', video: 'Video', short: 'Short', tweet: 'Tweet' };
             const typeLabel = typeLabels[data.post_type] || data.post_type;
+
+            // Platform icon
+            const platformIcon = PLATFORM_ICONS[data.platform] || '';
 
             // Format date
             const date = data.taken_at ? new Date(data.taken_at * 1000).toLocaleDateString('ru-RU', {
@@ -8383,7 +8461,7 @@
                         `).join('')}
                     </div>
                     <button onclick="downloadAllSlides()" style="width:100%;padding:8px;background:var(--bg-tertiary);border:1px solid var(--border);border-radius:6px;font-size:12px;cursor:pointer;margin-bottom:12px;color:var(--text-primary);">
-                        ⬇️ Скачать все слайды (${allImages.length})
+                        Скачать все слайды (${allImages.length})
                     </button>`;
                 }
             }
@@ -8391,15 +8469,14 @@
             // Slides text (OCR) — only for non-video content
             let slidesTextHtml = '';
             if (data.slides_text && data.slides_text.length > 0 && !data.is_video) {
-                const allSlidesText = data.slides_text.map(s => `Слайд ${s.slide}: ${s.text}`).join('\n\n');
                 const showAll = data.slides_text.length <= 3;
                 const visibleSlides = showAll ? data.slides_text : data.slides_text.slice(0, 2);
                 const hiddenSlides = showAll ? [] : data.slides_text.slice(2);
                 slidesTextHtml = `
-                    <div style="margin-bottom:12px;">
+                    <div class="analysis-section" style="margin-bottom:8px;">
                         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-                            <div style="font-size:11px;font-weight:600;color:var(--text-secondary);">📝 Текст слайдов (${data.slides_text.length})</div>
-                            <button onclick="copyToClipboard(_analysisDataStore['${uid}'].slides_text.map(s=>'Слайд '+s.slide+': '+s.text).join('\\n\\n'), this)" style="background:none;border:none;color:var(--accent);font-size:10px;cursor:pointer;padding:2px 6px;">Копировать</button>
+                            <div class="analysis-section-title">Текст слайдов (${data.slides_text.length})</div>
+                            ${_copyBtn("copyToClipboard(_analysisDataStore['" + uid + "'].slides_text.map(s=>'Слайд '+s.slide+': '+s.text).join('\\\\n\\\\n'), this)")}
                         </div>
                         ${visibleSlides.map(s => `
                             <div style="padding:8px 10px;background:var(--bg-tertiary);border-radius:6px;margin-bottom:4px;">
@@ -8422,23 +8499,36 @@
                 `;
             }
 
-            // Caption (truncated)
-            const captionShort = data.caption && data.caption.length > 300
-                ? data.caption.substring(0, 300) + '...'
+            // Caption (truncated at 350)
+            const captionShort = data.caption && data.caption.length > 350
+                ? data.caption.substring(0, 350) + '...'
                 : (data.caption || '');
-            const hasMore = data.caption && data.caption.length > 300;
+            const hasMore = data.caption && data.caption.length > 350;
+
+            // Caption HTML
+            let captionHtml = '';
+            if (data.caption) {
+                captionHtml = `
+                    <div style="margin-bottom:8px;position:relative;">
+                        <div style="display:flex;justify-content:flex-end;margin-bottom:2px;">
+                            ${_copyBtn("copyToClipboard(_analysisDataStore['" + uid + "'].caption, this)")}
+                        </div>
+                        <div id="competitorCaption" style="font-size:13px;color:var(--text-primary);line-height:1.6;white-space:pre-wrap;">${escapeHtml(captionShort)}</div>
+                        ${hasMore ? `<button onclick="document.getElementById('competitorCaption').textContent=_analysisDataStore['${uid}'].caption;this.style.display='none'" style="background:none;border:none;color:var(--accent);font-size:12px;cursor:pointer;padding:4px 0;">Показать полностью</button>` : ''}
+                    </div>`;
+            }
 
             // Transcript
             let transcriptHtml = '';
             if (data.transcript) {
                 const trShort = data.transcript.length > 200 ? data.transcript.substring(0, 200) + '...' : data.transcript;
                 transcriptHtml = `
-                    <div style="margin-top:12px;padding:10px;background:var(--bg-tertiary);border-radius:6px;">
+                    <div class="analysis-section">
                         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-                            <div style="font-size:11px;font-weight:600;color:var(--text-secondary);">🎙 Исходная транскрипция</div>
-                            <button onclick="copyToClipboard(_analysisDataStore['${uid}'].transcript, this)" style="background:none;border:none;color:var(--accent);font-size:10px;cursor:pointer;padding:2px 6px;">Копировать</button>
+                            <div class="analysis-section-title">Исходная транскрипция</div>
+                            ${_copyBtn("copyToClipboard(_analysisDataStore['" + uid + "'].transcript, this)")}
                         </div>
-                        <div id="competitorTranscript" style="font-size:12px;color:var(--text-primary);line-height:1.4;white-space:pre-wrap;">${escapeHtml(trShort)}</div>
+                        <div id="competitorTranscript" style="font-size:13px;color:var(--text-primary);line-height:1.5;white-space:pre-wrap;">${escapeHtml(trShort)}</div>
                         ${data.transcript.length > 200 ? `<button onclick="document.getElementById('competitorTranscript').textContent=_analysisDataStore['${uid}'].transcript;this.style.display='none'" style="background:none;border:none;color:var(--accent);font-size:11px;cursor:pointer;padding:4px 0;">Показать полностью</button>` : ''}
                     </div>
                 `;
@@ -8449,49 +8539,37 @@
             if (data.processed_transcript || data.video_structure) {
                 processedHtml = _renderProcessedSections(data, uid);
             } else if (data.transcript && data.transcript.length > 50) {
-                // Show "Process with AI" button
                 processedHtml = `
                     <div id="${uid}_ai_container">
-                        <button onclick="processTranscriptAI(_analysisDataStore['${uid}'].transcript, _analysisDataStore['${uid}'].topic_id || '', _analysisDataStore['${uid}'].sub_chat_id || '', '${uid}_ai_container')"
-                                style="width:100%;margin-top:8px;padding:10px;background:var(--bg-tertiary);border:1px dashed var(--border);border-radius:6px;font-size:12px;cursor:pointer;color:var(--accent);display:flex;align-items:center;justify-content:center;gap:6px;">
-                            ✨ Обработать ИИ (очистка + анализ структуры)
+                        <button class="btn-ai-process" onclick="processTranscriptAI(_analysisDataStore['${uid}'].transcript, _analysisDataStore['${uid}'].topic_id || '', _analysisDataStore['${uid}'].sub_chat_id || '', '${uid}_ai_container')">
+                            Обработать ИИ (очистка + анализ структуры)
                         </button>
                     </div>`;
             }
 
             container.style.display = 'block';
             container.innerHTML = `
-                <div style="padding:16px;background:var(--bg-primary);border:1px solid var(--border);border-radius:8px;">
+                <div style="padding:20px;background:var(--bg-primary);border:1px solid var(--border);border-radius:12px;">
                     <!-- Header -->
-                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-                        <div style="display:flex;align-items:center;gap:8px;">
-                            ${data.profile_pic_url ? `<img src="${escapeHtml(data.profile_pic_url)}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;" onerror="this.style.display='none'">` : ''}
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            ${data.profile_pic_url ? `<img src="${escapeHtml(data.profile_pic_url)}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;" onerror="this.style.display='none'">` : ''}
                             <div>
-                                <div style="font-size:13px;font-weight:600;color:var(--text-primary);">${data.username ? '@' + escapeHtml(data.username) : 'Автор'}</div>
-                                ${date ? `<div style="font-size:11px;color:var(--text-muted);">${date}</div>` : ''}
+                                <div style="font-size:14px;font-weight:600;color:var(--text-primary);">${data.username ? '@' + escapeHtml(data.username) : 'Автор'}</div>
+                                <div style="font-size:12px;color:var(--text-muted);">${date ? date : ''}${date && typeLabel ? ' · ' : ''}${typeLabel}${data.images && data.images.length > 1 ? ' (' + data.images.length + ')' : ''}</div>
                             </div>
                         </div>
-                        <div style="display:flex;gap:4px;">
-                            <span style="font-size:10px;padding:2px 6px;background:var(--accent);color:white;border-radius:3px;">${platformLabel}</span>
-                            <span style="font-size:10px;padding:2px 6px;background:var(--bg-tertiary);border-radius:3px;color:var(--text-secondary);">${typeLabel}${data.images && data.images.length > 1 ? ` (${data.images.length})` : ''}</span>
-                        </div>
+                        ${platformIcon ? `<div style="flex-shrink:0;">${platformIcon}</div>` : ''}
                     </div>
+
+                    <!-- Caption -->
+                    ${captionHtml}
 
                     <!-- Images -->
                     ${imagesHtml}
 
                     <!-- Slides Text (OCR) -->
                     ${slidesTextHtml}
-
-                    <!-- Caption -->
-                    <div style="margin-bottom:8px;">
-                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-                            <div style="font-size:11px;font-weight:600;color:var(--text-secondary);">💬 Описание</div>
-                            ${data.caption ? `<button onclick="copyToClipboard(_analysisDataStore['${uid}'].caption, this)" style="background:none;border:none;color:var(--accent);font-size:10px;cursor:pointer;padding:2px 6px;">Копировать</button>` : ''}
-                        </div>
-                        <div id="competitorCaption" style="font-size:13px;color:var(--text-primary);line-height:1.5;white-space:pre-wrap;">${escapeHtml(captionShort)}</div>
-                        ${hasMore ? `<button onclick="document.getElementById('competitorCaption').textContent=_analysisDataStore['${uid}'].caption;this.style.display='none'" style="background:none;border:none;color:var(--accent);font-size:12px;cursor:pointer;padding:4px 0;">Показать полностью</button>` : ''}
-                    </div>
 
                     <!-- Transcript (if video) -->
                     ${transcriptHtml}
@@ -8500,9 +8578,9 @@
                     ${processedHtml}
 
                     <!-- Engagement -->
-                    <div style="display:flex;gap:16px;font-size:12px;color:var(--text-muted);margin-top:8px;">
-                        <span>❤️ ${formatNum(data.like_count)}</span>
-                        <span>💬 ${formatNum(data.comment_count)}</span>
+                    <div class="analysis-card-footer">
+                        <span>${HEART_ICON_SVG} ${formatNum(data.like_count)}</span>
+                        <span>${COMMENT_ICON_SVG} ${formatNum(data.comment_count)}</span>
                     </div>
                 </div>
             `;
@@ -8511,18 +8589,17 @@
         const _analysisDataStore = {};
 
         function renderAnalysisMessageCard(data) {
-            // Full analysis view for subchat messages — mirrors renderCompetitorAnalysis()
             const uid = 'amc_' + Math.random().toString(36).substr(2, 8);
             _analysisDataStore[uid] = data;
 
-            const platformLabels = {instagram: 'Instagram', youtube: 'YouTube', tiktok: 'TikTok', twitter: 'Twitter/X', linkedin: 'LinkedIn', facebook: 'Facebook'};
-            const typeLabels = {carousel: 'Карусель', reel: 'Рилс', post: 'Пост', video: 'Видео', short: 'Шортс', tweet: 'Твит'};
+            const typeLabels = { carousel: 'Carousel', reel: 'Reel', post: 'Post', video: 'Video', short: 'Short', tweet: 'Tweet' };
+            const typeLabel = typeLabels[data.post_type] || data.post_type;
+            const platformIcon = PLATFORM_ICONS[data.platform] || '';
             const formatNum = n => { if (!n) return '0'; if (n >= 1000000) return (n/1000000).toFixed(1)+'M'; if (n >= 1000) return (n/1000).toFixed(1)+'K'; return String(n); };
 
-            // Date
             const date = data.taken_at ? new Date(data.taken_at * 1000).toLocaleDateString('ru-RU', {day:'numeric', month:'long', year:'numeric'}) : '';
 
-            // Images preview — only for non-video content (carousels)
+            // Images preview
             let imagesHtml = '';
             if (data.images && data.images.length > 0 && !data.is_video) {
                 const allImages = data.images.filter(img => !img.is_video);
@@ -8539,26 +8616,26 @@
                         `).join('')}
                     </div>
                     <button onclick="downloadAllSlides(_analysisDataStore['${uid}'].images)" style="width:100%;padding:8px;background:var(--bg-tertiary);border:1px solid var(--border);border-radius:6px;font-size:12px;cursor:pointer;margin-bottom:12px;color:var(--text-primary);">
-                        ⬇️ Скачать все слайды (${allImages.length})
+                        Скачать все слайды (${allImages.length})
                     </button>
                     <div style="font-size:10px;color:var(--text-muted);margin-bottom:8px;">Изображения доступны несколько часов после анализа</div>`;
                 }
             }
 
-            // Slides text (OCR) — only for non-video content
+            // Slides text (OCR)
             let slidesTextHtml = '';
             if (data.slides_text && data.slides_text.length > 0 && !data.is_video) {
                 const showAll = data.slides_text.length <= 3;
                 const visibleSlides = showAll ? data.slides_text : data.slides_text.slice(0, 2);
                 const hiddenSlides = showAll ? [] : data.slides_text.slice(2);
                 slidesTextHtml = `
-                    <div style="margin-bottom:12px;">
+                    <div class="analysis-section" style="margin-bottom:8px;background:var(--bg-primary);">
                         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-                            <div style="font-size:11px;font-weight:600;color:var(--text-secondary);">📝 Текст слайдов (${data.slides_text.length})</div>
-                            <button onclick="copyToClipboard(_analysisDataStore['${uid}'].slides_text.map(s=>'Слайд '+s.slide+': '+s.text).join('\\n\\n'), this)" style="background:none;border:none;color:var(--accent);font-size:10px;cursor:pointer;padding:2px 6px;">Копировать</button>
+                            <div class="analysis-section-title">Текст слайдов (${data.slides_text.length})</div>
+                            ${_copyBtn("copyToClipboard(_analysisDataStore['" + uid + "'].slides_text.map(s=>'Слайд '+s.slide+': '+s.text).join('\\\\n\\\\n'), this)")}
                         </div>
                         ${visibleSlides.map(s => `
-                            <div style="padding:8px 10px;background:var(--bg-primary);border-radius:6px;margin-bottom:4px;">
+                            <div style="padding:8px 10px;background:var(--bg-tertiary);border-radius:6px;margin-bottom:4px;">
                                 <div style="font-size:10px;font-weight:600;color:var(--text-muted);margin-bottom:2px;">Слайд ${s.slide}</div>
                                 <div style="font-size:12px;color:var(--text-primary);line-height:1.4;white-space:pre-wrap;">${escapeHtml(s.text.length > 300 ? s.text.substring(0, 300) + '...' : s.text)}</div>
                             </div>
@@ -8566,7 +8643,7 @@
                         ${hiddenSlides.length > 0 ? `
                             <div id="${uid}_slides_hidden" style="display:none;">
                                 ${hiddenSlides.map(s => `
-                                    <div style="padding:8px 10px;background:var(--bg-primary);border-radius:6px;margin-bottom:4px;">
+                                    <div style="padding:8px 10px;background:var(--bg-tertiary);border-radius:6px;margin-bottom:4px;">
                                         <div style="font-size:10px;font-weight:600;color:var(--text-muted);margin-bottom:2px;">Слайд ${s.slide}</div>
                                         <div style="font-size:12px;color:var(--text-primary);line-height:1.4;white-space:pre-wrap;">${escapeHtml(s.text.length > 300 ? s.text.substring(0, 300) + '...' : s.text)}</div>
                                     </div>
@@ -8578,20 +8655,32 @@
             }
 
             // Caption
-            const captionShort = data.caption && data.caption.length > 300 ? data.caption.substring(0, 300) + '...' : (data.caption || '');
-            const hasMoreCaption = data.caption && data.caption.length > 300;
+            const captionShort = data.caption && data.caption.length > 350 ? data.caption.substring(0, 350) + '...' : (data.caption || '');
+            const hasMoreCaption = data.caption && data.caption.length > 350;
+
+            let captionHtml = '';
+            if (data.caption) {
+                captionHtml = `
+                    <div style="margin-bottom:8px;position:relative;">
+                        <div style="display:flex;justify-content:flex-end;margin-bottom:2px;">
+                            ${_copyBtn("copyToClipboard(_analysisDataStore['" + uid + "'].caption, this)")}
+                        </div>
+                        <div id="${uid}_caption" style="font-size:13px;color:var(--text-primary);line-height:1.6;white-space:pre-wrap;">${escapeHtml(captionShort)}</div>
+                        ${hasMoreCaption ? `<button onclick="document.getElementById('${uid}_caption').textContent=_analysisDataStore['${uid}'].caption;this.style.display='none'" style="background:none;border:none;color:var(--accent);font-size:12px;cursor:pointer;padding:4px 0;">Показать полностью</button>` : ''}
+                    </div>`;
+            }
 
             // Transcript
             let transcriptHtml = '';
             if (data.transcript) {
                 const trShort = data.transcript.length > 200 ? data.transcript.substring(0, 200) + '...' : data.transcript;
                 transcriptHtml = `
-                    <div style="margin-top:8px;padding:10px;background:var(--bg-primary);border-radius:6px;">
+                    <div class="analysis-section" style="background:var(--bg-primary);">
                         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-                            <div style="font-size:11px;font-weight:600;color:var(--text-secondary);">🎙 Исходная транскрипция</div>
-                            <button onclick="copyToClipboard(_analysisDataStore['${uid}'].transcript, this)" style="background:none;border:none;color:var(--accent);font-size:10px;cursor:pointer;padding:2px 6px;">Копировать</button>
+                            <div class="analysis-section-title">Исходная транскрипция</div>
+                            ${_copyBtn("copyToClipboard(_analysisDataStore['" + uid + "'].transcript, this)")}
                         </div>
-                        <div id="${uid}_transcript" style="font-size:12px;color:var(--text-primary);line-height:1.4;white-space:pre-wrap;">${escapeHtml(trShort)}</div>
+                        <div id="${uid}_transcript" style="font-size:13px;color:var(--text-primary);line-height:1.5;white-space:pre-wrap;">${escapeHtml(trShort)}</div>
                         ${data.transcript.length > 200 ? `<button onclick="document.getElementById('${uid}_transcript').textContent=_analysisDataStore['${uid}'].transcript;this.style.display='none'" style="background:none;border:none;color:var(--accent);font-size:11px;cursor:pointer;padding:4px 0;">Показать полностью</button>` : ''}
                     </div>`;
             }
@@ -8603,43 +8692,32 @@
             } else if (data.transcript && data.transcript.length > 50) {
                 processedHtml = `
                     <div id="${uid}_ai_container">
-                        <button onclick="processTranscriptAI(_analysisDataStore['${uid}'].transcript, '', '', '${uid}_ai_container')"
-                                style="width:100%;margin-top:8px;padding:10px;background:var(--bg-primary);border:1px dashed var(--border);border-radius:6px;font-size:12px;cursor:pointer;color:var(--accent);display:flex;align-items:center;justify-content:center;gap:6px;">
-                            ✨ Обработать ИИ (очистка + анализ структуры)
+                        <button class="btn-ai-process" onclick="processTranscriptAI(_analysisDataStore['${uid}'].transcript, '', '', '${uid}_ai_container')">
+                            Обработать ИИ (очистка + анализ структуры)
                         </button>
                     </div>`;
             }
 
             return `
-                <div style="padding:16px;background:var(--bg-tertiary);border-radius:8px;">
-                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-                        <div style="display:flex;align-items:center;gap:8px;">
-                            ${data.profile_pic_url ? `<img src="${escapeHtml(data.profile_pic_url)}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;" onerror="this.style.display='none'">` : ''}
+                <div style="padding:20px;background:var(--bg-tertiary);border-radius:12px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            ${data.profile_pic_url ? `<img src="${escapeHtml(data.profile_pic_url)}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;" onerror="this.style.display='none'">` : ''}
                             <div>
-                                <div style="font-size:13px;font-weight:600;color:var(--text-primary);">${data.username ? '@' + escapeHtml(data.username) : 'Автор'}</div>
-                                ${date ? `<div style="font-size:11px;color:var(--text-muted);">${date}</div>` : ''}
+                                <div style="font-size:14px;font-weight:600;color:var(--text-primary);">${data.username ? '@' + escapeHtml(data.username) : 'Автор'}</div>
+                                <div style="font-size:12px;color:var(--text-muted);">${date ? date : ''}${date && typeLabel ? ' · ' : ''}${typeLabel}${data.images && data.images.length > 1 ? ' (' + data.images.length + ')' : ''}</div>
                             </div>
                         </div>
-                        <div style="display:flex;gap:4px;">
-                            <span style="font-size:10px;padding:2px 6px;background:var(--accent);color:white;border-radius:3px;">${platformLabels[data.platform] || data.platform}</span>
-                            <span style="font-size:10px;padding:2px 6px;background:var(--bg-primary);border-radius:3px;color:var(--text-secondary);">${typeLabels[data.post_type] || ''}${data.images && data.images.length > 1 ? ' (' + data.images.length + ')' : ''}</span>
-                        </div>
+                        ${platformIcon ? `<div style="flex-shrink:0;">${platformIcon}</div>` : ''}
                     </div>
+                    ${captionHtml}
                     ${imagesHtml}
                     ${slidesTextHtml}
-                    <div style="margin-bottom:8px;">
-                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-                            <div style="font-size:11px;font-weight:600;color:var(--text-secondary);">💬 Описание</div>
-                            ${data.caption ? `<button onclick="copyToClipboard(_analysisDataStore['${uid}'].caption, this)" style="background:none;border:none;color:var(--accent);font-size:10px;cursor:pointer;padding:2px 6px;">Копировать</button>` : ''}
-                        </div>
-                        <div id="${uid}_caption" style="font-size:13px;color:var(--text-primary);line-height:1.5;white-space:pre-wrap;">${escapeHtml(captionShort)}</div>
-                        ${hasMoreCaption ? `<button onclick="document.getElementById('${uid}_caption').textContent=_analysisDataStore['${uid}'].caption;this.style.display='none'" style="background:none;border:none;color:var(--accent);font-size:12px;cursor:pointer;padding:4px 0;">Показать полностью</button>` : ''}
-                    </div>
                     ${transcriptHtml}
                     ${processedHtml}
-                    <div style="display:flex;gap:16px;font-size:12px;color:var(--text-muted);margin-top:8px;">
-                        <span>❤️ ${formatNum(data.like_count)}</span>
-                        <span>💬 ${formatNum(data.comment_count)}</span>
+                    <div class="analysis-card-footer">
+                        <span>${HEART_ICON_SVG} ${formatNum(data.like_count)}</span>
+                        <span>${COMMENT_ICON_SVG} ${formatNum(data.comment_count)}</span>
                     </div>
                 </div>
             `;
