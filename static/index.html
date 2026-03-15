@@ -5509,8 +5509,12 @@
                     content += '</div>';
                 }
                 if (msg.message_type === 'analysis' && msg.message_data) {
-                    msg.message_data._sub_chat_id = currentSubChatId || '';
-                    content = renderAnalysisMessageCard(msg.message_data);
+                    let analysisData = msg.message_data;
+                    if (typeof analysisData === 'string') {
+                        try { analysisData = JSON.parse(analysisData); } catch(e) { console.error('[analysis] Failed to parse message_data string:', e); }
+                    }
+                    analysisData._sub_chat_id = currentSubChatId || '';
+                    content = renderAnalysisMessageCard(analysisData);
                 }
                 // Action buttons under assistant messages (ChatGPT style)
                 let actions = '';

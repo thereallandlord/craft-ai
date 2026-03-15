@@ -3010,7 +3010,7 @@ async def process_transcript(request: Request):
                 if video_structure:
                     msg_data["video_structure"] = video_structure
                 supabase.table("project_messages").update(
-                    {"message_data": json.dumps(msg_data) if isinstance(msg_data, dict) else msg_data}
+                    {"message_data": msg_data}
                 ).eq("id", msg["id"]).execute()
                 print(f"[process-transcript] Updated message {msg['id']} with processed data")
         except Exception as e:
