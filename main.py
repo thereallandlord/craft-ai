@@ -4666,7 +4666,10 @@ async def resolve_auth_id(request: Request) -> tuple[str | None, str]:
             if account:
                 return (account["id"], "telegram")
         except (ValueError, TypeError):
-            pass
+            # user_id is not a number — might be a Supabase UUID (email/Google user)
+            account = _get_auth_account(user_id_param)
+            if account:
+                return (account["id"], "email")
 
     # 3. Anonymous — use cookie token
     return (None, "anonymous")
