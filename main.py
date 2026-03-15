@@ -2688,6 +2688,25 @@ async def image_proxy(url: str):
         raise HTTPException(502, f"Image proxy error: {str(e)}")
 
 
+@app.get("/api/debug/transcript")
+async def debug_transcript(url: str):
+    """Temporary debug: test transcript API directly."""
+    if not SCRAPE_CREATORS_API_KEY:
+        return {"error": "no API key"}
+    results = {}
+    for endpoint in ["/v2/instagram/media/transcript", "/v1/instagram/media/transcript"]:
+        try:
+            resp = requests.get(
+                f"{SCRAPE_CREATORS_BASE}{endpoint}",
+                params={"url": url},
+                headers={"x-api-key": SCRAPE_CREATORS_API_KEY},
+                timeout=15
+            )
+            results[endpoint] = {"status": resp.status_code, "body": resp.text[:500]}
+        except Exception as e:
+            results[endpoint] = {"error": str(e)}
+    return results
+
 @app.post("/api/competitor/analyze")
 async def competitor_analyze(request: Request):
     """Analyze a social media post via Scrape Creators API. Creates Topic + analysis sub-chat."""
