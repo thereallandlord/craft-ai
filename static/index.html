@@ -5525,7 +5525,8 @@
                         </button>
                     </div>`;
                 }
-                return `<div class="pv-msg ${msg.role}"><div>${content.replace(/\n/g, '<br>')}</div>${actions}<div class="msg-time">${time}</div></div>`;
+                const isHtmlContent = msg.message_type === 'analysis';
+                return `<div class="pv-msg ${msg.role}"><div>${isHtmlContent ? content : content.replace(/\n/g, '<br>')}</div>${actions}<div class="msg-time">${time}</div></div>`;
             }).join('');
             container.scrollTop = container.scrollHeight;
         }
