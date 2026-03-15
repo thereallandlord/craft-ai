@@ -8510,9 +8510,7 @@
             if (data.caption) {
                 captionHtml = `
                     <div style="margin-bottom:8px;position:relative;">
-                        <div style="display:flex;justify-content:flex-end;margin-bottom:2px;">
-                            ${_copyBtn("copyToClipboard(_analysisDataStore['" + uid + "'].caption, this)")}
-                        </div>
+                        <div style="float:right;margin-left:8px;">${_copyBtn("copyToClipboard(_analysisDataStore['" + uid + "'].caption, this)")}</div>
                         <div id="competitorCaption" style="font-size:13px;color:var(--text-primary);line-height:1.6;white-space:pre-wrap;">${escapeHtml(captionShort)}</div>
                         ${hasMore ? `<button onclick="document.getElementById('competitorCaption').textContent=_analysisDataStore['${uid}'].caption;this.style.display='none'" style="background:none;border:none;color:var(--accent);font-size:12px;cursor:pointer;padding:4px 0;">Показать полностью</button>` : ''}
                     </div>`;
@@ -8662,9 +8660,7 @@
             if (data.caption) {
                 captionHtml = `
                     <div style="margin-bottom:8px;position:relative;">
-                        <div style="display:flex;justify-content:flex-end;margin-bottom:2px;">
-                            ${_copyBtn("copyToClipboard(_analysisDataStore['" + uid + "'].caption, this)")}
-                        </div>
+                        <div style="float:right;margin-left:8px;">${_copyBtn("copyToClipboard(_analysisDataStore['" + uid + "'].caption, this)")}</div>
                         <div id="${uid}_caption" style="font-size:13px;color:var(--text-primary);line-height:1.6;white-space:pre-wrap;">${escapeHtml(captionShort)}</div>
                         ${hasMoreCaption ? `<button onclick="document.getElementById('${uid}_caption').textContent=_analysisDataStore['${uid}'].caption;this.style.display='none'" style="background:none;border:none;color:var(--accent);font-size:12px;cursor:pointer;padding:4px 0;">Показать полностью</button>` : ''}
                     </div>`;
