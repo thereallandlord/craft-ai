@@ -134,6 +134,16 @@ else:
 SUPABASE_JWT_SECRET = os.getenv("SUPABASE_JWT_SECRET", "")
 SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")
 
+# JWKS client for ECC (ES256) JWT verification — Supabase migrated from HS256
+_jwks_client = None
+if SUPABASE_URL:
+    _jwks_url = f"{SUPABASE_URL}/auth/v1/.well-known/jwks.json"
+    try:
+        _jwks_client = pyjwt.PyJWKClient(_jwks_url, cache_keys=True, lifespan=3600)
+        print(f"✅ JWKS client configured: {_jwks_url}")
+    except Exception as e:
+        print(f"⚠️ JWKS client init failed: {e}")
+
 # === Scrape Creators API ===
 SCRAPE_CREATORS_API_KEY = os.getenv("SCRAPE_CREATORS_API_KEY", "")
 SCRAPE_CREATORS_BASE = "https://api.scrapecreators.com"
@@ -4483,17 +4493,29 @@ PLAN_LIMITS = {
 
 
 def verify_supabase_jwt(token: str) -> dict | None:
-    """Verify a Supabase Auth JWT and return decoded claims."""
-    if not SUPABASE_JWT_SECRET:
-        return None
-    try:
-        return pyjwt.decode(token, SUPABASE_JWT_SECRET, algorithms=["HS256"], audience="authenticated")
-    except pyjwt.ExpiredSignatureError:
-        print("[jwt] Token expired")
-        return None
-    except pyjwt.InvalidTokenError as e:
-        print(f"[jwt] Invalid token: {e}")
-        return None
+    """Verify a Supabase Auth JWT and return decoded claims.
+    Tries JWKS (ES256/ECC) first, then falls back to legacy HS256 shared secret."""
+    # 1. Try JWKS (ECC/ES256) — current Supabase signing method
+    if _jwks_client:
+        try:
+            signing_key = _jwks_client.get_signing_key_from_jwt(token)
+            return pyjwt.decode(token, signing_key.key, algorithms=["ES256"], audience="authenticated")
+        except pyjwt.ExpiredSignatureError:
+            print("[jwt] Token expired")
+            return None
+        except Exception as e:
+            print(f"[jwt] JWKS verification failed, trying HS256 fallback: {e}")
+    # 2. Fallback: legacy HS256 shared secret
+    if SUPABASE_JWT_SECRET:
+        try:
+            return pyjwt.decode(token, SUPABASE_JWT_SECRET, algorithms=["HS256"], audience="authenticated")
+        except pyjwt.ExpiredSignatureError:
+            print("[jwt] Token expired (HS256)")
+            return None
+        except pyjwt.InvalidTokenError as e:
+            print(f"[jwt] Invalid token (HS256): {e}")
+            return None
+    return None
 
 
 # Cache: auth_id → auth_account dict, TTL 60s

@@ -54,14 +54,16 @@ SELECT
     COALESCE(plan, 'free'),
     false
 FROM users
-WHERE CAST(user_id AS BIGINT) NOT IN (SELECT telegram_id FROM auth_accounts WHERE telegram_id IS NOT NULL)
+WHERE user_id ~ '^[0-9]+$'
+  AND CAST(user_id AS BIGINT) NOT IN (SELECT telegram_id FROM auth_accounts WHERE telegram_id IS NOT NULL)
 ON CONFLICT (telegram_id) DO NOTHING;
 
 -- Link users to their auth_accounts
 UPDATE users
 SET auth_id = auth_accounts.id
 FROM auth_accounts
-WHERE CAST(users.user_id AS BIGINT) = auth_accounts.telegram_id
+WHERE users.user_id ~ '^[0-9]+$'
+  AND CAST(users.user_id AS BIGINT) = auth_accounts.telegram_id
   AND users.auth_id IS NULL;
 
 -- ============================================================
